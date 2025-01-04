@@ -23,7 +23,7 @@ jobs:
       - name: Download Odin (nightly)
         run: wget -qO- https://f001.backblazeb2.com/file/odin-binaries/nightly/odin-linux-amd64-nightly%2B2025-01-03.tar.gz | tar -xzf-
       - name: Download emscripten and build
-        run: ./build_github_pages.sh
+        run: bash build_github_pages.sh # https://stackoverflow.com/a/74346752
       - name: Deploy
         uses: JamesIves/github-pages-deploy-action@v4
         with:
