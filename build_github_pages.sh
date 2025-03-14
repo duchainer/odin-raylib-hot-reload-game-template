@@ -1,4 +1,5 @@
 #!/bin/bash
+set -x
 
 # See https://github.com/karl-zylinski/odin-raylib-web for more examples on how
 # to do a web build, including how to embed assets into it.
