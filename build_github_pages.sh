@@ -22,12 +22,12 @@ if ! odin-linux-amd64-nightly+2025-03-05/odin build source/main_web -target:free
 fi
 
 ODIN_PATH=$(odin-linux-amd64-nightly+2025-03-05/odin root)
-files="main_web/main_web.c $OUT_DIR/game.wasm.o ${ODIN_PATH}/vendor/raylib/wasm/libraylib.a"
-flags="-sUSE_GLFW=3 -sASYNCIFY -sASSERTIONS -DPLATFORM_WEB"
-custom="--shell-file main_web/index_template.html"
+files="$OUT_DIR/game.wasm.o ${ODIN_PATH}/vendor/raylib/wasm/libraylib.a ${ODIN_PATH}/vendor/raylib/wasm/libraygui.a"
+flags="-sUSE_GLFW=3 -sWASM_BIGINT -sWARN_ON_UNDEFINED_SYMBOLS=0 -sASSERTIONS --shell-file source/main_web/index_template.html --preload-file assets"
 
 # shellcheck disable=SC2086
 # Add `-g` to `emcc` call to enable debug symbols (works in chrome).
-emcc -g -o $OUT_DIR/index.html $files $flags $custom && rm $OUT_DIR/game.wasm.o
+emcc -g -o $OUT_DIR/index.html $files $flags && rm $OUT_DIR/game.wasm.o
+# emcc -o $OUT_DIR/index.html $files $flags
 
 echo "Web build created in ${OUT_DIR}"
