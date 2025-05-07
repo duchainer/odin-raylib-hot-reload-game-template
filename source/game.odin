@@ -1,6 +1,6 @@
 package game
-BACKGROUND_COLOR :i32: 0xFFFFFF
-//                         ^ 40th character, let's replace it and rebuild
+BACKGROUND_COLOR :i32: 0x99FFFF//Last char is 43 so [38:43] if you want to replace them
+//                       ^ 38th character, let's replace it and rebuild
 /*
 This file is the starting point of your game.
 
@@ -78,7 +78,15 @@ update :: proc() {
 		fmt.assertf(err_open == nil, "Bad os2.open %v", err_open)
 
 		// g.file_content[40] = u8('0')
-		n_write_at, err_write_at := os2.write_at(file, {u8('F')}, 40)
+		new_chars := [?]u8{u8('F'), u8('F')}
+		switch{
+		case rl.IsKeyDown(.ZERO): new_chars = [?]u8{u8('0'), u8('0')}
+		case rl.IsKeyDown(.ONE): new_chars = [?]u8{u8('1'), u8('1')}
+		case rl.IsKeyDown(.NINE): new_chars = [?]u8{u8('9'), u8('9')}
+		// case rl.IsKeyDown(.F): new_chars = u8('FFF')
+		}
+
+		n_write_at, err_write_at := os2.write_at(file, new_chars[:], 38)
 		fmt.assertf(err_write_at == nil, "Bad os2.write_at %v", err_write_at)
 		fmt.println("Wrote %v byte(s)", n_write_at)
 
