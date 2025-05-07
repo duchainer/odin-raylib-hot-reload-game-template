@@ -1,3 +1,6 @@
+package game
+BACKGROUND_COLOR :i32: 0xFFFFFF
+//                         ^ 40th character, let's replace it and rebuild
 /*
 This file is the starting point of your game.
 
@@ -25,11 +28,14 @@ then this whole package is just treated as a normal Odin package. No DLL is
 created.
 */
 
-package game
+
 
 import "core:fmt"
-import "core:math/linalg"
+// import "core:math/linalg"
 import rl "vendor:raylib"
+import "core:os/os2"
+import "core:strings"
+import "core:c/libc"
 
 PIXEL_WINDOW_HEIGHT :: 180
 
@@ -38,9 +44,12 @@ Game_Memory :: struct {
 	player_texture: rl.Texture,
 	some_number: int,
 	run: bool,
+	file_content : [dynamic]byte,
 }
 
 g: ^Game_Memory
+
+file_size : i64
 
 game_camera :: proc() -> rl.Camera2D {
 	w := f32(rl.GetScreenWidth())
@@ -60,48 +69,52 @@ ui_camera :: proc() -> rl.Camera2D {
 }
 
 update :: proc() {
-	input: rl.Vector2
-
-	if rl.IsKeyDown(.UP) || rl.IsKeyDown(.W) {
-		input.y -= 1
-	}
-	if rl.IsKeyDown(.DOWN) || rl.IsKeyDown(.S) {
-		input.y += 1
-	}
-	if rl.IsKeyDown(.LEFT) || rl.IsKeyDown(.A) {
-		input.x -= 1
-	}
-	if rl.IsKeyDown(.RIGHT) || rl.IsKeyDown(.D) {
-		input.x += 1
-	}
-
-	input = linalg.normalize0(input)
-	g.player_pos += input * rl.GetFrameTime() * 100
-	g.some_number += 1
-
 	if rl.IsKeyPressed(.ESCAPE) {
 		g.run = false
+	}
+
+	if rl.IsKeyPressed(.SPACE) {
+		file, err_open := os2.open("./source/game.odin", os2.File_Flags{.Read, .Write, .Sync})
+		fmt.assertf(err_open == nil, "Bad os2.open %v", err_open)
+
+		// g.file_content[40] = u8('0')
+		n_write_at, err_write_at := os2.write_at(file, {u8('F')}, 40)
+		fmt.assertf(err_write_at == nil, "Bad os2.write_at %v", err_write_at)
+		fmt.println("Wrote %v byte(s)", n_write_at)
+
+		// Hot-reload
+		command : cstring = "bash ./build_hot_reload.sh" // The terminal command you want to execute
+
+		// Execute the command
+		exit_code := libc.system(command)
+
+		if exit_code == 0 {
+			fmt.println("Command executed successfully.")
+		} else {
+			fmt.println("Command failed with exit code:", exit_code)
+		}
 	}
 }
 
 draw :: proc() {
+	file_as_cstring := strings.clone_to_cstring(string(g.file_content[:5141]), context.temp_allocator)
+
 	rl.BeginDrawing()
-	rl.ClearBackground(rl.BLACK)
+	rl.ClearBackground(transmute(rl.Color)(BACKGROUND_COLOR))
 
-	rl.BeginMode2D(game_camera())
-	rl.DrawTextureEx(g.player_texture, g.player_pos, 0, 1, rl.WHITE)
-	rl.DrawRectangleV({20, 20}, {10, 10}, rl.RED)
-	rl.DrawRectangleV({-30, -20}, {10, 10}, rl.GREEN)
-	rl.EndMode2D()
-
-	rl.BeginMode2D(ui_camera())
-
+	// rl.DrawTextureEx(g.player_texture, g.player_pos, 0, 1, rl.WHITE)
+	// rl.DrawRectangleV({20, 20}, {10, 10}, rl.RED)
+	// rl.DrawRectangleV({-30, -20}, {10, 10}, rl.GREEN)
+	textSize :: 8
+	is_editable :: true
+	// rl.GuiSetStyle(control: GuiControl, property: c.int, value: c.int)
+	rl.GuiSetStyle(.TEXTBOX, i32(rl.GuiDefaultProperty.BACKGROUND_COLOR), 0x000000)
+	rl.GuiTextBox({0, 0, 500, 1000}, file_as_cstring, textSize, is_editable)
 	// NOTE: `fmt.ctprintf` uses the temp allocator. The temp allocator is
 	// cleared at the end of the frame by the main application, meaning inside
 	// `main_hot_reload.odin`, `main_release.odin` or `main_web_entry.odin`.
-	rl.DrawText(fmt.ctprintf("some_number: %v\nplayer_pos: %v", g.some_number, g.player_pos), 5, 5, 8, rl.WHITE)
-
-	rl.EndMode2D()
+	// rl.DrawText(file_as_cstring, 5, 5, 8, rl.WHITE)
+	rl.DrawText("HELLO", 5, 5, 8, rl.WHITE)
 
 	rl.EndDrawing()
 }
@@ -128,6 +141,14 @@ game_init_window :: proc() {
 game_init :: proc() {
 	g = new(Game_Memory)
 
+	file, err_open := os2.open("./source/game.odin", os2.File_Flags{.Read, .Write, .Sync})
+	fmt.assertf(err_open == nil, "Bad os2.open %v", err_open)
+
+	err_file_size : os2.Error
+	file_size, err_file_size = os2.file_size(file)
+	fmt.assertf(err_file_size == nil, "Bad os2.file_size %v", err_file_size)
+	fmt.println("File size : %v", file_size)
+
 	g^ = Game_Memory {
 		run = true,
 		some_number = 100,
@@ -135,7 +156,17 @@ game_init :: proc() {
 		// You can put textures, sounds and music in the `assets` folder. Those
 		// files will be part any release or web build.
 		player_texture = rl.LoadTexture("assets/round_cat.png"),
+
+		file_content = make([dynamic]byte, file_size*2),
 	}
+
+
+
+	n, err_read := os2.read(file, g.file_content[:file_size])
+	fmt.assertf(err_read == nil, "Bad os2.read %v", err_read)
+	fmt.println(n, string(g.file_content[:file_size]))
+
+	os2.close(file)
 
 	game_hot_reloaded(g)
 }
