@@ -193,6 +193,7 @@ game_should_run :: proc() -> bool {
 
 @(export)
 game_shutdown :: proc() {
+	delete(g.file_content)
 	free(g)
 }
 
@@ -217,6 +218,10 @@ game_hot_reloaded :: proc(mem: rawptr) {
 
 	// Here you can also set your own global variables. A good idea is to make
 	// your global variables into pointers that point to something inside `g`.
+
+	// TODO Refetch the file_content from disk
+	//  But maybe we don't even need to have g.file_content if we always refetch it?
+	//  How should we deal with unsaved changes? Should we always save right BEFORE hot-reloading?
 }
 
 @(export)
