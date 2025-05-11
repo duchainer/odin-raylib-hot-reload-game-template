@@ -113,16 +113,19 @@ draw :: proc() {
 	// rl.DrawTextureEx(g.player_texture, g.player_pos, 0, 1, rl.WHITE)
 	// rl.DrawRectangleV({20, 20}, {10, 10}, rl.RED)
 	// rl.DrawRectangleV({-30, -20}, {10, 10}, rl.GREEN)
-	textSize :: 8
+	textSize :: 32
 	is_editable :: true
 	// rl.GuiSetStyle(control: GuiControl, property: c.int, value: c.int)
-	rl.GuiSetStyle(.TEXTBOX, i32(rl.GuiDefaultProperty.BACKGROUND_COLOR), 0x000000)
-	rl.GuiTextBox({0, 0, 500, 1000}, file_as_cstring, textSize, is_editable)
+	// rl.GuiSetStyle(.TEXTBOX, i32(rl.GuiDefaultProperty.BACKGROUND_COLOR), 0x000000)
+	// rl.GuiTextBox({0, 250, 500, 1000}, file_as_cstring, textSize, is_editable)
 	// NOTE: `fmt.ctprintf` uses the temp allocator. The temp allocator is
 	// cleared at the end of the frame by the main application, meaning inside
 	// `main_hot_reload.odin`, `main_release.odin` or `main_web_entry.odin`.
-	// rl.DrawText(file_as_cstring, 5, 5, 8, rl.WHITE)
-	rl.DrawText("HELLO", 5, 5, 8, rl.WHITE)
+	font_spacing :: 0
+	rl.DrawTextEx(mono_font, file_as_cstring, {5, 5}, textSize, font_spacing, rl.WHITE)
+	// rl.DrawText("HELLO", 5, 5, 8, rl.WHITE)
+
+
 
 	rl.EndDrawing()
 }
@@ -212,8 +215,21 @@ game_memory_size :: proc() -> int {
 	return size_of(Game_Memory)
 }
 
+mono_font: rl.Font
+
 @(export)
 game_hot_reloaded :: proc(mem: rawptr) {
+	file, err_open := os2.open("./source/game.odin", os2.File_Flags{.Read, .Write, .Sync})
+	fmt.assertf(err_open == nil, "Bad os2.open %v", err_open)
+
+	err_file_size : os2.Error
+	file_size, err_file_size = os2.file_size(file)
+	fmt.assertf(err_file_size == nil, "Bad os2.file_size %v", err_file_size)
+	fmt.println("File size : %v", file_size)
+
+	monospaced_font_path :: "./assets/fonts/JuliaMono/JuliaMono-Black.ttf"
+	mono_font = rl.LoadFont(monospaced_font_path)
+
 	g = (^Game_Memory)(mem)
 
 	// Here you can also set your own global variables. A good idea is to make
