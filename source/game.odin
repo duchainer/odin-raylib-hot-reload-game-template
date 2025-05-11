@@ -1,5 +1,5 @@
 package game
-BACKGROUND_COLOR :i32: 0x99FFFF//Last char is 43 so [38:43] if you want to replace them
+BACKGROUND_COLOR :i32: 0x000000//Last char is 43 so [38:43] if you want to replace them
 //                       ^ 38th character, let's replace it and rebuild
 /*
 This file is the starting point of your game.
