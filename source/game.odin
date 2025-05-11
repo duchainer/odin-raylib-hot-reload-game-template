@@ -73,25 +73,27 @@ update :: proc() {
 		g.run = false
 	}
 
-	scroll_down_height :: 500
-	if rl.IsKeyPressed(.D){
-		if rl.IsKeyDown(.LEFT_CONTROL) || rl.IsKeyDown(.RIGHT_CONTROL){
+	if rl.IsKeyDown(.LEFT_CONTROL) || rl.IsKeyDown(.RIGHT_CONTROL){
+		// Scroll up or down
+
+		// Not yet true, but will be true when we use a count of newlines
+		half_screen_height :: 500
+		scroll_amount : i64
+		if rl.IsKeyPressed(.D){
+			scroll_amount = + half_screen_height
+		}
+		if rl.IsKeyPressed(.U){
+			scroll_amount = - half_screen_height
+		}
+		if scroll_amount != 0{
 			file_content_indexes.start = clamp(
-				file_content_indexes.start + scroll_down_height,
-				0, file_size-50,
+				file_content_indexes.start + scroll_amount,
+				0, file_size-half_screen_height,
 			)
 		}
 	}
 
-	if rl.IsKeyPressed(.U){
-		if rl.IsKeyDown(.LEFT_CONTROL) || rl.IsKeyDown(.RIGHT_CONTROL){
-			file_content_indexes.start = clamp(
-				file_content_indexes.start - scroll_down_height,
-				0, file_size-50,
-			)
 
-		}
-	}
 
 	if rl.IsKeyPressed(.SPACE) {
 		file, err_open := os2.open("./source/game.odin", os2.File_Flags{.Read, .Write, .Sync})
