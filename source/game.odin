@@ -69,7 +69,7 @@ ui_camera :: proc() -> rl.Camera2D {
 }
 
 update :: proc() {
-	if rl.IsKeyPressed(.ESCAPE) {
+	if rl.IsKeyPressed(.ESCAPE) && rl.IsKeyDown(.LEFT_CONTROL) && rl.IsKeyDown(.LEFT_SHIFT) {
 		g.run = false
 	}
 
