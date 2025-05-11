@@ -73,6 +73,26 @@ update :: proc() {
 		g.run = false
 	}
 
+	scroll_down_height :: 500
+	if rl.IsKeyPressed(.D){
+		if rl.IsKeyDown(.LEFT_CONTROL) || rl.IsKeyDown(.RIGHT_CONTROL){
+			file_content_indexes.start = clamp(
+				file_content_indexes.start + scroll_down_height,
+				0, file_size-50,
+			)
+		}
+	}
+
+	if rl.IsKeyPressed(.U){
+		if rl.IsKeyDown(.LEFT_CONTROL) || rl.IsKeyDown(.RIGHT_CONTROL){
+			file_content_indexes.start = clamp(
+				file_content_indexes.start - scroll_down_height,
+				0, file_size-50,
+			)
+
+		}
+	}
+
 	if rl.IsKeyPressed(.SPACE) {
 		file, err_open := os2.open("./source/game.odin", os2.File_Flags{.Read, .Write, .Sync})
 		fmt.assertf(err_open == nil, "Bad os2.open %v", err_open)
@@ -104,8 +124,18 @@ update :: proc() {
 	}
 }
 
+file_content_indexes : struct{
+	start: i64,
+	end: i64,
+}
+
 draw :: proc() {
-	file_as_cstring := strings.clone_to_cstring(string(g.file_content[:5141]), context.temp_allocator)
+	file_content_indexes.end = file_size
+	file_content_as_string := string(g.file_content[:file_size])
+	bounded_content :=  file_content_as_string[
+		file_content_indexes.start : file_content_indexes.end
+	]
+	file_as_cstring := strings.clone_to_cstring(bounded_content, context.temp_allocator)
 
 	rl.BeginDrawing()
 	rl.ClearBackground(transmute(rl.Color)(BACKGROUND_COLOR))
@@ -126,6 +156,8 @@ draw :: proc() {
 	// rl.DrawText("HELLO", 5, 5, 8, rl.WHITE)
 
 
+    file_content_indexes_text := fmt.caprintf("{}", file_content_indexes, allocator=context.temp_allocator)
+	rl.DrawText(file_content_indexes_text, 100, 100, 25, rl.WHITE)
 
 	rl.EndDrawing()
 }
