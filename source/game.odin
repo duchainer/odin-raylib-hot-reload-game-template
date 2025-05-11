@@ -69,70 +69,39 @@ ui_camera :: proc() -> rl.Camera2D {
 }
 
 update :: proc() {
+	if rl.IsKeyPressed(.ESCAPE) {
+		g.run = false
+	}
 
-	for key_pressed := rl.GetKeyPressed(), key_pressed != rl.KeyboardKey.KEY_NULL{
-		switch key_pressed{
-		case .ESCAPE: {
-			g.run = false
-			return
-		}
-		case .F4:{
-			file, err_open := os2.open("./source/game.odin", os2.File_Flags{.Read, .Write, .Sync})
-			fmt.assertf(err_open == nil, "Bad os2.open %v", err_open)
+	if rl.IsKeyPressed(.SPACE) {
+		file, err_open := os2.open("./source/game.odin", os2.File_Flags{.Read, .Write, .Sync})
+		fmt.assertf(err_open == nil, "Bad os2.open %v", err_open)
 
-			// g.file_content[40] = u8('0')
-			new_chars := [?]u8{u8('F'), u8('F')}
-			switch{
-			case rl.IsKeyDown(.ZERO): new_chars = [?]u8{u8('0'), u8('0')}
-			case rl.IsKeyDown(.ONE): new_chars = [?]u8{u8('1'), u8('1')}
-			case rl.IsKeyDown(.NINE): new_chars = [?]u8{u8('9'), u8('9')}
-			// case rl.IsKeyDown(.F): new_chars = u8('FFF')
-			}
-
-			n_write_at, err_write_at := os2.write_at(file, new_chars[:], 38)
-			fmt.assertf(err_write_at == nil, "Bad os2.write_at %v", err_write_at)
-			fmt.println("Wrote %v byte(s)", n_write_at)
-
-			// Hot-reload
-			command : cstring = "bash ./build_hot_reload.sh" // The terminal command you want to execute
-
-			// Execute the command
-			exit_code := libc.system(command)
-
-			if exit_code == 0 {
-				fmt.println("Command executed successfully.")
-			} else {
-				fmt.println("Command failed with exit code:", exit_code)
-			}
-		}
-		CASE .S:{
-			if rl.isKeyDown(.LEFT_CONTROL) || rl.isKeyDown(.RIGHT_CONTROL){
-				// TODO
-				n_write_at, err_write_at := os2.write(file, file_contents[:file_size], 38)
-				fmt.assertf(err_write_at == nil, "Bad os2.write_at %v", err_write_at)
-				fmt.println("Wrote %v byte(s)", n_write_at)
-
-				// Hot-reload
-				command : cstring = "bash ./build_hot_reload.sh" // The terminal command you want to execute
-
-				// Execute the command
-				exit_code := libc.system(command)
-
-				if exit_code == 0 {
-					fmt.println("Command executed successfully.")
-				} else {
-					fmt.println("Command failed with exit code:", exit_code)
-				}
-			}
-			else do fallthrough
-		}
-		CASE rl.KeyboardKey.RIGHT_BRACKET< key_pressed && key_pressed>rl.KeyboardKey.APOSTROPHE:{
-			
+		// g.file_content[40] = u8('0')
+		new_chars := [?]u8{u8('F'), u8('F')}
+		switch{
+		case rl.IsKeyDown(.ZERO): new_chars = [?]u8{u8('0'), u8('0')}
+		case rl.IsKeyDown(.ONE): new_chars = [?]u8{u8('1'), u8('1')}
+		case rl.IsKeyDown(.NINE): new_chars = [?]u8{u8('9'), u8('9')}
+		// case rl.IsKeyDown(.F): new_chars = u8('FFF')
 		}
 
+		n_write_at, err_write_at := os2.write_at(file, new_chars[:], 38)
+		fmt.assertf(err_write_at == nil, "Bad os2.write_at %v", err_write_at)
+		fmt.println("Wrote %v byte(s)", n_write_at)
+
+		// Hot-reload
+		command : cstring = "bash ./build_hot_reload.sh" // The terminal command you want to execute
+
+		// Execute the command
+		exit_code := libc.system(command)
+
+		if exit_code == 0 {
+			fmt.println("Command executed successfully.")
+		} else {
+			fmt.println("Command failed with exit code:", exit_code)
 		}
 	}
-	
 }
 
 draw :: proc() {
