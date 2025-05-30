@@ -34,7 +34,7 @@ import "core:fmt"
 // import "core:math/linalg"
 import rl "vendor:raylib"
 import "core:os/os2"
-import "core:strings"
+// import "core:strings"
 import "core:c/libc"
 
 PIXEL_WINDOW_HEIGHT :: 180
@@ -44,7 +44,6 @@ Game_Memory :: struct {
 	player_texture: rl.Texture,
 	some_number: int,
 	run: bool,
-	file_content : [dynamic]byte,
 }
 
 g: ^Game_Memory
@@ -72,48 +71,16 @@ update :: proc() {
 	if rl.IsKeyPressed(.ESCAPE) && rl.IsKeyDown(.LEFT_CONTROL) && rl.IsKeyDown(.LEFT_SHIFT) {
 		g.run = false
 	}
+	// for char := rl.GetCharPressed(); true; {
 
-	if rl.IsKeyDown(.LEFT_CONTROL) || rl.IsKeyDown(.RIGHT_CONTROL){
-		// Scroll up or down
-
-		// Not yet true, but will be true when we use a count of newlines
-		half_screen_height :: 500
-		scroll_amount : i64
-		if rl.IsKeyPressed(.D){
-			scroll_amount = + half_screen_height
-		}
-		if rl.IsKeyPressed(.U){
-			scroll_amount = - half_screen_height
-		}
-		if scroll_amount != 0{
-			file_content_indexes.start = clamp(
-				file_content_indexes.start + scroll_amount,
-				0, file_size-half_screen_height,
-			)
-		}
-	}
-
-
+	// 		fmt.println("Character pressed: %c (Unicode: %d)\n", rune(char), char)
+	// 		// Here you would trigger your xdotool command for this character
+	// 		break
+	// }
 
 	if rl.IsKeyPressed(.SPACE) {
-		file, err_open := os2.open("./source/game.odin", os2.File_Flags{.Read, .Write, .Sync})
-		fmt.assertf(err_open == nil, "Bad os2.open %v", err_open)
-
-		// g.file_content[40] = u8('0')
-		new_chars := [?]u8{u8('F'), u8('F')}
-		switch{
-		case rl.IsKeyDown(.ZERO): new_chars = [?]u8{u8('0'), u8('0')}
-		case rl.IsKeyDown(.ONE): new_chars = [?]u8{u8('1'), u8('1')}
-		case rl.IsKeyDown(.NINE): new_chars = [?]u8{u8('9'), u8('9')}
-		// case rl.IsKeyDown(.F): new_chars = u8('FFF')
-		}
-
-		n_write_at, err_write_at := os2.write_at(file, new_chars[:], 38)
-		fmt.assertf(err_write_at == nil, "Bad os2.write_at %v", err_write_at)
-		fmt.println("Wrote %v byte(s)", n_write_at)
-
 		// Hot-reload
-		command : cstring = "bash ./build_hot_reload.sh" // The terminal command you want to execute
+		command : cstring = "xdotool type --window 69206051 'IHelloWorld' " // The terminal command you want to execute
 
 		// Execute the command
 		exit_code := libc.system(command)
@@ -132,34 +99,9 @@ file_content_indexes : struct{
 }
 
 draw :: proc() {
-	file_content_indexes.end = file_size
-	file_content_as_string := string(g.file_content[:file_size])
-	bounded_content :=  file_content_as_string[
-		file_content_indexes.start : file_content_indexes.end
-	]
-	file_as_cstring := strings.clone_to_cstring(bounded_content, context.temp_allocator)
 
 	rl.BeginDrawing()
 	rl.ClearBackground(transmute(rl.Color)(BACKGROUND_COLOR))
-
-	// rl.DrawTextureEx(g.player_texture, g.player_pos, 0, 1, rl.WHITE)
-	// rl.DrawRectangleV({20, 20}, {10, 10}, rl.RED)
-	// rl.DrawRectangleV({-30, -20}, {10, 10}, rl.GREEN)
-	textSize :: 32
-	is_editable :: true
-	// rl.GuiSetStyle(control: GuiControl, property: c.int, value: c.int)
-	// rl.GuiSetStyle(.TEXTBOX, i32(rl.GuiDefaultProperty.BACKGROUND_COLOR), 0x000000)
-	// rl.GuiTextBox({0, 250, 500, 1000}, file_as_cstring, textSize, is_editable)
-	// NOTE: `fmt.ctprintf` uses the temp allocator. The temp allocator is
-	// cleared at the end of the frame by the main application, meaning inside
-	// `main_hot_reload.odin`, `main_release.odin` or `main_web_entry.odin`.
-	font_spacing :: 0
-	rl.DrawTextEx(mono_font, file_as_cstring, {5, 5}, textSize, font_spacing, rl.WHITE)
-	// rl.DrawText("HELLO", 5, 5, 8, rl.WHITE)
-
-
-    file_content_indexes_text := fmt.caprintf("{}", file_content_indexes, allocator=context.temp_allocator)
-	rl.DrawText(file_content_indexes_text, 100, 100, 25, rl.WHITE)
 
 	rl.EndDrawing()
 }
@@ -201,17 +143,8 @@ game_init :: proc() {
 		// You can put textures, sounds and music in the `assets` folder. Those
 		// files will be part any release or web build.
 		player_texture = rl.LoadTexture("assets/round_cat.png"),
-
-		file_content = make([dynamic]byte, file_size*2),
 	}
 
-
-
-	n, err_read := os2.read(file, g.file_content[:file_size])
-	fmt.assertf(err_read == nil, "Bad os2.read %v", err_read)
-	fmt.println(n, string(g.file_content[:file_size]))
-
-	os2.close(file)
 
 	game_hot_reloaded(g)
 }
@@ -230,7 +163,6 @@ game_should_run :: proc() -> bool {
 
 @(export)
 game_shutdown :: proc() {
-	delete(g.file_content)
 	free(g)
 }
 
