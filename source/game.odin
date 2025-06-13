@@ -28,16 +28,30 @@ created.
 package game
 
 import "core:fmt"
-import "core:math/linalg"
+// import "core:math/linalg"
 import rl "vendor:raylib"
 
 PIXEL_WINDOW_HEIGHT :: 180
 
+
+Tile :: enum {
+	None,
+	Pawn,
+	Rook,
+	Knight,
+	Bishop,
+	King,
+	Queen,
+}
+
+
 Game_Memory :: struct {
-	player_pos: rl.Vector2,
-	player_texture: rl.Texture,
 	some_number: int,
+	camera_center_pos: rl.Vector2,
 	run: bool,
+	board: [4][4]Tile,
+	previous_moves: [9999][2]int,
+	previous_moves_latest_index: uint,
 }
 
 g: ^Game_Memory
@@ -48,7 +62,7 @@ game_camera :: proc() -> rl.Camera2D {
 
 	return {
 		zoom = h/PIXEL_WINDOW_HEIGHT,
-		target = g.player_pos,
+		target = g.camera_center_pos,
 		offset = { w/2, h/2 },
 	}
 }
@@ -60,26 +74,8 @@ ui_camera :: proc() -> rl.Camera2D {
 }
 
 update :: proc() {
-	input: rl.Vector2
-
-	if rl.IsKeyDown(.UP) || rl.IsKeyDown(.W) {
-		input.y -= 1
-	}
-	if rl.IsKeyDown(.DOWN) || rl.IsKeyDown(.S) {
-		input.y += 1
-	}
-	if rl.IsKeyDown(.LEFT) || rl.IsKeyDown(.A) {
-		input.x -= 1
-	}
-	if rl.IsKeyDown(.RIGHT) || rl.IsKeyDown(.D) {
-		input.x += 1
-	}
-
-	input = linalg.normalize0(input)
-	g.player_pos += input * rl.GetFrameTime() * 100
 	g.some_number += 1
-
-	if rl.IsKeyPressed(.ESCAPE) {
+	if rl.IsKeyPressed(.LEFT_CONTROL) && rl.IsKeyPressed(.ESCAPE) {
 		g.run = false
 	}
 }
@@ -88,18 +84,29 @@ draw :: proc() {
 	rl.BeginDrawing()
 	rl.ClearBackground(rl.BLACK)
 
-	rl.BeginMode2D(game_camera())
-	rl.DrawTextureEx(g.player_texture, g.player_pos, 0, 1, rl.WHITE)
-	rl.DrawRectangleV({20, 20}, {10, 10}, rl.RED)
-	rl.DrawRectangleV({-30, -20}, {10, 10}, rl.GREEN)
-	rl.EndMode2D()
+	//rl.BeginMode2D(game_camera())
+	tile_rects : [8][8]rl.Rectangle
+	for i:=0; i < 8; i+=1{
+		for j:=0; j < 8; j+=1{
+			tile_rects[i][j] = rl.Rectangle{
+				x =      f32(i*64 + 200),
+				y =    f32(j*64+ 200),
+				width = 64,
+				height = 64,
+			}
+			color := rl.WHITE if (i+j)%2==0 else rl.GRAY
+			rl.DrawRectangleRec(tile_rects[i][j], color)
+		}
+	}
+	
+	//rl.EndMode2D()
 
 	rl.BeginMode2D(ui_camera())
 
 	// NOTE: `fmt.ctprintf` uses the temp allocator. The temp allocator is
 	// cleared at the end of the frame by the main application, meaning inside
 	// `main_hot_reload.odin`, `main_release.odin` or `main_web_entry.odin`.
-	rl.DrawText(fmt.ctprintf("some_number: %v\nplayer_pos: %v", g.some_number, g.player_pos), 5, 5, 8, rl.WHITE)
+	rl.DrawText(fmt.ctprintf("some_number: %v\nplayer_pos: %v", g.some_number, g.camera_center_pos), 5, 5, 8, rl.WHITE)
 
 	rl.EndMode2D()
 
@@ -126,15 +133,19 @@ game_init_window :: proc() {
 
 @(export)
 game_init :: proc() {
+	w := f32(rl.GetScreenWidth())
+	h := f32(rl.GetScreenHeight())
+
 	g = new(Game_Memory)
 
 	g^ = Game_Memory {
 		run = true,
 		some_number = 100,
+		camera_center_pos = { w/2, h/2 },
 
 		// You can put textures, sounds and music in the `assets` folder. Those
 		// files will be part any release or web build.
-		player_texture = rl.LoadTexture("assets/round_cat.png"),
+		// player_texture = rl.LoadTexture("assets/round_cat.png"),
 	}
 
 	game_hot_reloaded(g)
