@@ -72,12 +72,26 @@ ui_camera :: proc() -> rl.Camera2D {
 		zoom = f32(rl.GetScreenHeight())/PIXEL_WINDOW_HEIGHT,
 	}
 }
+BOARD_TILE_SIZE :: 64
+BOARD_POSITION :: rl.Vector2{ 200, 200}
 
+BOARD_SIZE :: 4
+
+tile_rects : [BOARD_SIZE][BOARD_SIZE]rl.Rectangle
+
+hovered_tile : rl.Vector2
 update :: proc() {
 	g.some_number += 1
 	if rl.IsKeyPressed(.LEFT_CONTROL) && rl.IsKeyPressed(.ESCAPE) {
 		g.run = false
 	}
+
+	if true || rl.IsMouseButtonReleased(.LEFT){
+		mousePos := rl.GetMousePosition()
+		mousePosRelativeToBoard := mousePos - BOARD_POSITION
+		hovered_tile = mousePosRelativeToBoard / BOARD_TILE_SIZE / BOARD_SIZE
+	}
+
 }
 
 draw :: proc() {
@@ -85,19 +99,13 @@ draw :: proc() {
 	rl.ClearBackground(rl.BLACK)
 
 	//rl.BeginMode2D(game_camera())
-	tile_rects : [8][8]rl.Rectangle
-	for i:=0; i < 8; i+=1{
-		for j:=0; j < 8; j+=1{
-			tile_rects[i][j] = rl.Rectangle{
-				x =      f32(i*64 + 200),
-				y =    f32(j*64+ 200),
-				width = 64,
-				height = 64,
-			}
+	for i:=0; i < BOARD_SIZE; i+=1{
+		for j:=0; j < BOARD_SIZE; j+=1{
 			color := rl.WHITE if (i+j)%2==0 else rl.GRAY
 			rl.DrawRectangleRec(tile_rects[i][j], color)
 		}
 	}
+	
 	
 	//rl.EndMode2D()
 
@@ -106,7 +114,7 @@ draw :: proc() {
 	// NOTE: `fmt.ctprintf` uses the temp allocator. The temp allocator is
 	// cleared at the end of the frame by the main application, meaning inside
 	// `main_hot_reload.odin`, `main_release.odin` or `main_web_entry.odin`.
-	rl.DrawText(fmt.ctprintf("some_number: %v\nplayer_pos: %v", g.some_number, g.camera_center_pos), 5, 5, 8, rl.WHITE)
+	rl.DrawText(fmt.ctprintf("some_number: %v\nplayer_pos: %v\nhovered_tile: %v ", g.some_number, g.camera_center_pos, hovered_tile), 5, 5, 8, rl.WHITE)
 
 	rl.EndMode2D()
 
@@ -185,6 +193,17 @@ game_memory_size :: proc() -> int {
 
 @(export)
 game_hot_reloaded :: proc(mem: rawptr) {
+	for i:=0; i < BOARD_SIZE; i+=1{
+		for j:=0; j < BOARD_SIZE; j+=1{
+			tile_rects[i][j] = rl.Rectangle{
+				x =      f32(i*BOARD_TILE_SIZE) + BOARD_POSITION.x,
+				y =    f32(j*BOARD_TILE_SIZE)+ BOARD_POSITION.y,
+				width = BOARD_TILE_SIZE,
+				height = BOARD_TILE_SIZE,
+			}
+		}
+	}
+
 	g = (^Game_Memory)(mem)
 
 	// Here you can also set your own global variables. A good idea is to make
