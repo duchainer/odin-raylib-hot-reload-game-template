@@ -28,6 +28,7 @@ created.
 package game
 
 import "core:fmt"
+import "core:math"
 // import "core:math/linalg"
 import rl "vendor:raylib"
 
@@ -72,6 +73,16 @@ ui_camera :: proc() -> rl.Camera2D {
 		zoom = f32(rl.GetScreenHeight())/PIXEL_WINDOW_HEIGHT,
 	}
 }
+
+apply_proc_2 :: proc(slice : rl.Vector2) -> rl.Vector2{
+	fn :: math.floor
+	return {
+			fn(slice.x),
+			fn(slice.y),
+	}
+}
+
+
 BOARD_TILE_SIZE :: 64
 BOARD_POSITION :: rl.Vector2{ 200, 200}
 
@@ -89,7 +100,11 @@ update :: proc() {
 	if true || rl.IsMouseButtonReleased(.LEFT){
 		mousePos := rl.GetMousePosition()
 		mousePosRelativeToBoard := mousePos - BOARD_POSITION
-		hovered_tile = mousePosRelativeToBoard / BOARD_TILE_SIZE / BOARD_SIZE
+		hovered_tile = mousePosRelativeToBoard / BOARD_TILE_SIZE
+		hovered_tile = {
+			math.floor(hovered_tile.x),
+			math.floor(hovered_tile.y),
+		}
 	}
 
 }
@@ -103,6 +118,17 @@ draw :: proc() {
 		for j:=0; j < BOARD_SIZE; j+=1{
 			color := rl.WHITE if (i+j)%2==0 else rl.GRAY
 			rl.DrawRectangleRec(tile_rects[i][j], color)
+
+			if ([2]int{i, j} == [2]int{ 0, 3 }) {
+				pawn := tile_rects[i][j]
+				pawn = {
+					pawn.x + 16,
+					pawn.y,
+					pawn.width - 8,
+					pawn.height - 8,
+				}
+				rl.DrawTextCodepoint(mono_font, 'p' ,{pawn.x, pawn.y}, 64, rl.BLUE)
+			}
 		}
 	}
 	
@@ -191,8 +217,15 @@ game_memory_size :: proc() -> int {
 	return size_of(Game_Memory)
 }
 
+mono_font : rl.Font
+
 @(export)
 game_hot_reloaded :: proc(mem: rawptr) {
+		
+	monospaced_font_path :: "./assets/fonts/JuliaMono/JuliaMono-Black.ttf"
+	mono_font = rl.LoadFont(monospaced_font_path)
+
+
 	for i:=0; i < BOARD_SIZE; i+=1{
 		for j:=0; j < BOARD_SIZE; j+=1{
 			tile_rects[i][j] = rl.Rectangle{
