@@ -109,6 +109,30 @@ update :: proc() {
 
 }
 
+/*
+// TODO make this a readonly map, instead of a const `::`
+PIECE_TO_CHAR :: enum {
+	Tile.None     = ' '
+	Tile.Pawn     = 'p'
+	Tile.Knight   = 'n'
+	Tile.Bishop   = 'b'
+	Tile.Rook     = 'r'
+	Tile.Queen    = 'q'
+	Tile.King     = 'k'
+	// WHITE_PAWN     = 'p'
+	// BLACK_PAWN     = 'o'
+	// WHITE_KNIGHT   = 'n'
+	// BLACK_KNIGHT   = 'm'
+	// WHITE_BISHOP   = 'b'
+	// BLACK_BISHOP   = 'v'
+	// WHITE_ROOK     = 'r'
+	// BLACK_ROOK     = 't'
+	// WHITE_QUEEN    = 'q'
+	// BLACK_QUEEN    = 'w'
+	// WHITE_KING     = 'k'
+	// BLACK_KING     = 'l'
+}
+*/
 draw :: proc() {
 	rl.BeginDrawing()
 	rl.ClearBackground(rl.BLACK)
