@@ -119,15 +119,11 @@ draw :: proc() {
 			color := rl.WHITE if (i+j)%2==0 else rl.GRAY
 			rl.DrawRectangleRec(tile_rects[i][j], color)
 
-			if ([2]int{i, j} == [2]int{ 0, 3 }) {
-				pawn := tile_rects[i][j]
-				pawn = {
-					pawn.x + 16,
-					pawn.y,
-					pawn.width - 8,
-					pawn.height - 8,
-				}
-				rl.DrawTextCodepoint(mono_font, 'p' ,{pawn.x, pawn.y}, 64, rl.BLUE)
+			// if ([2]int{i, j} == [2]int{ 0, 3 })
+			{
+				rect := tile_rects[i][j]
+				rl.DrawTextCodepoint(chess_font, 'p', // piece_chars[i][j]
+									 {rect.x, rect.y}, 64, rl.BLACK)
 			}
 		}
 	}
@@ -217,13 +213,14 @@ game_memory_size :: proc() -> int {
 	return size_of(Game_Memory)
 }
 
-mono_font : rl.Font
+chess_font : rl.Font
 
 @(export)
 game_hot_reloaded :: proc(mem: rawptr) {
 		
-	monospaced_font_path :: "./assets/fonts/JuliaMono/JuliaMono-Black.ttf"
-	mono_font = rl.LoadFont(monospaced_font_path)
+	// monospaced_font_path :: "./assets/fonts/JuliaMono/JuliaMono-Black.ttf"
+	chess_font_path :: "./assets/fonts/chess/CASEFONT.TTF"
+	chess_font = rl.LoadFont(chess_font_path)
 
 
 	for i:=0; i < BOARD_SIZE; i+=1{
