@@ -124,18 +124,29 @@ update :: proc() {
 
 	if old_has_hovered_tile && old_hovered_tile != hovered_tile {
 		old_colored_rect := &tile_rects[old_hovered_tile.x][old_hovered_tile.y]
-		old_colored_rect.color = old_colored_rect.base_color
+		if has_selected_tile && old_hovered_tile == selected_tile {
+			// keep the selected_tile color there
+		} else {
+			old_colored_rect.color = old_colored_rect.base_color
+		}
 	}
 	old_hovered_tile = hovered_tile
 	old_has_hovered_tile = has_hovered_tile
 
 	if has_hovered_tile{
 		if rl.IsMouseButtonReleased(.LEFT){
+			if has_selected_tile {
+				tile := &tile_rects[selected_tile.x][selected_tile.y]
+				tile.color = tile.base_color
+			}
 			selected_tile = hovered_tile
 			has_selected_tile = true
+			tile_rects[hovered_tile.x][hovered_tile.y].color = rl.BLUE
+		} else if selected_tile == hovered_tile{
+			// keep the blue color
+		} else{
 			tile_rects[hovered_tile.x][hovered_tile.y].color = rl.YELLOW
 		}
-		tile_rects[hovered_tile.x][hovered_tile.y].color = rl.YELLOW
 	}
 
 }
@@ -178,7 +189,7 @@ draw :: proc() {
 	// NOTE: `fmt.ctprintf` uses the temp allocator. The temp allocator is
 	// cleared at the end of the frame by the main application, meaning inside
 	// `main_hot_reload.odin`, `main_release.odin` or `main_web_entry.odin`.
-	rl.DrawText(fmt.ctprintf("some_number: %v\nplayer_pos: %v\nhovered_tile: %v ,\n tile_rects[0][0].base_color: %#v", g.some_number, g.camera_center_pos, hovered_tile, tile_rects[0][0].base_color), 5, 5, 2, rl.WHITE)
+	rl.DrawText(fmt.ctprintf("some_number: %v,\nplayer_pos: %v,\nhas_selected_tile: %v,\nselected_tile: %v,\n", g.some_number, g.camera_center_pos, has_selected_tile, selected_tile), 5, 5, 2, rl.WHITE)
 
 	rl.EndMode2D()
 
@@ -270,9 +281,9 @@ game_hot_reloaded :: proc(mem: rawptr) {
 			base_color := ( rl.WHITE if (i+j)%2==0 else rl.GRAY )
 			tile_rects[i][j] = {
 				rect = rl.Rectangle{
-					x =      f32(i*BOARD_TILE_SIZE) + BOARD_POSITION.x,
-					y =    f32(j*BOARD_TILE_SIZE)+ BOARD_POSITION.y,
-					width = BOARD_TILE_SIZE,
+					x      = f32(i*BOARD_TILE_SIZE) + BOARD_POSITION.x,
+					y      = f32(j*BOARD_TILE_SIZE)+ BOARD_POSITION.y,
+					width  = BOARD_TILE_SIZE,
 					height = BOARD_TILE_SIZE,
 				},
 				color = base_color,
