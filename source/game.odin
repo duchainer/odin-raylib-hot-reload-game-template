@@ -109,30 +109,16 @@ update :: proc() {
 
 }
 
-/*
-// TODO make this a readonly map, instead of a const `::`
-PIECE_TO_CHAR :: enum {
-	Tile.None     = ' '
-	Tile.Pawn     = 'p'
-	Tile.Knight   = 'n'
-	Tile.Bishop   = 'b'
-	Tile.Rook     = 'r'
-	Tile.Queen    = 'q'
-	Tile.King     = 'k'
-	// WHITE_PAWN     = 'p'
-	// BLACK_PAWN     = 'o'
-	// WHITE_KNIGHT   = 'n'
-	// BLACK_KNIGHT   = 'm'
-	// WHITE_BISHOP   = 'b'
-	// BLACK_BISHOP   = 'v'
-	// WHITE_ROOK     = 'r'
-	// BLACK_ROOK     = 't'
-	// WHITE_QUEEN    = 'q'
-	// BLACK_QUEEN    = 'w'
-	// WHITE_KING     = 'k'
-	// BLACK_KING     = 'l'
+@(rodata)
+PIECE_TO_CHAR := [Tile]rune {
+	Tile.None     = ' ',
+	Tile.Pawn     = 'p',
+	Tile.Knight   = 'n',
+	Tile.Bishop   = 'b',
+	Tile.Rook     = 'r',
+	Tile.Queen    = 'q',
+	Tile.King     = 'k',
 }
-*/
 draw :: proc() {
 	rl.BeginDrawing()
 	rl.ClearBackground(rl.BLACK)
@@ -146,7 +132,8 @@ draw :: proc() {
 			// if ([2]int{i, j} == [2]int{ 0, 3 })
 			{
 				rect := tile_rects[i][j]
-				rl.DrawTextCodepoint(chess_font, 'p', // piece_chars[i][j]
+				char := PIECE_TO_CHAR[(Tile)( ( i+j ) % len(Tile) )]
+				rl.DrawTextCodepoint(chess_font, char, // piece_chars[i][j]
 									 {rect.x, rect.y}, 64, rl.BLACK)
 			}
 		}
