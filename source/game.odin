@@ -28,8 +28,8 @@ created.
 package game
 
 import "core:fmt"
-import "core:math"
 // import "core:math/linalg"
+// import "core:math"
 import rl "vendor:raylib"
 
 PIXEL_WINDOW_HEIGHT :: 180
@@ -71,14 +71,6 @@ game_camera :: proc() -> rl.Camera2D {
 ui_camera :: proc() -> rl.Camera2D {
 	return {
 		zoom = f32(rl.GetScreenHeight())/PIXEL_WINDOW_HEIGHT,
-	}
-}
-
-apply_proc_2 :: proc(slice : rl.Vector2) -> rl.Vector2{
-	fn :: math.floor
-	return {
-			fn(slice.x),
-			fn(slice.y),
 	}
 }
 
