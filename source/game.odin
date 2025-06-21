@@ -50,7 +50,7 @@ Player :: struct {
 	using rect : rl.Rectangle,
 	color : rl.Color,
 	bed : ColoredRect,
-	front_window : ColoredRect,
+	window : ColoredRect,
 }
 
 Game_Memory :: struct {
@@ -122,11 +122,19 @@ draw :: proc() {
 	rl.ClearBackground(rl.BLACK)
 
 	rl.BeginMode2D(game_camera())
+	// draw car frame
 	rl.DrawRectanglePro(
 		{g.player_pos.x, g.player_pos.y, g.player.width, g.player.height},
 		{g.player.rect.x, g.player.rect.y},
 		g.player_rot,
 		rl.GRAY,
+	)
+	// draw car window
+	rl.DrawRectanglePro(
+		{g.player_pos.x, g.player_pos.y, g.player.window.width, g.player.window.height},
+		{g.player.window.x, g.player.window.y},
+		g.player_rot,
+		rl.WHITE,
 	)
 	rl.DrawRectangleV({20, 20}, {10, 10}, rl.RED)
 	rl.DrawRectangleV({-30, -20}, {10, 10}, rl.GREEN)
@@ -220,6 +228,13 @@ game_memory_size :: proc() -> int {
 @(export)
 game_hot_reloaded :: proc(mem: rawptr) {
 	g = (^Game_Memory)(mem)
+
+	g.player.window = {
+		x = 7,
+		y = 5,
+		width = 2,
+		height = 10,
+	}
 
 	// Here you can also set your own global variables. A good idea is to make
 	// your global variables into pointers that point to something inside `g`.
