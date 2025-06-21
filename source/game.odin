@@ -1,3 +1,4 @@
+#+feature dynamic-literals
 /*
 This file is the starting point of your game.
 
@@ -37,8 +38,10 @@ PIXEL_WINDOW_HEIGHT :: 180
 Thing :: struct {
 	using rect : rl.Rectangle,
 	color : rl.Color,
+	rot : f32,
 	is_on_ground : bool,
 	value : int,
+	friction : f32, // from 0 to 1
 }
 
 ColoredRect :: struct {
@@ -107,12 +110,27 @@ update :: proc() {
 	// fmt.println("{}, {}", forward_x, forward_y)
 	delta_time := rl.GetFrameTime()
 
-	g.player_pos.x += input.y * forward_x  * delta_time * 50
-	g.player_pos.y += input.y * forward_y * delta_time * 50
+	truck_velocity := rl.Vector2{
+		input.y * forward_x	,
+		input.y * forward_y,
+	}  * delta_time * 50
+
+	g.player_pos += truck_velocity
 	g.player_rot += input.x * delta_time * 75
 	g.some_number += 1
 
-	if rl.IsKeyPressed(.ESCAPE) {
+	// sliding things
+	for &thing in g.things{
+		// TODO find better formula for sliding off
+		// TODO have the truck apply force on collision between thing and sides,
+		// and thing and bed should apply truck_velocity proportional to friction (and inertia?)
+		if rl.
+		sliding_motion := truck_velocity * thing.friction
+		thing.rect.x += sliding_motion.x
+		thing.rect.y += sliding_motion.y
+	}
+
+	if rl.IsKeyPressed(.LEFT_SHIFT) && rl.IsKeyPressed(.ESCAPE) {
 		g.run = false
 	}
 }
@@ -144,6 +162,17 @@ draw :: proc() {
 		g.player_rot,
 		g.player.bed.color,
 	)
+	for thing in g.things{
+		// draw things in truck
+		rl.DrawRectanglePro(
+			{thing.x, thing.y, thing.width, thing.height},
+			{thing.width/2, thing.height/2},
+			thing.rot,
+			thing.color,
+		)
+
+	}
+
 	rl.DrawRectangleV({20, 20}, {10, 10}, rl.RED)
 	rl.DrawRectangleV({-30, -20}, {10, 10}, rl.GREEN)
 	rl.EndMode2D()
@@ -252,6 +281,19 @@ game_hot_reloaded :: proc(mem: rawptr) {
 		height = 8,
 		color = rl.LIGHTGRAY,
 	}
+
+	delete(g.things)
+	g.things =  {Thing{
+		x = 7,
+		y = 2,
+		width = 2,
+		height = 3,
+		rot = 0,
+		color = rl.PINK,
+		is_on_ground = false,
+		value = 10,
+		friction = 0.2,
+	}}
 
 	// Here you can also set your own global variables. A good idea is to make
 	// your global variables into pointers that point to something inside `g`.
