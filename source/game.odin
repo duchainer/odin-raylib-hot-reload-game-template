@@ -134,7 +134,15 @@ draw :: proc() {
 		{g.player_pos.x, g.player_pos.y, g.player.window.width, g.player.window.height},
 		{g.player.window.x, g.player.window.y},
 		g.player_rot,
-		rl.WHITE,
+		g.player.window.color,
+	)
+
+	// draw truck bed
+	rl.DrawRectanglePro(
+		{g.player_pos.x, g.player_pos.y, g.player.bed.width, g.player.bed.height},
+		{g.player.bed.x, g.player.bed.y},
+		g.player_rot,
+		g.player.bed.color,
 	)
 	rl.DrawRectangleV({20, 20}, {10, 10}, rl.RED)
 	rl.DrawRectangleV({-30, -20}, {10, 10}, rl.GREEN)
@@ -230,10 +238,19 @@ game_hot_reloaded :: proc(mem: rawptr) {
 	g = (^Game_Memory)(mem)
 
 	g.player.window = {
-		x = 7,
-		y = 5,
-		width = 2,
-		height = 10,
+		x = 9,
+		y = 4,
+		width = 3,
+		height = 8,
+		color = rl.BLUE,
+	}
+
+	g.player.bed = {
+		x = -4,
+		y = 4,
+		width = 6,
+		height = 8,
+		color = rl.LIGHTGRAY,
 	}
 
 	// Here you can also set your own global variables. A good idea is to make
