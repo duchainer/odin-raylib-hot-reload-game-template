@@ -35,7 +35,7 @@ import rl "vendor:raylib"
 PIXEL_WINDOW_HEIGHT :: 180
 
 
-Tile :: enum {
+TileContent :: enum {
 	None,
 	Pawn,
 	Rook,
@@ -50,12 +50,14 @@ Game_Memory :: struct {
 	some_number: int,
 	camera_center_pos: rl.Vector2,
 	run: bool,
-	board: [4][4]Tile,
+	board: [4][4]TileContent,
 	previous_moves: [9999][2]int,
 	previous_moves_latest_index: uint,
 }
 
 g: ^Game_Memory
+
+valid_moves : [dynamic](ValidMove)
 
 game_camera :: proc() -> rl.Camera2D {
 	w := f32(rl.GetScreenWidth())
@@ -87,6 +89,13 @@ ColoredRect :: struct {
 
 tile_rects : [BOARD_SIZE][BOARD_SIZE]ColoredRect
 
+is_in_board :: proc(pos: [2]int) -> bool {
+	return pos.x >= 0 &&
+	pos.x < BOARD_SIZE &&
+	pos.y >= 0 &&
+	pos.y < BOARD_SIZE
+}
+
 get_hovered_tile :: proc(mousePos: rl.Vector2) -> (hovered_tile: [2]int, has_hovered_tile: bool){
 	mousePosRelativeToBoard := mousePos - BOARD_POSITION
 	f64_hovered_tile := mousePosRelativeToBoard / BOARD_TILE_SIZE
@@ -94,12 +103,7 @@ get_hovered_tile :: proc(mousePos: rl.Vector2) -> (hovered_tile: [2]int, has_hov
 		int(f64_hovered_tile.x),
 		int(f64_hovered_tile.y),
 	}
-	has_hovered_tile = (
-		hovered_tile.x >= 0 &&
-		hovered_tile.x < BOARD_SIZE &&
-		hovered_tile.y >= 0 &&
-		hovered_tile.y < BOARD_SIZE
-	)
+	has_hovered_tile = is_in_board(hovered_tile)
 
 	return hovered_tile, has_hovered_tile
 }
@@ -133,7 +137,18 @@ update :: proc() {
 			}
 			selected_tile = hovered_tile
 			has_selected_tile = true
-			tile_rects[hovered_tile.x][hovered_tile.y].color = rl.BLUE
+			tile_rect := &tile_rects[hovered_tile.x][hovered_tile.y]
+			tile_rect.color = rl.BLUE
+
+			board_tile := g.board[selected_tile.x][selected_tile.y]
+			delete(valid_moves)
+			valid_moves = get_valid_moves(board_tile, selected_tile)
+			for valid_move in valid_moves{
+				if is_in_board(valid_move.pos){
+					tile_rects[valid_move.pos.x][valid_move.pos.y].color = rl.GREEN
+				}
+			}
+
 		} else if selected_tile == hovered_tile{
 			// keep the blue color
 		} else{
@@ -144,15 +159,82 @@ update :: proc() {
 }
 
 @(rodata)
-PIECE_TO_CHAR := [Tile]rune {
-	Tile.None     = ' ',
-	Tile.Pawn     = 'p',
-	Tile.Knight   = 'n',
-	Tile.Bishop   = 'b',
-	Tile.Rook     = 'r',
-	Tile.Queen    = 'q',
-	Tile.King     = 'k',
+PIECE_TO_CHAR := [TileContent]rune {
+	TileContent.None     = ' ',
+	TileContent.Pawn     = 'p',
+	TileContent.Knight   = 'n',
+	TileContent.Bishop   = 'b',
+	TileContent.Rook     = 'r',
+	TileContent.Queen    = 'q',
+	TileContent.King     = 'k',
 }
+
+ValidMove :: struct {
+	pos : [2]int,
+	needs_capture : bool,
+}
+
+// TODO use temp_allocator, after figuring out how to properly debug print its content in the draw() proc, instead of garbage
+get_valid_moves :: proc(tile: TileContent, tile_pos: [2]int, allocator := context./*temp_*/allocator) -> (valid_move_positions: [dynamic](ValidMove)) {
+	ret := make([dynamic]ValidMove, allocator)
+	append_elems(&ret,
+		ValidMove{
+			pos = {tile_pos.x, tile_pos.y-1},
+			// needs_capture = false
+		},
+		ValidMove{
+			pos = {tile_pos.x-1, tile_pos.y-1},
+			needs_capture = true,
+		},
+		ValidMove{
+			pos = {tile_pos.x+1, tile_pos.y-1},
+			needs_capture = true,
+		},
+	)
+	return ret
+	// switch tile {
+	// case TileContent.None: {
+	// 	return nil
+	// }
+	// case TileContent.Pawn: {
+	// 	// ret := make([dynamic]ValidMove, allocator)
+	// 	append_elems(&ret,
+	// 		ValidMove{
+	// 			pos = {tile_pos.x, tile_pos.y+1},
+	// 			// needs_capture = false
+	// 		},
+	// 		ValidMove{
+	// 			pos = {tile_pos.x-1, tile_pos.y+1},
+	// 			needs_capture = true,
+	// 		},
+	// 		ValidMove{
+	// 			pos = {tile_pos.x+1, tile_pos.y+1},
+	// 			needs_capture = true,
+	// 		},
+	// 	)
+	// 	return ret
+
+	// }
+	// case TileContent.Knight: {
+	// 	return nil
+	// }
+	// case TileContent.Bishop: {
+	// 	return nil
+	// }
+	// case TileContent.Rook: {
+	// 	return nil
+	// }
+	// case TileContent.Queen: {
+	// 	return nil
+	// }
+	// case TileContent.King: {
+	// 	return nil
+	// }
+	// }
+	// return nil
+}
+
+
 draw :: proc() {
 	rl.BeginDrawing()
 	rl.ClearBackground(rl.BLACK)
@@ -166,7 +248,7 @@ draw :: proc() {
 			// if ([2]int{i, j} == [2]int{ 0, 3 })
 			{
 				rect := tile_rects[i][j].rect
-				char := PIECE_TO_CHAR[(Tile)( ( i+j ) % len(Tile) )]
+				char := PIECE_TO_CHAR[g.board[i][j]]
 				rl.DrawTextCodepoint(chess_font, char, // piece_chars[i][j]
 									 {rect.x, rect.y}, 64, rl.BLACK)
 			}
@@ -181,7 +263,7 @@ draw :: proc() {
 	// NOTE: `fmt.ctprintf` uses the temp allocator. The temp allocator is
 	// cleared at the end of the frame by the main application, meaning inside
 	// `main_hot_reload.odin`, `main_release.odin` or `main_web_entry.odin`.
-	rl.DrawText(fmt.ctprintf("some_number: %v,\nplayer_pos: %v,\nhas_selected_tile: %v,\nselected_tile: %v,\n", g.some_number, g.camera_center_pos, has_selected_tile, selected_tile), 5, 5, 2, rl.WHITE)
+	rl.DrawText(fmt.ctprintf("some_number: %v,\ndebug_this: %#v,\nhas_selected_tile: %v,\nselected_tile: %v,\n", g.some_number, valid_moves, has_selected_tile, selected_tile), 5, 5, 2, rl.WHITE)
 
 	rl.EndMode2D()
 
@@ -281,6 +363,7 @@ game_hot_reloaded :: proc(mem: rawptr) {
 				color = base_color,
 				base_color = base_color,
 			}
+			g.board[i][j] = TileContent(( i+j ) % len(TileContent))
 		}
 	}
 
