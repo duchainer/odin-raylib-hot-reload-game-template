@@ -28,14 +28,37 @@ created.
 package game
 
 import "core:fmt"
+import "core:math"
 import "core:math/linalg"
 import rl "vendor:raylib"
 
 PIXEL_WINDOW_HEIGHT :: 180
 
+Thing :: struct {
+	using rect : rl.Rectangle,
+	color : rl.Color,
+	is_on_ground : bool,
+	value : int,
+}
+
+ColoredRect :: struct {
+	using rect : rl.Rectangle,
+	color : rl.Color,
+}
+
+Player :: struct {
+	using rect : rl.Rectangle,
+	color : rl.Color,
+	bed : ColoredRect,
+	front_window : ColoredRect,
+}
+
 Game_Memory :: struct {
+	player : Player,
 	player_pos: rl.Vector2,
 	player_texture: rl.Texture,
+	player_rot: f32,
+	things: [dynamic]Thing,
 	some_number: int,
 	run: bool,
 }
@@ -66,7 +89,8 @@ update :: proc() {
 		input.y -= 1
 	}
 	if rl.IsKeyDown(.DOWN) || rl.IsKeyDown(.S) {
-		input.y += 1
+		// Slower driving in reverse
+		input.y += 0.5
 	}
 	if rl.IsKeyDown(.LEFT) || rl.IsKeyDown(.A) {
 		input.x -= 1
@@ -75,8 +99,17 @@ update :: proc() {
 		input.x += 1
 	}
 
-	input = linalg.normalize0(input)
-	g.player_pos += input * rl.GetFrameTime() * 100
+	// input = linalg.normalize0(input)
+
+	radians := linalg.to_radians(g.player_rot)
+	forward_x := math.cos(radians)
+	forward_y := math.sin(radians)
+	// fmt.println("{}, {}", forward_x, forward_y)
+	delta_time := rl.GetFrameTime()
+
+	g.player_pos.x += input.y * forward_x  * delta_time * 50
+	g.player_pos.y += input.y * forward_y * delta_time * 50
+	g.player_rot += input.x * delta_time * 75
 	g.some_number += 1
 
 	if rl.IsKeyPressed(.ESCAPE) {
@@ -89,7 +122,12 @@ draw :: proc() {
 	rl.ClearBackground(rl.BLACK)
 
 	rl.BeginMode2D(game_camera())
-	rl.DrawTextureEx(g.player_texture, g.player_pos, 0, 1, rl.WHITE)
+	rl.DrawRectanglePro(
+		{g.player_pos.x, g.player_pos.y, g.player.width, g.player.height},
+		{g.player.rect.x, g.player.rect.y},
+		g.player_rot,
+		rl.GRAY,
+	)
 	rl.DrawRectangleV({20, 20}, {10, 10}, rl.RED)
 	rl.DrawRectangleV({-30, -20}, {10, 10}, rl.GREEN)
 	rl.EndMode2D()
@@ -99,7 +137,7 @@ draw :: proc() {
 	// NOTE: `fmt.ctprintf` uses the temp allocator. The temp allocator is
 	// cleared at the end of the frame by the main application, meaning inside
 	// `main_hot_reload.odin`, `main_release.odin` or `main_web_entry.odin`.
-	rl.DrawText(fmt.ctprintf("some_number: %v\nplayer_pos: %v", g.some_number, g.player_pos), 5, 5, 8, rl.WHITE)
+	rl.DrawText(fmt.ctprintf("some_number: %v\nplayer_pos: %#v", g.some_number, g.player_pos), 5, 5, 8, rl.WHITE)
 
 	rl.EndMode2D()
 
@@ -131,6 +169,13 @@ game_init :: proc() {
 	g^ = Game_Memory {
 		run = true,
 		some_number = 100,
+
+		player = {
+			x = 10,
+			y = 5,
+			width = 20,
+			height = 10,
+		},
 
 		// You can put textures, sounds and music in the `assets` folder. Those
 		// files will be part any release or web build.
