@@ -38,18 +38,26 @@ import rl "vendor:raylib"
 
 PIXEL_WINDOW_HEIGHT :: 180
 
-Thing :: struct {
-	using rect : rl.Rectangle,
-	color : rl.Color,
-	velocity: rl.Vector2,
-	is_on_ground : bool,
-	value : int,
-	friction : f32, // from 0 to 1
+Cargo :: struct {
+	using c_r : ColoredRect,
+	index: int,
 }
+
 
 ColoredRect :: struct {
 	using rect : rl.Rectangle,
 	color : rl.Color,
+}
+
+ZoneType :: enum {
+	DELIVER,
+	LOSE_CARGO,
+	GAIN_CARGO,
+}
+
+Zone :: struct {
+	using c_r : ColoredRect,
+	type : ZoneType,
 }
 
 Player :: struct {
@@ -64,7 +72,8 @@ Game_Memory :: struct {
 	player : Player,
 	player_pos: rl.Vector2,
 	player_texture: rl.Texture,
-	things: [dynamic]Thing,
+	cargos: [dynamic]Cargo,
+	zones: [dynamic]Zone,
 	some_number: int,
 	run: bool,
 }
@@ -115,27 +124,14 @@ update :: proc() {
 	g.player_pos += g.player.velocity * delta_time
 	g.some_number += 1
 
-	// sliding things
-	for &thing in g.things{
+	// sliding cargos
+	for &cargo in g.cargos{
 		// TODO find better formula for sliding off
-		// TODO have the truck apply force on collision between thing and sides,
-		// and thing and bed should apply truck_velocity proportional to friction (and inertia?)
-		// sliding_motion := g.player.velocity * thing.friction
-
-		bed_global_rect := rl.Rectangle{
-			g.player.bed.x + g.player_pos.x,
-			g.player.bed.y + g.player_pos.y,
-			g.player.bed.width,
-			g.player.bed.height,
-		}
-		if rl.CheckCollisionRecs(thing.rect, bed_global_rect){
-			thing.velocity = linalg.lerp([2]f32{0, 0}, g.player.velocity, 0.9)// sliding_motion.x
-			// thing.velocity.y = sliding_motion.y
-		} else {
-			thing.velocity *= 0.9
-		}
-		thing.rect.x += thing.velocity.x * delta_time
-		thing.rect.y += thing.velocity.y * delta_time
+		// TODO have the truck apply force on collision between cargo and sides,
+		// and cargo and bed should apply truck_velocity proportional to friction (and inertia?)
+		// sliding_motion := g.player.velocity * cargo.friction
+		cargo.x = g.player_pos.x - 8 + f32(cargo.index * 1)
+		cargo.y = g.player_pos.y - 3 + f32(cargo.index * 1)
 
 	}
 
@@ -171,19 +167,23 @@ draw :: proc() {
 		0,
 		g.player.bed.color,
 	)
-	for thing in g.things{
-		// draw things in truck
+	for cargo in g.cargos{
+		// draw cargos in truck
 		rl.DrawRectanglePro(
-			{thing.x, thing.y, thing.width, thing.height},
-			{thing.width/2, thing.height/2},
+			{cargo.x, cargo.y, cargo.width, cargo.height},
+			{cargo.width/2, cargo.height/2},
 			0,
-			thing.color,
+			cargo.color,
 		)
 
 	}
 
-	rl.DrawRectangleV({20, 20}, {10, 10}, rl.RED)
-	rl.DrawRectangleV({-30, -20}, {10, 10}, rl.GREEN)
+
+
+	for zone in g.zones{
+		rl.DrawRectangleRec(zone.rect, zone.color)
+	}
+
 	rl.EndMode2D()
 
 	rl.BeginMode2D(ui_camera())
@@ -203,7 +203,7 @@ game_update :: proc() {
 	update()
 	draw()
 
-	// Everything on tracking allocator is valid until end-of-frame.
+	// Everycargo on tracking allocator is valid until end-of-frame.
 	free_all(context.temp_allocator)
 }
 
@@ -293,20 +293,33 @@ game_hot_reloaded :: proc(mem: rawptr) {
 		color = rl.LIGHTGRAY,
 	}
 
-	delete(g.things)
-	g.things =  {Thing{
+	delete(g.cargos)
+	g.cargos =  {Cargo{
 		x = -5,
 		y = 2,
 		width = 2,
-		height = 3,
+		height = 2,
 		color = rl.PINK,
-		is_on_ground = false,
-		value = 10,
-		friction = 0.2,
 	}}
 
+	delete(g.zones)
+	g.zones = {
+		Zone{
+			c_r = {{20, 20, 10, 10}, rl.GREEN},
+			type = ZoneType.DELIVER,
+		},
+		Zone{
+			c_r = {{-30, 20, 10, 10}, rl.RED},
+			type = ZoneType.LOSE_CARGO,
+		},
+		Zone{
+			c_r = {{-60, 20, 10, 10}, rl.PINK},
+			type = ZoneType.GAIN_CARGO,
+		},
+	}
+
 	// Here you can also set your own global variables. A good idea is to make
-	// your global variables into pointers that point to something inside `g`.
+	// your global variables into pointers that point to somecargo inside `g`.
 }
 
 @(export)
