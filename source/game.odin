@@ -29,8 +29,8 @@ created.
 package game
 
 import "core:fmt"
-import "core:math"
-import "core:math/linalg"
+// import "core:math"
+// import "core:math/linalg"
 import rl "vendor:raylib"
 
 PIXEL_WINDOW_HEIGHT :: 180
@@ -38,7 +38,7 @@ PIXEL_WINDOW_HEIGHT :: 180
 Thing :: struct {
 	using rect : rl.Rectangle,
 	color : rl.Color,
-	rot : f32,
+	velocity: rl.Vector2,
 	is_on_ground : bool,
 	value : int,
 	friction : f32, // from 0 to 1
@@ -54,13 +54,13 @@ Player :: struct {
 	color : rl.Color,
 	bed : ColoredRect,
 	window : ColoredRect,
+	velocity: rl.Vector2,
 }
 
 Game_Memory :: struct {
 	player : Player,
 	player_pos: rl.Vector2,
 	player_texture: rl.Texture,
-	player_rot: f32,
 	things: [dynamic]Thing,
 	some_number: int,
 	run: bool,
@@ -92,8 +92,7 @@ update :: proc() {
 		input.y -= 1
 	}
 	if rl.IsKeyDown(.DOWN) || rl.IsKeyDown(.S) {
-		// Slower driving in reverse
-		input.y += 0.5
+		input.y += 1
 	}
 	if rl.IsKeyDown(.LEFT) || rl.IsKeyDown(.A) {
 		input.x -= 1
@@ -102,21 +101,15 @@ update :: proc() {
 		input.x += 1
 	}
 
-	// input = linalg.normalize0(input)
-
-	radians := linalg.to_radians(g.player_rot)
-	forward_x := math.cos(radians)
-	forward_y := math.sin(radians)
-	// fmt.println("{}, {}", forward_x, forward_y)
 	delta_time := rl.GetFrameTime()
 
-	truck_velocity := rl.Vector2{
-		input.y * forward_x	,
-		input.y * forward_y,
-	}  * delta_time * 50
+	accel_speed : f32 = 2
 
-	g.player_pos += truck_velocity
-	g.player_rot += input.x * delta_time * 75
+	g.player.velocity.x += input.x * accel_speed
+
+	g.player.velocity.y = input.y * 30
+
+	g.player_pos += g.player.velocity * delta_time
 	g.some_number += 1
 
 	// sliding things
@@ -124,8 +117,7 @@ update :: proc() {
 		// TODO find better formula for sliding off
 		// TODO have the truck apply force on collision between thing and sides,
 		// and thing and bed should apply truck_velocity proportional to friction (and inertia?)
-		if rl.
-		sliding_motion := truck_velocity * thing.friction
+		sliding_motion := g.player.velocity * thing.friction
 		thing.rect.x += sliding_motion.x
 		thing.rect.y += sliding_motion.y
 	}
@@ -137,21 +129,21 @@ update :: proc() {
 
 draw :: proc() {
 	rl.BeginDrawing()
-	rl.ClearBackground(rl.BLACK)
+	rl.ClearBackground({0xC0, 0x80, 0x50, 0xFF})
 
 	rl.BeginMode2D(game_camera())
 	// draw car frame
 	rl.DrawRectanglePro(
 		{g.player_pos.x, g.player_pos.y, g.player.width, g.player.height},
 		{g.player.rect.x, g.player.rect.y},
-		g.player_rot,
+		0,
 		rl.GRAY,
 	)
 	// draw car window
 	rl.DrawRectanglePro(
 		{g.player_pos.x, g.player_pos.y, g.player.window.width, g.player.window.height},
 		{g.player.window.x, g.player.window.y},
-		g.player_rot,
+		0,
 		g.player.window.color,
 	)
 
@@ -159,7 +151,7 @@ draw :: proc() {
 	rl.DrawRectanglePro(
 		{g.player_pos.x, g.player_pos.y, g.player.bed.width, g.player.bed.height},
 		{g.player.bed.x, g.player.bed.y},
-		g.player_rot,
+		0,
 		g.player.bed.color,
 	)
 	for thing in g.things{
@@ -167,7 +159,7 @@ draw :: proc() {
 		rl.DrawRectanglePro(
 			{thing.x, thing.y, thing.width, thing.height},
 			{thing.width/2, thing.height/2},
-			thing.rot,
+			0,
 			thing.color,
 		)
 
@@ -182,7 +174,7 @@ draw :: proc() {
 	// NOTE: `fmt.ctprintf` uses the temp allocator. The temp allocator is
 	// cleared at the end of the frame by the main application, meaning inside
 	// `main_hot_reload.odin`, `main_release.odin` or `main_web_entry.odin`.
-	rl.DrawText(fmt.ctprintf("some_number: %v\nplayer_pos: %#v", g.some_number, g.player_pos), 5, 5, 8, rl.WHITE)
+	rl.DrawText(fmt.ctprintf("some_number: %v\nplayer_pos: %#v\nspeed: %#v", g.some_number, g.player_pos, g.player.velocity), 5, 5, 8, rl.WHITE)
 
 	rl.EndMode2D()
 
@@ -266,6 +258,8 @@ game_memory_size :: proc() -> int {
 game_hot_reloaded :: proc(mem: rawptr) {
 	g = (^Game_Memory)(mem)
 
+	g.player.velocity = {0, 0}
+
 	g.player.window = {
 		x = 9,
 		y = 4,
@@ -288,7 +282,6 @@ game_hot_reloaded :: proc(mem: rawptr) {
 		y = 2,
 		width = 2,
 		height = 3,
-		rot = 0,
 		color = rl.PINK,
 		is_on_ground = false,
 		value = 10,
