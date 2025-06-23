@@ -29,8 +29,11 @@ created.
 package game
 
 import "core:fmt"
-// import "core:math"
-// import "core:math/linalg"
+import "core:math"
+import "core:math/linalg"
+_ :: math
+_ :: linalg
+
 import rl "vendor:raylib"
 
 PIXEL_WINDOW_HEIGHT :: 180
@@ -117,9 +120,23 @@ update :: proc() {
 		// TODO find better formula for sliding off
 		// TODO have the truck apply force on collision between thing and sides,
 		// and thing and bed should apply truck_velocity proportional to friction (and inertia?)
-		sliding_motion := g.player.velocity * thing.friction
-		thing.rect.x += sliding_motion.x
-		thing.rect.y += sliding_motion.y
+		// sliding_motion := g.player.velocity * thing.friction
+
+		bed_global_rect := rl.Rectangle{
+			g.player.bed.x + g.player_pos.x,
+			g.player.bed.y + g.player_pos.y,
+			g.player.bed.width,
+			g.player.bed.height,
+		}
+		if rl.CheckCollisionRecs(thing.rect, bed_global_rect){
+			thing.velocity = linalg.lerp([2]f32{0, 0}, g.player.velocity, 0.9)// sliding_motion.x
+			// thing.velocity.y = sliding_motion.y
+		} else {
+			thing.velocity *= 0.9
+		}
+		thing.rect.x += thing.velocity.x * delta_time
+		thing.rect.y += thing.velocity.y * delta_time
+
 	}
 
 	if rl.IsKeyPressed(.LEFT_SHIFT) && rl.IsKeyPressed(.ESCAPE) {
@@ -129,7 +146,7 @@ update :: proc() {
 
 draw :: proc() {
 	rl.BeginDrawing()
-	rl.ClearBackground({0xC0, 0x80, 0x50, 0xFF})
+	rl.ClearBackground({0x70, 0x25, 0x15, 0xFF})
 
 	rl.BeginMode2D(game_camera())
 	// draw car frame
@@ -261,7 +278,7 @@ game_hot_reloaded :: proc(mem: rawptr) {
 	g.player.velocity = {0, 0}
 
 	g.player.window = {
-		x = 9,
+		x = -6,
 		y = 4,
 		width = 3,
 		height = 8,
@@ -269,7 +286,7 @@ game_hot_reloaded :: proc(mem: rawptr) {
 	}
 
 	g.player.bed = {
-		x = -4,
+		x = 9,
 		y = 4,
 		width = 6,
 		height = 8,
@@ -278,7 +295,7 @@ game_hot_reloaded :: proc(mem: rawptr) {
 
 	delete(g.things)
 	g.things =  {Thing{
-		x = 7,
+		x = -5,
 		y = 2,
 		width = 2,
 		height = 3,
