@@ -119,9 +119,14 @@ update :: proc() {
 
 	g.player.velocity.x += input.x * accel_speed
 
-	g.player.velocity.y = input.y * 30
+	g.player.velocity.y = input.y * 50
 
-	g.player_pos += g.player.velocity * delta_time
+	// We move the world instead of the truck
+	for &zone in g.zones{
+		frame_vel := g.player.velocity * delta_time
+		zone.x -= frame_vel.x
+		zone.y -= frame_vel.y
+	}
 	g.some_number += 1
 
 	// sliding cargos
@@ -145,6 +150,11 @@ draw :: proc() {
 	rl.ClearBackground({0x70, 0x25, 0x15, 0xFF})
 
 	rl.BeginMode2D(game_camera())
+
+	for zone in g.zones{
+		rl.DrawRectangleRec(zone.rect, zone.color)
+	}
+
 	// draw car frame
 	rl.DrawRectanglePro(
 		{g.player_pos.x, g.player_pos.y, g.player.width, g.player.height},
@@ -175,14 +185,10 @@ draw :: proc() {
 			0,
 			cargo.color,
 		)
-
 	}
 
 
 
-	for zone in g.zones{
-		rl.DrawRectangleRec(zone.rect, zone.color)
-	}
 
 	rl.EndMode2D()
 
@@ -203,7 +209,7 @@ game_update :: proc() {
 	update()
 	draw()
 
-	// Everycargo on tracking allocator is valid until end-of-frame.
+	// Everything on tracking allocator is valid until end-of-frame.
 	free_all(context.temp_allocator)
 }
 
@@ -233,7 +239,6 @@ game_init :: proc() {
 
 		// You can put textures, sounds and music in the `assets` folder. Those
 		// files will be part any release or web build.
-		player_texture = rl.LoadTexture("assets/round_cat.png"),
 	}
 
 	game_hot_reloaded(g)
@@ -305,21 +310,25 @@ game_hot_reloaded :: proc(mem: rawptr) {
 	delete(g.zones)
 	g.zones = {
 		Zone{
-			c_r = {{20, 20, 10, 10}, rl.GREEN},
+			c_r = {{100, 0, 10, 10}, rl.GREEN},
 			type = ZoneType.DELIVER,
 		},
 		Zone{
-			c_r = {{-30, 20, 10, 10}, rl.RED},
+			c_r = {{60, 0, 10, 10}, rl.RED},
 			type = ZoneType.LOSE_CARGO,
 		},
 		Zone{
-			c_r = {{-60, 20, 10, 10}, rl.PINK},
+			c_r = {{40, 0, 10, 10}, rl.PINK},
+			type = ZoneType.GAIN_CARGO,
+		},
+		Zone{
+			c_r = {{20, 0, 10, 10}, rl.PINK},
 			type = ZoneType.GAIN_CARGO,
 		},
 	}
 
 	// Here you can also set your own global variables. A good idea is to make
-	// your global variables into pointers that point to somecargo inside `g`.
+	// your global variables into pointers that point to something inside `g`.
 }
 
 @(export)
