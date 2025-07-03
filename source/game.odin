@@ -38,12 +38,6 @@ import rl "vendor:raylib"
 
 PIXEL_WINDOW_HEIGHT :: 180
 
-Cargo :: struct {
-	using c_r : ColoredRect,
-	index: int,
-}
-
-
 ColoredRect :: struct {
 	using rect : rl.Rectangle,
 	color : rl.Color,
@@ -72,7 +66,7 @@ Game_Memory :: struct {
 	player : Player,
 	player_pos: rl.Vector2,
 	player_texture: rl.Texture,
-	cargos: [dynamic]Cargo,
+	cargos: int,
 	zones: [dynamic]Zone,
 	some_number: int,
 	run: bool,
@@ -119,26 +113,42 @@ update :: proc() {
 
 	g.player.velocity.x += input.x * accel_speed
 
-	g.player.velocity.y = input.y * 50
+	g.player.velocity.y = input.y * 100
 
 	// We move the world instead of the truck
-	for &zone in g.zones{
+	for &zone, i in g.zones{
+		if rl.CheckCollisionRecs(g.player.rect, zone.rect){
+			switch zone.type{
+			case ZoneType.DELIVER: {
+				g.cargos -= 1
+				if g.cargos == -1 {
+					g.cargos = 0
+				} else{
+					fmt.println("Delivered :D")
+				}
+			}
+			case ZoneType.LOSE_CARGO:{
+				g.cargos -= 1
+				if g.cargos == -1 {
+					g.cargos = 0
+				}
+			}
+			case ZoneType.GAIN_CARGO:
+				g.cargos += 1
+			}
+			unordered_remove(&g.zones, i)
+		}
+
 		frame_vel := g.player.velocity * delta_time
 		zone.x -= frame_vel.x
 		zone.y -= frame_vel.y
+
 	}
 	g.some_number += 1
 
-	// sliding cargos
-	for &cargo in g.cargos{
-		// TODO find better formula for sliding off
-		// TODO have the truck apply force on collision between cargo and sides,
-		// and cargo and bed should apply truck_velocity proportional to friction (and inertia?)
-		// sliding_motion := g.player.velocity * cargo.friction
-		cargo.x = g.player_pos.x - 8 + f32(cargo.index * 1)
-		cargo.y = g.player_pos.y - 3 + f32(cargo.index * 1)
 
-	}
+
+
 
 	if rl.IsKeyPressed(.LEFT_SHIFT) && rl.IsKeyPressed(.ESCAPE) {
 		g.run = false
@@ -177,13 +187,14 @@ draw :: proc() {
 		0,
 		g.player.bed.color,
 	)
-	for cargo in g.cargos{
+
+	for cargo_index in 0..<g.cargos{
+		cargo_x := g.player_pos.x - 8 + f32(cargo_index * 1)
+		cargo_y := g.player_pos.y - 3 + f32(cargo_index * 1)
 		// draw cargos in truck
-		rl.DrawRectanglePro(
-			{cargo.x, cargo.y, cargo.width, cargo.height},
-			{cargo.width/2, cargo.height/2},
-			0,
-			cargo.color,
+		rl.DrawRectangleRec(
+			{cargo_x, cargo_y, 2, 2},
+			rl.PINK,
 		)
 	}
 
@@ -298,14 +309,6 @@ game_hot_reloaded :: proc(mem: rawptr) {
 		color = rl.LIGHTGRAY,
 	}
 
-	delete(g.cargos)
-	g.cargos =  {Cargo{
-		x = -5,
-		y = 2,
-		width = 2,
-		height = 2,
-		color = rl.PINK,
-	}}
 
 	delete(g.zones)
 	g.zones = {
