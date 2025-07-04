@@ -91,6 +91,23 @@ update :: proc() {
 						case .WATERMELON: {g.captain.thirst -= 1}
 						case .NUT: {g.captain.hunger -= 1}
 						}
+
+						if  g.next_player_pos.x > 7 {
+							g.next_player_pos.x = 0
+						}
+						if  g.next_player_pos.x < 0 {
+							g.next_player_pos.x = 7
+						}
+
+						if  g.next_player_pos.y > 7 {
+							g.next_player_pos.y = 0
+						}
+						if  g.next_player_pos.y < 0 {
+							g.next_player_pos.y = 7
+						}
+
+						g.next_player_pos.x = clamp(g.next_player_pos.x , 0, 7)
+						g.next_player_pos.y = clamp(g.next_player_pos.y , 0, 7)
 						if previous_player_pos != g.next_player_pos{
 							prev_tile := &g.level.tiles[previous_player_pos.x][previous_player_pos.y]
 							next_tile := &g.level.tiles[g.next_player_pos.x][g.next_player_pos.y]
