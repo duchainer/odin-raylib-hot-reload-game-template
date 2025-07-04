@@ -79,7 +79,7 @@ update :: proc() {
 	g.player_pos += input * rl.GetFrameTime() * 100
 	g.some_number += 1
 
-	if rl.IsKeyPressed(.ESCAPE) {
+	if rl.IsKeyPressed(.LEFT_CONTROL) && rl.IsKeyPressed(.LEFT_SHIFT) && rl.IsKeyPressed(.ESCAPE) {
 		g.run = false
 	}
 }
