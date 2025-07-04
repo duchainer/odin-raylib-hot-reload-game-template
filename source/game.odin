@@ -65,7 +65,7 @@ update :: proc() {
 
 		i := 2
 		j := 2
-		plant_rect := plant_rect_from_index(i, j)
+		plant_rect := offset_rect_from_index(i,j, {100, 100})
 		// right_side := plant_rect.x + plant_rect.width
 		// bottom_side := plant_rect.y + plant_rect.height
 		if rl.CheckCollisionPointRec({mouse_x, mouse_y}, plant_rect){
@@ -82,22 +82,10 @@ update :: proc() {
 	}
 }
 
-plant_rect_from_index :: proc (i, j : int) -> rl.Rectangle{
+offset_rect_from_index :: proc(i, j : int, offset: [2]f32) -> rl.Rectangle{
 	width  : f32 = 100
 	height : f32 = 100
-	pos := [2]f32{f32(i), f32(j)} * {width, height} + {100, 100}
-	return rl.Rectangle{
-		x = pos.x,
-		y = pos.y,
-		width = width,
-		height = height,
-	}
-}
-
-tile_rect_from_index :: proc (i, j : int) -> rl.Rectangle{
-	width  : f32 = 100
-	height : f32 = 100
-	pos := [2]f32{f32(i), f32(j)} * {width, height} + {600, 100}
+	pos := [2]f32{f32(i), f32(j)} * {width, height} + offset
 	return rl.Rectangle{
 		x = pos.x,
 		y = pos.y,
@@ -112,7 +100,8 @@ draw :: proc() {
 
 	for level_row, i in g.level.tiles {
 		for tile, j in level_row {
-			tile_rect := tile_rect_from_index(i,j)
+			tile_rect := offset_rect_from_index(i,j, {600, 100})
+
 			if tile != {}{
 				tile_color := rl.GREEN //tile_color_from_index(i,j)
 				rl.DrawRectangleRec(tile_rect, tile_color)
@@ -126,7 +115,7 @@ draw :: proc() {
 	// rl.DrawTextureEx(g.player_texture, g.player_pos, 0, 1, rl.WHITE)
 	for plant_row, i in g.plant_bay {
 		for plant, j in plant_row {
-			plant_rect := plant_rect_from_index(i,j)
+			plant_rect := offset_rect_from_index(i,j, {100, 100})
 			if plant != {}{
 				plant_color := rl.GREEN //plant_color_from_index(i,j)
 				rl.DrawRectangleRec(plant_rect, plant_color)
