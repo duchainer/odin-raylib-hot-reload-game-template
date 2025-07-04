@@ -115,12 +115,13 @@ game_update :: proc() {
 	free_all(context.temp_allocator)
 }
 
+TARGET_FPS :: 30
 @(export)
 game_init_window :: proc() {
 	rl.SetConfigFlags({.WINDOW_RESIZABLE, .VSYNC_HINT})
 	rl.InitWindow(1280, 720, "Odin + Raylib + Hot Reload template!")
 	rl.SetWindowPosition(200, 200)
-	rl.SetTargetFPS(500)
+	rl.SetTargetFPS(TARGET_FPS)
 	rl.SetExitKey(nil)
 }
 
