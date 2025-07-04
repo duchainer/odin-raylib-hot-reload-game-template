@@ -94,25 +94,47 @@ plant_rect_from_index :: proc (i, j : int) -> rl.Rectangle{
 	}
 }
 
+tile_rect_from_index :: proc (i, j : int) -> rl.Rectangle{
+	width  : f32 = 100
+	height : f32 = 100
+	pos := [2]f32{f32(i), f32(j)} * {width, height} + {600, 100}
+	return rl.Rectangle{
+		x = pos.x,
+		y = pos.y,
+		width = width,
+		height = height,
+	}
+}
+
 draw :: proc() {
 	rl.BeginDrawing()
 	rl.ClearBackground(rl.BLACK)
+
+	for level_row, i in g.level.tiles {
+		for tile, j in level_row {
+			tile_rect := tile_rect_from_index(i,j)
+			if tile != {}{
+				tile_color := rl.GREEN //tile_color_from_index(i,j)
+				rl.DrawRectangleRec(tile_rect, tile_color)
+			}
+			rl.DrawText(fmt.ctprintf("(%v, %v)", i, j), i32(tile_rect.x), i32(tile_rect.y), 16, rl.BLUE)
+		}
+
+	}
 
 	// rl.BeginMode2D(game_camera())
 	// rl.DrawTextureEx(g.player_texture, g.player_pos, 0, 1, rl.WHITE)
 	for plant_row, i in g.plant_bay {
 		for plant, j in plant_row {
+			plant_rect := plant_rect_from_index(i,j)
 			if plant != {}{
-				plant_rect := plant_rect_from_index(i,j)
-				rl.DrawRectangleRec(plant_rect, rl.RED)
-				rl.DrawText(fmt.ctprintf("%v", i), i32(plant_rect.x), i32(plant_rect.y), 16, rl.BLUE)
+				plant_color := rl.GREEN //plant_color_from_index(i,j)
+				rl.DrawRectangleRec(plant_rect, plant_color)
 			}
+			rl.DrawText(fmt.ctprintf("(%v, %v)", i, j), i32(plant_rect.x), i32(plant_rect.y), 16, rl.BLUE)
 		}
 
 	}
-	rl.DrawRectangleV({0,0}, {10, 10}, rl.RED)
-	rl.DrawRectangleV({20, 20}, {10, 10}, rl.RED)
-	rl.DrawRectangleV({-30, -20}, {10, 10}, rl.GREEN)
 	// rl.EndMode2D()
 
 	// rl.BeginMode2D(ui_camera())
