@@ -52,10 +52,16 @@ Game_Memory :: struct {
 		tiles : [8][8]Tile,
 	},
 	plant_bay :[4][4]Plant,
+	captain : struct{
+		air_need : int,
+		thirst : int,
+		hunger : int,
+	},
 }
 
 g: ^Game_Memory
 
+watered_plants :  map[int]bool
 
 update :: proc() {
 
@@ -63,18 +69,38 @@ update :: proc() {
 		mouse_x := f32(rl.GetMouseX())
 		mouse_y := f32(rl.GetMouseY())
 
-		i := 2
-		j := 2
-		plant_rect := offset_rect_from_index(i,j, {100, 100})
+		for plant_row, i in g.plant_bay {
+			for plant, j in plant_row {
+				plant_rect := offset_rect_from_index(i,j, {100, 100})
+				if plant != {}{
+					if rl.CheckCollisionPointRec({mouse_x, mouse_y}, plant_rect){
+						watered_plants[i+j*4] = true
+						switch plant.type{
+						case .NONE:  {}
+						case .UP:    {g.player_pos.y -= 1}
+						case .DOWN:  {g.player_pos.y += 1}
+						case .LEFT:  {g.player_pos.x -= 1}
+						case .RIGHT: {g.player_pos.x += 1}
+						case .O2:    {g.captain.air_need -= 1}
+						case .WATERMELON: {g.captain.thirst -= 1}
+						case .NUT: {g.captain.hunger -= 1}
+						}
+
+					} else{
+						watered_plants[i+j*4] = false
+					}
+				}
+			}
+
+		}
 		// right_side := plant_rect.x + plant_rect.width
 		// bottom_side := plant_rect.y + plant_rect.height
-		if rl.CheckCollisionPointRec({mouse_x, mouse_y}, plant_rect){
 				// fmt.printfln(
 				// 	"(%v, %v) Clicked %v, %v inside of %v, %v // %v %v",
 				// 	i, j,
 				// 	mouse_x, mouse_y, plant_rect.x, right_side, plant_rect.y, bottom_side,
 				// )
-			}
+			// }
 	}
 
 	if rl.IsKeyPressed(.LEFT_CONTROL) && rl.IsKeyPressed(.LEFT_SHIFT) && rl.IsKeyPressed(.ESCAPE) {
@@ -107,6 +133,7 @@ draw :: proc() {
 				rl.DrawRectangleRec(tile_rect, tile_color)
 			}
 			rl.DrawText(fmt.ctprintf("(%v, %v)", i, j), i32(tile_rect.x), i32(tile_rect.y), 16, rl.BLUE)
+			rl.DrawText(fmt.ctprintf("%v", tile), i32(tile_rect.x), i32(tile_rect.y)+20, 16, rl.BLUE)
 		}
 
 	}
@@ -117,10 +144,11 @@ draw :: proc() {
 		for plant, j in plant_row {
 			plant_rect := offset_rect_from_index(i,j, {100, 100})
 			if plant != {}{
-				plant_color := rl.GREEN //plant_color_from_index(i,j)
+				plant_color := rl.BLUE if watered_plants[i+j*4] else rl.GREEN //plant_color_from_index(i,j)
 				rl.DrawRectangleRec(plant_rect, plant_color)
 			}
 			rl.DrawText(fmt.ctprintf("(%v, %v)", i, j), i32(plant_rect.x), i32(plant_rect.y), 16, rl.BLUE)
+			rl.DrawText(fmt.ctprintf("%v", plant.type), i32(plant_rect.x), i32(plant_rect.y)+20, 16, rl.BLUE)
 		}
 
 	}
