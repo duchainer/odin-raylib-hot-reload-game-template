@@ -32,11 +32,26 @@ import rl "vendor:raylib"
 
 PIXEL_WINDOW_HEIGHT :: 180
 
+Tile :: union {
+	PlantType,
+	LevelTile,
+}
+
+LevelTile :: enum {
+	Ship,
+	Exit,
+}
+
+
 Game_Memory :: struct {
-	player_pos: rl.Vector2,
-	player_texture: rl.Texture,
-	some_number: int,
-	run: bool,
+	some_number: u16,
+	run : bool,
+	player_pos: [2]u8,
+	current_level: u8,
+	level : struct{
+		tiles : [8][8]Tile,
+	},
+	plant_bay :[4][4]Plant,
 }
 
 g: ^Game_Memory
@@ -44,9 +59,38 @@ g: ^Game_Memory
 
 update :: proc() {
 
+	if rl.IsMouseButtonPressed(.LEFT){
+		mouse_x := f32(rl.GetMouseX())
+		mouse_y := f32(rl.GetMouseY())
+
+		i := 2
+		j := 2
+		plant_rect := plant_rect_from_index(i, j)
+		// right_side := plant_rect.x + plant_rect.width
+		// bottom_side := plant_rect.y + plant_rect.height
+		if rl.CheckCollisionPointRec({mouse_x, mouse_y}, plant_rect){
+				// fmt.printfln(
+				// 	"(%v, %v) Clicked %v, %v inside of %v, %v // %v %v",
+				// 	i, j,
+				// 	mouse_x, mouse_y, plant_rect.x, right_side, plant_rect.y, bottom_side,
+				// )
+			}
+	}
 
 	if rl.IsKeyPressed(.LEFT_CONTROL) && rl.IsKeyPressed(.LEFT_SHIFT) && rl.IsKeyPressed(.ESCAPE) {
 		g.run = false
+	}
+}
+
+plant_rect_from_index :: proc (i, j : int) -> rl.Rectangle{
+	width  : f32 = 100
+	height : f32 = 100
+	pos := [2]f32{f32(i), f32(j)} * {width, height} + {100, 100}
+	return rl.Rectangle{
+		x = pos.x,
+		y = pos.y,
+		width = width,
+		height = height,
 	}
 }
 
@@ -56,6 +100,17 @@ draw :: proc() {
 
 	// rl.BeginMode2D(game_camera())
 	// rl.DrawTextureEx(g.player_texture, g.player_pos, 0, 1, rl.WHITE)
+	for plant_row, i in g.plant_bay {
+		for plant, j in plant_row {
+			if plant != {}{
+				plant_rect := plant_rect_from_index(i,j)
+				rl.DrawRectangleRec(plant_rect, rl.RED)
+				rl.DrawText(fmt.ctprintf("%v", i), i32(plant_rect.x), i32(plant_rect.y), 16, rl.BLUE)
+			}
+		}
+
+	}
+	rl.DrawRectangleV({0,0}, {10, 10}, rl.RED)
 	rl.DrawRectangleV({20, 20}, {10, 10}, rl.RED)
 	rl.DrawRectangleV({-30, -20}, {10, 10}, rl.GREEN)
 	// rl.EndMode2D()
@@ -65,7 +120,10 @@ draw :: proc() {
 	// NOTE: `fmt.ctprintf` uses the temp allocator. The temp allocator is
 	// cleared at the end of the frame by the main application, meaning inside
 	// `main_hot_reload.odin`, `main_release.odin` or `main_web_entry.odin`.
-	rl.DrawText(fmt.ctprintf("some_number: %v\nplayer_pos: %v", g.some_number, g.player_pos), 5, 5, 8, rl.WHITE)
+	mouse_x := f32(rl.GetMouseX())
+	mouse_y := f32(rl.GetMouseY())
+
+	rl.DrawText(fmt.ctprintf("mouse_pos:%v, %v\nsome_number: %v\nplayer_pos: %v", mouse_x, mouse_y, g.some_number, g.player_pos), 5, 5, 8, rl.WHITE)
 
 	// rl.EndMode2D()
 
@@ -97,11 +155,16 @@ game_init :: proc() {
 	g^ = Game_Memory {
 		run = true,
 		some_number = 100,
+		player_pos = {0, 0},
+		current_level = 0,
+		// level = {}
 
 		// You can put textures, sounds and music in the `assets` folder. Those
 		// files will be part any release or web build.
 		// player_texture = rl.LoadTexture("assets/round_cat.png"),
 	}
+
+	g.plant_bay[2][2] = Plant{.RIGHT, .MATURE}
 
 	game_hot_reloaded(g)
 }
@@ -141,6 +204,9 @@ game_memory_size :: proc() -> int {
 @(export)
 game_hot_reloaded :: proc(mem: rawptr) {
 	g = (^Game_Memory)(mem)
+
+
+	g.plant_bay[3][3] = Plant{.RIGHT, .MATURE}
 
 	// Here you can also set your own global variables. A good idea is to make
 	// your global variables into pointers that point to something inside `g`.
