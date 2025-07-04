@@ -230,8 +230,13 @@ game_init :: proc() {
 		// files will be part any release or web build.
 		// player_texture = rl.LoadTexture("assets/round_cat.png"),
 	}
+	for i in 0..=3{
+		g.plant_bay[0][i] = Plant{PlantType(i+1), .MATURE}
+		g.plant_bay[1][i] = Plant{PlantType(i+4), .MATURE}
+	}
 
-	g.plant_bay[2][2] = Plant{.RIGHT, .MATURE}
+
+	g.plant_bay[3][2] = Plant{.RIGHT, .MATURE}
 	g.plant_bay[3][3] = Plant{.RIGHT, .MATURE}
 
 	g.level.tiles[0][0] = LevelTile.SHIP
