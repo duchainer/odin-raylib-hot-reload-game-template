@@ -190,6 +190,7 @@ draw :: proc() {
 	mouse_y := f32(rl.GetMouseY())
 
 	rl.DrawText(fmt.ctprintf("time:%v\nmouse_pos:%v, %v\nsome_number: %v\nnext_player_pos: %v", math.mod(time, 2), mouse_x, mouse_y, g.some_number, g.next_player_pos), 5, 5, 8, rl.WHITE)
+	rl.DrawText(fmt.ctprintf("captain:%#v", g.captain), 5, 550, 25, rl.WHITE)
 
 	// rl.EndMode2D()
 
