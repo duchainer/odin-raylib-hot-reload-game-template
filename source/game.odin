@@ -55,7 +55,7 @@ draw :: proc() {
 	rl.ClearBackground(rl.BLACK)
 
 	// rl.BeginMode2D(game_camera())
-	rl.DrawTextureEx(g.player_texture, g.player_pos, 0, 1, rl.WHITE)
+	// rl.DrawTextureEx(g.player_texture, g.player_pos, 0, 1, rl.WHITE)
 	rl.DrawRectangleV({20, 20}, {10, 10}, rl.RED)
 	rl.DrawRectangleV({-30, -20}, {10, 10}, rl.GREEN)
 	// rl.EndMode2D()
@@ -100,7 +100,7 @@ game_init :: proc() {
 
 		// You can put textures, sounds and music in the `assets` folder. Those
 		// files will be part any release or web build.
-		player_texture = rl.LoadTexture("assets/round_cat.png"),
+		// player_texture = rl.LoadTexture("assets/round_cat.png"),
 	}
 
 	game_hot_reloaded(g)
