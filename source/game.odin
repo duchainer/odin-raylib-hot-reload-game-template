@@ -66,6 +66,9 @@ watered_plants :  map[int]bool
 
 time: f64
 
+space_texture, seed_texture, ship_texture,
+plant_stage1_texture, plant_stage2_texture, plant_stage3_texture  : rl.Texture
+
 update :: proc() {
 	time = rl.GetTime()
 
@@ -155,9 +158,12 @@ draw :: proc() {
 		for tile, j in level_row {
 			tile_rect := offset_rect_from_index(i,j, {600, 100})
 
+			rl.DrawTextureV(space_texture, {tile_rect.x, tile_rect.y}, rl.WHITE)
+
 			if tile != {}{
-				tile_color := rl.GREEN //tile_color_from_index(i,j)
-				rl.DrawRectangleRec(tile_rect, tile_color)
+				rl.DrawTextureV(space_texture, {tile_rect.x, tile_rect.y}, rl.BLACK)
+				// tile_color := rl.GREEN //tile_color_from_index(i,j)
+				// rl.DrawRectangleRec(tile_rect, tile_color)
 			}
 			rl.DrawText(fmt.ctprintf("(%v, %v)", i, j), i32(tile_rect.x), i32(tile_rect.y), 16, rl.BLUE)
 			rl.DrawText(fmt.ctprintf("%v", tile), i32(tile_rect.x), i32(tile_rect.y)+20, 16, rl.BLUE)
@@ -259,6 +265,13 @@ game_should_run :: proc() -> bool {
 @(export)
 game_shutdown :: proc() {
 	free(g)
+	rl.UnloadTexture(space_texture)
+	rl.UnloadTexture(seed_texture)
+	rl.UnloadTexture(ship_texture)
+	rl.UnloadTexture(plant_stage1_texture)
+	rl.UnloadTexture(plant_stage2_texture)
+	rl.UnloadTexture(plant_stage3_texture)
+
 }
 
 @(export)
@@ -279,6 +292,16 @@ game_memory_size :: proc() -> int {
 @(export)
 game_hot_reloaded :: proc(mem: rawptr) {
 	g = (^Game_Memory)(mem)
+
+	space_texture        = rl.LoadTexture("./assets/sprites/basicTile.png")
+	seed_texture         = rl.LoadTexture("./assets/sprites/Plant1Seed.png")
+	ship_texture         = rl.LoadTexture("./assets/sprites/Ship.png")
+	plant_stage1_texture = rl.LoadTexture("./assets/sprites/Plant1Stage1.png")
+	plant_stage2_texture = rl.LoadTexture("./assets/sprites/Plant1Stage2.png")
+	plant_stage3_texture = rl.LoadTexture("./assets/sprites/Plant1Stage3.png")
+
+
+
 
 	// Here you can also set your own global variables. A good idea is to make
 	// your global variables into pointers that point to something inside `g`.
