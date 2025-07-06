@@ -94,6 +94,9 @@ time: f64
 space_texture, seed_texture, ship_texture,
 plant_stage1_texture, plant_stage2_texture, plant_stage3_texture  : rl.Texture
 
+PLANT_BAY_OFFSET  :: [2]f32{10, 10}
+LEVEL_TILE_OFFSET :: [2]f32{400, 10}
+
 update :: proc() {
 	time = rl.GetTime()
 
@@ -103,7 +106,7 @@ update :: proc() {
 
 		for plant_row, i in g.plant_bay {
 			for plant, j in plant_row {
-				plant_rect := offset_rect_from_index(i,j, {100, 100})
+				plant_rect := offset_rect_from_index(i,j, PLANT_BAY_OFFSET)
 				if plant != {} && !watered_plants[i+j*4] {
 					if rl.CheckCollisionPointRec({mouse_x, mouse_y}, plant_rect){
 						watered_plants[i+j*4] = true
@@ -192,7 +195,7 @@ draw :: proc() {
 
 	for level_row, i in g.level.tiles {
 		for tile, j in level_row {
-			tile_rect := offset_rect_from_index(i,j, {600, 100})
+			tile_rect := offset_rect_from_index(i,j, LEVEL_TILE_OFFSET)
 
 			rl.DrawTextureV(space_texture, {tile_rect.x, tile_rect.y}, rl.WHITE)
 
@@ -222,7 +225,7 @@ draw :: proc() {
 	// rl.DrawTextureEx(g.player_texture, g.player_pos, 0, 1, rl.WHITE)
 	for plant_row, i in g.plant_bay {
 		for plant, j in plant_row {
-			plant_rect := offset_rect_from_index(i,j, {100, 100})
+			plant_rect := offset_rect_from_index(i,j, PLANT_BAY_OFFSET)
 			if plant != {}{
 				plant_color := rl.BLUE if watered_plants[i+j*4] else rl.WHITE //plant_color_from_index(i,j)
 				draw_plant(plant, plant_rect, plant_color)
@@ -242,7 +245,7 @@ draw :: proc() {
 	mouse_x := f32(rl.GetMouseX())
 	mouse_y := f32(rl.GetMouseY())
 
-	rl.DrawText(fmt.ctprintf("time:%v\nmouse_pos:%v, %v\nsome_number: %v\nnext_player_pos: %v", math.mod(time, 2), mouse_x, mouse_y, g.some_number, g.next_player_pos), 5, 5, 8, rl.WHITE)
+	rl.DrawText(fmt.ctprintf("time:%v\nmouse_pos:%v, %v\nsome_number: %v\nnext_player_pos: %v", math.mod(time, 2), mouse_x, mouse_y, g.some_number, g.next_player_pos), 5, 400, 8, rl.WHITE)
 	rl.DrawText(fmt.ctprintf("captain:%#v", g.captain), 5, 550, 25, rl.WHITE)
 
 	// rl.EndMode2D()
