@@ -161,7 +161,16 @@ draw :: proc() {
 			rl.DrawTextureV(space_texture, {tile_rect.x, tile_rect.y}, rl.WHITE)
 
 			if tile != {}{
-				rl.DrawTextureV(space_texture, {tile_rect.x, tile_rect.y}, rl.BLACK)
+				switch t in tile{
+				case PlantType:
+				case LevelTile:{
+					switch t {
+					case .SHIP: rl.DrawTextureV(ship_texture, {tile_rect.x, tile_rect.y}, rl.WHITE)
+					case .EXIT:
+					}
+				}
+
+				}
 				// tile_color := rl.GREEN //tile_color_from_index(i,j)
 				// rl.DrawRectangleRec(tile_rect, tile_color)
 			}
