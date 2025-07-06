@@ -15,8 +15,9 @@ PlantType :: enum {
 PlantStage :: enum {
     NONE,
     SEED,
-    BABY,
-    MATURE,
+    STAGE1,
+    STAGE2,
+    STAGE3,
     DEAD,
 }
 

@@ -34,7 +34,7 @@ import rl "vendor:raylib"
 PIXEL_WINDOW_HEIGHT :: 180
 
 Tile :: union {
-	PlantType,
+	Plant,
 	LevelTile,
 }
 
@@ -150,6 +150,17 @@ offset_rect_from_index :: proc(i, j : int, offset: [2]f32) -> rl.Rectangle{
 	}
 }
 
+draw_plant :: proc(t:Plant, tile_rect: rl.Rectangle, plant_color : rl.Color = rl.WHITE) {
+	switch t.stage {
+	case .NONE:
+	case .SEED: rl.DrawTextureV(seed_texture, {tile_rect.x, tile_rect.y}, plant_color)
+	case .STAGE1: rl.DrawTextureV(plant_stage1_texture, {tile_rect.x, tile_rect.y}, plant_color)
+	case .STAGE2: rl.DrawTextureV(plant_stage2_texture, {tile_rect.x, tile_rect.y}, plant_color)
+	case .STAGE3: rl.DrawTextureV(plant_stage3_texture, {tile_rect.x, tile_rect.y}, plant_color)
+	case .DEAD:
+	}
+}
+
 draw :: proc() {
 	rl.BeginDrawing()
 	rl.ClearBackground(rl.BLACK)
@@ -162,7 +173,9 @@ draw :: proc() {
 
 			if tile != {}{
 				switch t in tile{
-				case PlantType:
+				case Plant:{
+					draw_plant(t, tile_rect)
+				}
 				case LevelTile:{
 					switch t {
 					case .SHIP: rl.DrawTextureV(ship_texture, {tile_rect.x, tile_rect.y}, rl.WHITE)
@@ -186,8 +199,8 @@ draw :: proc() {
 		for plant, j in plant_row {
 			plant_rect := offset_rect_from_index(i,j, {100, 100})
 			if plant != {}{
-				plant_color := rl.BLUE if watered_plants[i+j*4] else rl.GREEN //plant_color_from_index(i,j)
-				rl.DrawRectangleRec(plant_rect, plant_color)
+				plant_color := rl.BLUE if watered_plants[i+j*4] else rl.WHITE //plant_color_from_index(i,j)
+				draw_plant(plant, plant_rect, plant_color)
 			}
 			rl.DrawText(fmt.ctprintf("(%v, %v)", i, j), i32(plant_rect.x), i32(plant_rect.y), 16, rl.BLUE)
 			rl.DrawText(fmt.ctprintf("%v", plant.type), i32(plant_rect.x), i32(plant_rect.y)+20, 25, rl.BLUE)
@@ -246,13 +259,13 @@ game_init :: proc() {
 		// player_texture = rl.LoadTexture("assets/round_cat.png"),
 	}
 	for i in 0..=3{
-		g.plant_bay[0][i] = Plant{PlantType(i+1), .MATURE}
-		g.plant_bay[1][i] = Plant{PlantType(i+4), .MATURE}
+		g.plant_bay[0][i] = Plant{PlantType(i+1), .STAGE3}
+		g.plant_bay[1][i] = Plant{PlantType(i+4), .STAGE3}
 	}
 
 
-	g.plant_bay[3][2] = Plant{.RIGHT, .MATURE}
-	g.plant_bay[3][3] = Plant{.RIGHT, .MATURE}
+	g.plant_bay[3][2] = Plant{.RIGHT, .STAGE3}
+	g.plant_bay[3][3] = Plant{.RIGHT, .STAGE3}
 
 	g.level.tiles[0][0] = LevelTile.SHIP
 
