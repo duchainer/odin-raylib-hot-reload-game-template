@@ -33,6 +33,31 @@ import rl "vendor:raylib"
 
 PIXEL_WINDOW_HEIGHT :: 180
 
+PlantType :: enum {
+    NONE,
+    UP,
+    DOWN,
+    LEFT,
+    RIGHT,
+    O2,
+    WATERMELON,
+    NUT,
+}
+
+PlantStage :: enum {
+    NONE,
+    SEED,
+    STAGE1,
+    STAGE2,
+    STAGE3,
+    DEAD,
+}
+
+Plant :: struct {
+    type : PlantType,
+    stage : PlantStage,
+}
+
 Tile :: union {
 	Plant,
 	LevelTile,
