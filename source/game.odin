@@ -152,13 +152,7 @@ update :: proc() {
 									g.next_player_pos.y = 7
 								}
 
-								g.next_player_pos.x = clamp(g.next_player_pos.x , 0, 7)
-								g.next_player_pos.y = clamp(g.next_player_pos.y , 0, 7)
 								if previous_player_pos != g.next_player_pos{
-									prev_tile := &g.level.tiles[previous_player_pos.x][previous_player_pos.y]
-									next_tile := &g.level.tiles[g.next_player_pos.x][g.next_player_pos.y]
-									next_tile^ = prev_tile^
-										prev_tile^ = {}
 									click_did_something = true
 								}
 
@@ -246,7 +240,7 @@ draw :: proc() {
 				}
 				case LevelTile:{
 					switch t {
-					case .SHIP: rl.DrawTextureV(Ship_texture, {tile_rect.x, tile_rect.y}, rl.WHITE)
+					case .SHIP:
 					case .EXIT:
 					}
 				}
@@ -260,6 +254,9 @@ draw :: proc() {
 		}
 
 	}
+	ship_rect := offset_rect_from_index(int(g.next_player_pos.x), int(g.next_player_pos.y), LEVEL_TILE_OFFSET)
+	fmt.printfln("ship_rect: %#v", ship_rect)
+	rl.DrawTextureV(Ship_texture, {ship_rect.x, ship_rect.y}, rl.WHITE)
 
 	// rl.BeginMode2D(game_camera())
 	// rl.DrawTextureEx(g.player_texture, g.player_pos, 0, 1, rl.WHITE)
@@ -337,7 +334,7 @@ game_init :: proc() {
 		g.plant_bay[3][i] = Plant{PlantType(i+4), .SEED}
 	}
 
-	g.level.tiles[0][0] = LevelTile.SHIP
+	g.next_player_pos = {0, 0}
 
 	game_hot_reloaded(g)
 }
