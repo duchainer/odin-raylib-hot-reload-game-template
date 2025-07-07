@@ -72,7 +72,7 @@ LevelTile :: enum {
 Game_Memory :: struct {
 	frame_count: u16,
 	run : bool,
-	next_player_pos: [2]i8,
+	player_pos: [2]i8,
 	current_level: u8,
 	level : struct{
 		tiles : [8][8]Tile,
@@ -107,7 +107,7 @@ update :: proc() {
 				if plant != {} && !watered_plants[i+j*4] {
 					if rl.CheckCollisionPointRec({mouse_x, mouse_y}, plant_rect){
 
-						previous_player_pos := g.next_player_pos
+						previous_player_pos := g.player_pos
 						previous_captain = g.captain
 
 						switch plant.stage{
@@ -126,30 +126,30 @@ update :: proc() {
 						case .STAGE1, .STAGE2, .STAGE3: {
 								switch plant.type{
 								case .NONE:  {}
-								case .UP:    {g.next_player_pos.y -= i8(plant.stage)}
-								case .DOWN:  {g.next_player_pos.y += i8(plant.stage)}
-								case .LEFT:  {g.next_player_pos.x -= i8(plant.stage)}
-								case .RIGHT: {g.next_player_pos.x += i8(plant.stage)}
+								case .UP:    {g.player_pos.y -= i8(plant.stage)}
+								case .DOWN:  {g.player_pos.y += i8(plant.stage)}
+								case .LEFT:  {g.player_pos.x -= i8(plant.stage)}
+								case .RIGHT: {g.player_pos.x += i8(plant.stage)}
 								case .O2:    {g.captain.air_need -= i8(plant.stage)}
 								case .WATERMELON: {g.captain.thirst -= i8(plant.stage)}
 								case .NUT: {g.captain.hunger -= i8(plant.stage)}
 								}
 
-								if  g.next_player_pos.x > 7 {
-									g.next_player_pos.x = 0
+								if  g.player_pos.x > 7 {
+									g.player_pos.x = 0
 								}
-								if  g.next_player_pos.x < 0 {
-									g.next_player_pos.x = 7
-								}
-
-								if  g.next_player_pos.y > 7 {
-									g.next_player_pos.y = 0
-								}
-								if  g.next_player_pos.y < 0 {
-									g.next_player_pos.y = 7
+								if  g.player_pos.x < 0 {
+									g.player_pos.x = 7
 								}
 
-								if previous_player_pos != g.next_player_pos{
+								if  g.player_pos.y > 7 {
+									g.player_pos.y = 0
+								}
+								if  g.player_pos.y < 0 {
+									g.player_pos.y = 7
+								}
+
+								if previous_player_pos != g.player_pos{
 									click_did_something = true
 								}
 
@@ -251,7 +251,7 @@ draw :: proc() {
 		}
 
 	}
-	ship_rect := offset_rect_from_index(int(g.next_player_pos.x), int(g.next_player_pos.y), LEVEL_TILE_OFFSET)
+	ship_rect := offset_rect_from_index(int(g.player_pos.x), int(g.player_pos.y), LEVEL_TILE_OFFSET)
 	fmt.printfln("ship_rect: %#v", ship_rect)
 	rl.DrawTextureV(Ship_texture, {ship_rect.x, ship_rect.y}, rl.WHITE)
 
@@ -277,7 +277,7 @@ draw :: proc() {
 	// cleared at the end of the frame by the main application, meaning inside
 	// `main_hot_reload.odin`, `main_release.odin` or `main_web_entry.odin`.
 
-	rl.DrawText(fmt.ctprintf("frame_count: %v\nnext_player_pos: %v", g.frame_count, g.next_player_pos), 5, 400, 8, rl.WHITE)
+	rl.DrawText(fmt.ctprintf("frame_count: %v\nplayer_pos: %v", g.frame_count, g.player_pos), 5, 400, 8, rl.WHITE)
 	rl.DrawText(fmt.ctprintf("captain:%#v", g.captain), 5, 550, 25, rl.WHITE)
 
 	// rl.EndMode2D()
@@ -310,7 +310,7 @@ game_init :: proc() {
 	g^ = Game_Memory {
 		run = true,
 		frame_count = 1,
-		next_player_pos = {0, 0},
+		player_pos = {0, 0},
 		current_level = 0,
 		// level = {}
 
@@ -329,7 +329,7 @@ game_init :: proc() {
 		g.plant_bay[3][i] = Plant{PlantType(i+4), .SEED}
 	}
 
-	g.next_player_pos = {0, 0}
+	g.player_pos = {0, 0}
 
 	game_hot_reloaded(g)
 }
