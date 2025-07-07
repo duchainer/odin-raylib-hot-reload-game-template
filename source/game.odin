@@ -91,9 +91,6 @@ watered_plants :  map[int]bool
 
 time: f64
 
-space_texture, seed_texture, ship_texture,
-plant_stage1_texture, plant_stage2_texture, plant_stage3_texture  : rl.Texture
-
 PLANT_BAY_OFFSET  :: [2]f32{10, 10}
 LEVEL_TILE_OFFSET :: [2]f32{400, 10}
 
@@ -227,11 +224,11 @@ offset_rect_from_index :: proc(i, j : int, offset: [2]f32) -> rl.Rectangle{
 
 draw_plant :: proc(t:Plant, tile_rect: rl.Rectangle, plant_color : rl.Color = rl.WHITE) {
 	switch t.stage {
-	case .NONE: // Nothing to draw there
-	case .SEED: rl.DrawTextureV(seed_texture, {tile_rect.x, tile_rect.y}, plant_color)
-	case .STAGE1: rl.DrawTextureV(plant_stage1_texture, {tile_rect.x, tile_rect.y}, plant_color)
-	case .STAGE2: rl.DrawTextureV(plant_stage2_texture, {tile_rect.x, tile_rect.y}, plant_color)
-	case .STAGE3: rl.DrawTextureV(plant_stage3_texture, {tile_rect.x, tile_rect.y}, plant_color)
+	case .NONE: return // Nothing to draw there
+	case .SEED: rl.DrawTextureV(Plant1Seed_texture, {tile_rect.x, tile_rect.y}, plant_color)
+	case .STAGE1: rl.DrawTextureV(Plant1Stage1_texture, {tile_rect.x, tile_rect.y}, plant_color)
+	case .STAGE2: rl.DrawTextureV(Plant1Stage2_texture, {tile_rect.x, tile_rect.y}, plant_color)
+	case .STAGE3: rl.DrawTextureV(Plant1Stage3_texture, {tile_rect.x, tile_rect.y}, plant_color)
 	case .BLOCKED: // TODO rl.DrawTextureV(blackhole_texture, {tile_rect.x, tile_rect.y}, plant_color)
 	}
 }
@@ -244,7 +241,7 @@ draw :: proc() {
 		for tile, j in level_row {
 			tile_rect := offset_rect_from_index(i,j, LEVEL_TILE_OFFSET)
 
-			rl.DrawTextureV(space_texture, {tile_rect.x, tile_rect.y}, rl.WHITE)
+			rl.DrawTextureV(basicTile_texture, {tile_rect.x, tile_rect.y}, rl.WHITE)
 
 			if tile != {}{
 				switch t in tile{
@@ -253,7 +250,7 @@ draw :: proc() {
 				}
 				case LevelTile:{
 					switch t {
-					case .SHIP: rl.DrawTextureV(ship_texture, {tile_rect.x, tile_rect.y}, rl.WHITE)
+					case .SHIP: rl.DrawTextureV(Ship_texture, {tile_rect.x, tile_rect.y}, rl.WHITE)
 					case .EXIT:
 					}
 				}
@@ -368,12 +365,7 @@ game_should_run :: proc() -> bool {
 @(export)
 game_shutdown :: proc() {
 	free(g)
-	rl.UnloadTexture(space_texture)
-	rl.UnloadTexture(seed_texture)
-	rl.UnloadTexture(ship_texture)
-	rl.UnloadTexture(plant_stage1_texture)
-	rl.UnloadTexture(plant_stage2_texture)
-	rl.UnloadTexture(plant_stage3_texture)
+	unload_all_sprites()
 
 }
 
@@ -396,16 +388,7 @@ game_memory_size :: proc() -> int {
 game_hot_reloaded :: proc(mem: rawptr) {
 	g = (^Game_Memory)(mem)
 
-	space_texture        = rl.LoadTexture("./assets/sprites/basicTile.png")
-	seed_texture         = rl.LoadTexture("./assets/sprites/Plant1Seed.png")
-	ship_texture         = rl.LoadTexture("./assets/sprites/Ship.png")
-	plant_stage1_texture = rl.LoadTexture("./assets/sprites/Plant1Stage1.png")
-	plant_stage2_texture = rl.LoadTexture("./assets/sprites/Plant1Stage2.png")
-	plant_stage3_texture = rl.LoadTexture("./assets/sprites/Plant1Stage3.png")
-
-
-
-
+	load_all_sprites()
 	// Here you can also set your own global variables. A good idea is to make
 	// your global variables into pointers that point to something inside `g`.
 }
