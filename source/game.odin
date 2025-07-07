@@ -46,11 +46,11 @@ PlantType :: enum {
 
 PlantStage :: enum {
     NONE,
-    SEED,
     STAGE1,
     STAGE2,
     STAGE3,
-    DEAD,
+    SEED,
+    BLOCKED,
 }
 
 Plant :: struct {
@@ -72,16 +72,16 @@ LevelTile :: enum {
 Game_Memory :: struct {
 	some_number: u16,
 	run : bool,
-	next_player_pos: [2]u8,
+	next_player_pos: [2]i8,
 	current_level: u8,
 	level : struct{
 		tiles : [8][8]Tile,
 	},
 	plant_bay :[4][4]Plant,
 	captain : struct{
-		air_need : int,
-		thirst : int,
-		hunger : int,
+		air_need : i8,
+		thirst : i8,
+		hunger : i8,
 	},
 }
 
@@ -104,50 +104,76 @@ update :: proc() {
 		click_did_something := false 
 		mouse_x := f32(rl.GetMouseX())
 		mouse_y := f32(rl.GetMouseY())
+		previous_captain := g.captain
 
-		for plant_row, i in g.plant_bay {
-			for plant, j in plant_row {
+
+		for &plant_row, i in g.plant_bay {
+			for &plant, j in plant_row {
 				plant_rect := offset_rect_from_index(i,j, PLANT_BAY_OFFSET)
 				if plant != {} && !watered_plants[i+j*4] {
 					if rl.CheckCollisionPointRec({mouse_x, mouse_y}, plant_rect){
+						// All watered plants get reset, and reusable
+						clear_map(&watered_plants)
+
+						// Then, can't use that plant until next turn
 						watered_plants[i+j*4] = true
+
 						previous_player_pos := g.next_player_pos
-						previous_captain := g.captain
+						previous_captain = g.captain
 
-						switch plant.type{
-						case .NONE:  {}
-						case .UP:    {g.next_player_pos.y -= 1}
-						case .DOWN:  {g.next_player_pos.y += 1}
-						case .LEFT:  {g.next_player_pos.x -= 1}
-						case .RIGHT: {g.next_player_pos.x += 1}
-						case .O2:    {g.captain.air_need -= 1}
-						case .WATERMELON: {g.captain.thirst -= 1}
-						case .NUT: {g.captain.hunger -= 1}
+						switch plant.stage{
+						case .NONE: {
+							// TODO plant a seed if you are on top of one on the level
 						}
-
-						if  g.next_player_pos.x > 7 {
-							g.next_player_pos.x = 0
-						}
-						if  g.next_player_pos.x < 0 {
-							g.next_player_pos.x = 7
-						}
-
-						if  g.next_player_pos.y > 7 {
-							g.next_player_pos.y = 0
-						}
-						if  g.next_player_pos.y < 0 {
-							g.next_player_pos.y = 7
-						}
-
-						g.next_player_pos.x = clamp(g.next_player_pos.x , 0, 7)
-						g.next_player_pos.y = clamp(g.next_player_pos.y , 0, 7)
-						if previous_player_pos != g.next_player_pos{
-							prev_tile := &g.level.tiles[previous_player_pos.x][previous_player_pos.y]
-							next_tile := &g.level.tiles[g.next_player_pos.x][g.next_player_pos.y]
-							next_tile^ = prev_tile^
-							prev_tile^ = {}
+						case .SEED: {
+							plant.stage = PlantStage.STAGE1
 							click_did_something = true
 						}
+						case .BLOCKED:{
+							// We don't allow clicking on blocked spaces
+							// These should be black holes in the plant bay.
+							continue
+						}
+						case .STAGE1, .STAGE2, .STAGE3: {
+								switch plant.type{
+								case .NONE:  {}
+								case .UP:    {g.next_player_pos.y -= i8(plant.stage)}
+								case .DOWN:  {g.next_player_pos.y += i8(plant.stage)}
+								case .LEFT:  {g.next_player_pos.x -= i8(plant.stage)}
+								case .RIGHT: {g.next_player_pos.x += i8(plant.stage)}
+								case .O2:    {g.captain.air_need -= i8(plant.stage)}
+								case .WATERMELON: {g.captain.thirst -= i8(plant.stage)}
+								case .NUT: {g.captain.hunger -= i8(plant.stage)}
+								}
+
+								if  g.next_player_pos.x > 7 {
+									g.next_player_pos.x = 0
+								}
+								if  g.next_player_pos.x < 0 {
+									g.next_player_pos.x = 7
+								}
+
+								if  g.next_player_pos.y > 7 {
+									g.next_player_pos.y = 0
+								}
+								if  g.next_player_pos.y < 0 {
+									g.next_player_pos.y = 7
+								}
+
+								g.next_player_pos.x = clamp(g.next_player_pos.x , 0, 7)
+								g.next_player_pos.y = clamp(g.next_player_pos.y , 0, 7)
+								if previous_player_pos != g.next_player_pos{
+									prev_tile := &g.level.tiles[previous_player_pos.x][previous_player_pos.y]
+									next_tile := &g.level.tiles[g.next_player_pos.x][g.next_player_pos.y]
+									next_tile^ = prev_tile^
+										prev_tile^ = {}
+									click_did_something = true
+								}
+
+							}
+
+						}
+
 						if previous_captain != g.captain{
 							click_did_something = true
 						}
@@ -159,6 +185,14 @@ update :: proc() {
 						g.captain.air_need += 1
 						g.captain.thirst += 1
 						g.captain.hunger += 1
+						fmt.printfln("previous_captain: %v", previous_captain)
+						fmt.printfln("new g.captain: %v", g.captain)
+
+						g.captain.air_need = max(0, g.captain.air_need)
+						g.captain.thirst = max(0, g.captain.thirst)
+						g.captain.hunger = max(0, g.captain.hunger)
+
+						click_did_something = false
 					} else{
 						// No action nor turn has happened yet
 					}
@@ -193,12 +227,12 @@ offset_rect_from_index :: proc(i, j : int, offset: [2]f32) -> rl.Rectangle{
 
 draw_plant :: proc(t:Plant, tile_rect: rl.Rectangle, plant_color : rl.Color = rl.WHITE) {
 	switch t.stage {
-	case .NONE:
+	case .NONE: // Nothing to draw there
 	case .SEED: rl.DrawTextureV(seed_texture, {tile_rect.x, tile_rect.y}, plant_color)
 	case .STAGE1: rl.DrawTextureV(plant_stage1_texture, {tile_rect.x, tile_rect.y}, plant_color)
 	case .STAGE2: rl.DrawTextureV(plant_stage2_texture, {tile_rect.x, tile_rect.y}, plant_color)
 	case .STAGE3: rl.DrawTextureV(plant_stage3_texture, {tile_rect.x, tile_rect.y}, plant_color)
-	case .DEAD:
+	case .BLOCKED: // TODO rl.DrawTextureV(blackhole_texture, {tile_rect.x, tile_rect.y}, plant_color)
 	}
 }
 
