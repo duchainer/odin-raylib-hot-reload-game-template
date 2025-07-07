@@ -109,11 +109,6 @@ update :: proc() {
 				plant_rect := offset_rect_from_index(i,j, PLANT_BAY_OFFSET)
 				if plant != {} && !watered_plants[i+j*4] {
 					if rl.CheckCollisionPointRec({mouse_x, mouse_y}, plant_rect){
-						// All watered plants get reset, and reusable
-						clear_map(&watered_plants)
-
-						// Then, can't use that plant until next turn
-						watered_plants[i+j*4] = true
 
 						previous_player_pos := g.next_player_pos
 						previous_captain = g.captain
@@ -179,6 +174,13 @@ update :: proc() {
 					// 	watered_plants[i+j*4] = false
 					// }
 					if click_did_something{
+						// All watered plants get reset, and reusable
+						// TODO LATER, not sure we need a map there, instead of a [2]u8
+						clear_map(&watered_plants)
+
+						// Then, can't use that plant until next turn
+						watered_plants[i+j*4] = true
+
 						g.captain.air_need += 1
 						g.captain.thirst += 1
 						g.captain.hunger += 1
@@ -197,12 +199,6 @@ update :: proc() {
 			}
 		}
 	}
-
-	if  math.mod(time, 2) < 0.05 {
-		// All watered plants get reset, and reusable
-		clear_map(&watered_plants)
-	}
-
 
 
 	if rl.IsKeyPressed(.LEFT_CONTROL) && rl.IsKeyPressed(.LEFT_SHIFT) && rl.IsKeyPressed(.ESCAPE) {
