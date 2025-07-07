@@ -326,9 +326,9 @@ game_init :: proc() {
 		// files will be part any release or web build.
 		// player_texture = rl.LoadTexture("assets/round_cat.png"),
 	}
-	for i in 0..=3{
-		g.plant_bay[0][i] = Plant{PlantType(i+1), .STAGE3}
-		g.plant_bay[1][i] = Plant{PlantType(i+4), .STAGE3}
+	for i in 0..=7{
+		g.level.tiles[1][i] = Plant{PlantType(i+1), .SEED}
+		g.level.tiles[3][i] = Plant{PlantType(i+1), .STAGE3}
 	}
 
 
