@@ -250,6 +250,7 @@ draw :: proc() {
 				switch t in tile{
 				case Plant:{
 					draw_plant(t, tile_rect)
+					rl.DrawText(fmt.ctprintf("%v", t.type), i32(tile_rect.x), i32(tile_rect.y)+20, 25, rl.BLUE)
 				}
 				case LevelTile:{
 					switch t {
@@ -263,7 +264,7 @@ draw :: proc() {
 				// rl.DrawRectangleRec(tile_rect, tile_color)
 			}
 			rl.DrawText(fmt.ctprintf("(%v, %v)", i, j), i32(tile_rect.x), i32(tile_rect.y), 16, rl.BLUE)
-			rl.DrawText(fmt.ctprintf("%v", tile), i32(tile_rect.x), i32(tile_rect.y)+20, 16, rl.BLUE)
+			// rl.DrawText(fmt.ctprintf("%v", tile), i32(tile_rect.x), i32(tile_rect.y)+20, 16, rl.BLUE)
 		}
 
 	}
