@@ -40,7 +40,7 @@ PlantType :: enum {
     LEFT,
     RIGHT,
     O2,
-    WATERMELON,
+    MELON,
     NUT,
 }
 
@@ -134,7 +134,7 @@ update :: proc() {
 								case .LEFT:  {g.player_pos.x -= i8(plant.stage)}
 								case .RIGHT: {g.player_pos.x += i8(plant.stage)}
 								case .O2:    {g.captain.air_need -= i8(plant.stage)}
-								case .WATERMELON: {g.captain.thirst -= i8(plant.stage)}
+								case .MELON: {g.captain.thirst -= i8(plant.stage)}
 								case .NUT: {g.captain.hunger -= i8(plant.stage)}
 								}
 
