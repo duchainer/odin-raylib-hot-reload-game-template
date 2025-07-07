@@ -264,7 +264,6 @@ draw :: proc() {
 
 	}
 	ship_rect := offset_rect_from_index(int(g.player_pos.x), int(g.player_pos.y), LEVEL_TILE_OFFSET)
-	fmt.printfln("ship_rect: %#v", ship_rect)
 	rl.DrawTextureV(Ship_texture, {ship_rect.x, ship_rect.y}, rl.WHITE)
 
 	// rl.BeginMode2D(game_camera())
