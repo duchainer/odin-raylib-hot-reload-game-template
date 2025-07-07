@@ -158,6 +158,17 @@ update :: proc() {
 
 								}
 
+								#partial switch plant.stage{
+									case .STAGE1 : plant.stage = .STAGE2
+									case .STAGE2 : plant.stage = .STAGE3
+									case .STAGE3 : {
+										// Drop a new seed on the ground if it is empty
+										if g.level.tiles[g.player_pos.x][g.player_pos.y] == {} {
+											g.level.tiles[g.player_pos.x][g.player_pos.y] = {plant.type, .SEED}
+										}
+									}
+								}
+
 							}
 
 						}
