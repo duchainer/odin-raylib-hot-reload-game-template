@@ -28,7 +28,7 @@ created.
 package game
 
 import "core:fmt"
-import "core:math"
+// import "core:math"
 import rl "vendor:raylib"
 
 PIXEL_WINDOW_HEIGHT :: 180
@@ -70,7 +70,7 @@ LevelTile :: enum {
 
 
 Game_Memory :: struct {
-	some_number: u16,
+	frame_count: u16,
 	run : bool,
 	next_player_pos: [2]i8,
 	current_level: u8,
@@ -89,14 +89,11 @@ g: ^Game_Memory
 
 watered_plants :  map[int]bool
 
-time: f64
-
 PLANT_BAY_OFFSET  :: [2]f32{10, 10}
 LEVEL_TILE_OFFSET :: [2]f32{400, 10}
 
 update :: proc() {
-	time = rl.GetTime()
-
+	g.frame_count += 1
 	if rl.IsMouseButtonPressed(.LEFT){
 		click_did_something := false 
 		mouse_x := f32(rl.GetMouseX())
@@ -279,10 +276,8 @@ draw :: proc() {
 	// NOTE: `fmt.ctprintf` uses the temp allocator. The temp allocator is
 	// cleared at the end of the frame by the main application, meaning inside
 	// `main_hot_reload.odin`, `main_release.odin` or `main_web_entry.odin`.
-	mouse_x := f32(rl.GetMouseX())
-	mouse_y := f32(rl.GetMouseY())
 
-	rl.DrawText(fmt.ctprintf("time:%v\nmouse_pos:%v, %v\nsome_number: %v\nnext_player_pos: %v", math.mod(time, 2), mouse_x, mouse_y, g.some_number, g.next_player_pos), 5, 400, 8, rl.WHITE)
+	rl.DrawText(fmt.ctprintf("frame_count: %v\nnext_player_pos: %v", g.frame_count, g.next_player_pos), 5, 400, 8, rl.WHITE)
 	rl.DrawText(fmt.ctprintf("captain:%#v", g.captain), 5, 550, 25, rl.WHITE)
 
 	// rl.EndMode2D()
@@ -314,7 +309,7 @@ game_init :: proc() {
 
 	g^ = Game_Memory {
 		run = true,
-		some_number = 100,
+		frame_count = 1,
 		next_player_pos = {0, 0},
 		current_level = 0,
 		// level = {}
