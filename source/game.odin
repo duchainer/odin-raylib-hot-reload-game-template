@@ -101,6 +101,7 @@ update :: proc() {
 	time = rl.GetTime()
 
 	if rl.IsMouseButtonPressed(.LEFT){
+		click_did_something := false 
 		mouse_x := f32(rl.GetMouseX())
 		mouse_y := f32(rl.GetMouseY())
 
@@ -111,6 +112,7 @@ update :: proc() {
 					if rl.CheckCollisionPointRec({mouse_x, mouse_y}, plant_rect){
 						watered_plants[i+j*4] = true
 						previous_player_pos := g.next_player_pos
+						previous_captain := g.captain
 
 						switch plant.type{
 						case .NONE:  {}
@@ -144,11 +146,22 @@ update :: proc() {
 							next_tile := &g.level.tiles[g.next_player_pos.x][g.next_player_pos.y]
 							next_tile^ = prev_tile^
 							prev_tile^ = {}
+							click_did_something = true
+						}
+						if previous_captain != g.captain{
+							click_did_something = true
 						}
 
 					} // else{
 					// 	watered_plants[i+j*4] = false
 					// }
+					if click_did_something{
+						g.captain.air_need += 1
+						g.captain.thirst += 1
+						g.captain.hunger += 1
+					} else{
+						// No action nor turn has happened yet
+					}
 				}
 			}
 		}
