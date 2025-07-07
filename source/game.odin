@@ -101,10 +101,10 @@ update :: proc() {
 		previous_captain := g.captain
 
 
-		for &plant_row, i in g.plant_bay {
-			for &plant, j in plant_row {
-				plant_rect := offset_rect_from_index(i,j, PLANT_BAY_OFFSET)
-				if plant != {} && !watered_plants[i+j*4] {
+		for &plant_row, plant_i in g.plant_bay {
+			for &plant, plant_j in plant_row {
+				plant_rect := offset_rect_from_index(plant_i,plant_j, PLANT_BAY_OFFSET)
+				if !watered_plants[plant_i+plant_j*4] {
 					if rl.CheckCollisionPointRec({mouse_x, mouse_y}, plant_rect){
 
 						previous_player_pos := g.player_pos
@@ -113,6 +113,24 @@ update :: proc() {
 						switch plant.stage{
 						case .NONE: {
 							// TODO plant a seed if you are on top of one on the level
+							switch &t in g.level.tiles[g.player_pos.x][g.player_pos.y]{
+							case Plant:{
+								#partial switch t.stage{
+								case .SEED: {
+									g.plant_bay[plant_i][plant_j] = t
+									t = {}
+								}
+								case :{
+								 //
+								}
+								}
+
+							}
+							case LevelTile:{
+								// No longer exists
+							}
+							}
+
 						}
 						case .SEED: {
 							plant.stage = PlantStage.STAGE1
@@ -161,16 +179,14 @@ update :: proc() {
 							click_did_something = true
 						}
 
-					} // else{
-					// 	watered_plants[i+j*4] = false
-					// }
+					}
 					if click_did_something{
 						// All watered plants get reset, and reusable
 						// TODO LATER, not sure we need a map there, instead of a [2]u8
 						clear_map(&watered_plants)
 
 						// Then, can't use that plant until next turn
-						watered_plants[i+j*4] = true
+						watered_plants[plant_i+plant_j*4] = true
 
 						g.captain.air_need += 1
 						g.captain.thirst += 1
