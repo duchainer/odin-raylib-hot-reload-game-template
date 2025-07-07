@@ -138,19 +138,8 @@ update :: proc() {
 								case .NUT: {g.captain.hunger -= i8(plant.stage)}
 								}
 
-								if  g.player_pos.x > 7 {
-									g.player_pos.x = 0
-								}
-								if  g.player_pos.x < 0 {
-									g.player_pos.x = 7
-								}
-
-								if  g.player_pos.y > 7 {
-									g.player_pos.y = 0
-								}
-								if  g.player_pos.y < 0 {
-									g.player_pos.y = 7
-								}
+								g.player_pos.x = g.player_pos.x %% 8
+								g.player_pos.y %%= 8
 
 								if previous_player_pos != g.player_pos{
 									click_did_something = true
