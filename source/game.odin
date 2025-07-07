@@ -58,10 +58,7 @@ Plant :: struct {
     stage : PlantStage,
 }
 
-Tile :: union {
-	Plant,
-	LevelTile,
-}
+Tile :: Plant
 
 LevelTile :: enum {
 	SHIP,
@@ -94,13 +91,14 @@ LEVEL_TILE_OFFSET :: [2]f32{400, 10}
 
 update :: proc() {
 	g.frame_count += 1
+
+	mouse_x := f32(rl.GetMouseX())
+	mouse_y := f32(rl.GetMouseY())
+	previous_captain := g.captain
+	click_did_something := false
+	my_plant_i, my_plant_j : int
+
 	if rl.IsMouseButtonPressed(.LEFT){
-		click_did_something := false 
-		mouse_x := f32(rl.GetMouseX())
-		mouse_y := f32(rl.GetMouseY())
-		previous_captain := g.captain
-
-
 		for &plant_row, plant_i in g.plant_bay {
 			for &plant, plant_j in plant_row {
 				plant_rect := offset_rect_from_index(plant_i,plant_j, PLANT_BAY_OFFSET)
@@ -113,28 +111,15 @@ update :: proc() {
 						switch plant.stage{
 						case .NONE: {
 							// TODO plant a seed if you are on top of one on the level
-							switch &t in g.level.tiles[g.player_pos.x][g.player_pos.y]{
-							case Plant:{
-								#partial switch t.stage{
-								case .SEED: {
-									g.plant_bay[plant_i][plant_j] = t
-									t = {}
-								}
-								case :{
-								 //
-								}
-								}
-
-							}
-							case LevelTile:{
-								// No longer exists
-							}
-							}
+							t := &g.level.tiles[g.player_pos.x][g.player_pos.y]
+							g.plant_bay[plant_i][plant_j] = t^
+							t^ = {}
 
 						}
 						case .SEED: {
 							plant.stage = PlantStage.STAGE1
 							click_did_something = true
+							my_plant_i, my_plant_j = plant_i, plant_j
 						}
 						case .BLOCKED:{
 							// We don't allow clicking on blocked spaces
@@ -169,6 +154,8 @@ update :: proc() {
 
 								if previous_player_pos != g.player_pos{
 									click_did_something = true
+									my_plant_i, my_plant_j = plant_i, plant_j
+
 								}
 
 							}
@@ -177,34 +164,51 @@ update :: proc() {
 
 						if previous_captain != g.captain{
 							click_did_something = true
+							my_plant_i, my_plant_j = plant_i, plant_j
 						}
 
-					}
-					if click_did_something{
-						// All watered plants get reset, and reusable
-						// TODO LATER, not sure we need a map there, instead of a [2]u8
-						clear_map(&watered_plants)
-
-						// Then, can't use that plant until next turn
-						watered_plants[plant_i+plant_j*4] = true
-
-						g.captain.air_need += 1
-						g.captain.thirst += 1
-						g.captain.hunger += 1
-						fmt.printfln("previous_captain: %v", previous_captain)
-						fmt.printfln("new g.captain: %v", g.captain)
-
-						g.captain.air_need = max(0, g.captain.air_need)
-						g.captain.thirst = max(0, g.captain.thirst)
-						g.captain.hunger = max(0, g.captain.hunger)
-
-						click_did_something = false
-					} else{
-						// No action nor turn has happened yet
 					}
 				}
 			}
 		}
+	} else if  rl.IsMouseButtonPressed(.RIGHT){
+		for &plant_row, plant_i in g.plant_bay {
+			for &plant, plant_j in plant_row {
+				plant_rect := offset_rect_from_index(plant_i,plant_j, PLANT_BAY_OFFSET)
+				if rl.CheckCollisionPointRec({mouse_x, mouse_y}, plant_rect){
+					tile := &g.level.tiles[g.player_pos.x][g.player_pos.y]
+					if tile^ == {} {
+						if plant != {}{
+							// Swap them
+							tile^, g.plant_bay[plant_i][plant_j] = g.plant_bay[plant_i][plant_j], tile^
+						}
+					}
+				}
+			}
+		}
+	}
+
+	if click_did_something{
+		// All watered plants get reset, and reusable
+		// TODO LATER, not sure we need a map there, instead of a [2]u8
+		clear_map(&watered_plants)
+
+		// Then, can't use that plant until next turn
+		watered_plants[my_plant_i+my_plant_j*4] = true
+
+		g.captain.air_need += 1
+		g.captain.thirst += 1
+		g.captain.hunger += 1
+		fmt.printfln("previous_captain: %v", previous_captain)
+		fmt.printfln("new g.captain: %v", g.captain)
+
+		g.captain.air_need = max(0, g.captain.air_need)
+		g.captain.thirst = max(0, g.captain.thirst)
+		g.captain.hunger = max(0, g.captain.hunger)
+
+		click_did_something = false
+	} else{
+		// No action nor turn has happened yet
 	}
 
 
@@ -247,19 +251,10 @@ draw :: proc() {
 			rl.DrawTextureV(basicTile_texture, {tile_rect.x, tile_rect.y}, rl.WHITE)
 
 			if tile != {}{
-				switch t in tile{
-				case Plant:{
-					draw_plant(t, tile_rect)
-					rl.DrawText(fmt.ctprintf("%v", t.type), i32(tile_rect.x), i32(tile_rect.y)+20, 25, rl.BLUE)
-				}
-				case LevelTile:{
-					switch t {
-					case .SHIP:
-					case .EXIT:
-					}
-				}
+				t := tile
+				draw_plant(t, tile_rect)
+				rl.DrawText(fmt.ctprintf("%v", t.type), i32(tile_rect.x), i32(tile_rect.y)+20, 25, rl.BLUE)
 
-				}
 				// tile_color := rl.GREEN //tile_color_from_index(i,j)
 				// rl.DrawRectangleRec(tile_rect, tile_color)
 			}
