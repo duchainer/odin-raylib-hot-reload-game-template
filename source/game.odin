@@ -305,6 +305,12 @@ game_init :: proc() {
 	}
 
 
+	for i in 0..=3{
+		g.plant_bay[2][i] = Plant{PlantType(i+1), .SEED}
+		g.plant_bay[3][i] = Plant{PlantType(i+4), .SEED}
+	}
+
+
 	g.plant_bay[3][2] = Plant{.RIGHT, .STAGE3}
 	g.plant_bay[3][3] = Plant{.RIGHT, .STAGE3}
 
