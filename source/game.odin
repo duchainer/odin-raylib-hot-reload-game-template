@@ -341,10 +341,6 @@ game_init :: proc() {
 		g.plant_bay[3][i] = Plant{PlantType(i+4), .SEED}
 	}
 
-
-	g.plant_bay[3][2] = Plant{.RIGHT, .STAGE3}
-	g.plant_bay[3][3] = Plant{.RIGHT, .STAGE3}
-
 	g.level.tiles[0][0] = LevelTile.SHIP
 
 	game_hot_reloaded(g)
