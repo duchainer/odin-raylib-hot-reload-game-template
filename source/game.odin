@@ -28,19 +28,28 @@ created.
 package game
 
 import "core:fmt"
+import "core:math/rand"
 import "core:math/linalg"
 import rl "vendor:raylib"
 
 PIXEL_WINDOW_HEIGHT :: 180
 
+Rabbit :: struct {
+	using rect: rl.Rectangle,
+	input: f32,
+	last_dir_decision: i32,
+}
+
 Game_Memory :: struct {
 	player_pos: rl.Vector2,
+	rabbits : [1024]Rabbit,
 	player_texture: rl.Texture,
 	frame_time: int,
 	run: bool,
 }
 
 g: ^Game_Memory
+// previous_g: ^Game_Memory
 
 game_camera :: proc() -> rl.Camera2D {
 	w := f32(rl.GetScreenWidth())
@@ -60,14 +69,16 @@ ui_camera :: proc() -> rl.Camera2D {
 }
 
 update :: proc() {
+	delta_time := rl.GetFrameTime()
+
 	input: rl.Vector2
 
-	if rl.IsKeyDown(.UP) || rl.IsKeyDown(.W) {
-		input.y -= 1
-	}
-	if rl.IsKeyDown(.DOWN) || rl.IsKeyDown(.S) {
-		input.y += 1
-	}
+	// if rl.IsKeyDown(.UP) || rl.IsKeyDown(.W) {
+	// 	input.y -= 1
+	// }
+	// if rl.IsKeyDown(.DOWN) || rl.IsKeyDown(.S) {
+	// 	input.y += 1
+	// }
 	if rl.IsKeyDown(.LEFT) || rl.IsKeyDown(.A) {
 		input.x -= 1
 	}
@@ -76,8 +87,28 @@ update :: proc() {
 	}
 
 	input = linalg.normalize0(input)
-	g.player_pos += input * rl.GetFrameTime() * 100
+	player_speed :: 50.0
+	g.player_pos += input * delta_time * player_speed
 	g.frame_time += 1
+
+
+	rabbit_speed :: 1.0
+	for &rabbit, _ in g.rabbits {
+		if rabbit != {}{
+			if rabbit.last_dir_decision > 120{
+				rand_time := rand.uint32() % 90
+				rand_num := rand.uint32() % 3
+				// We have an input between of -1, 0, or  1
+				rabbit.input = f32(rand_num) - 1
+				rabbit.last_dir_decision = i32(rand_time)
+			}
+			rabbit.x += rabbit.input// * rabbit_speed * delta_time
+			rabbit.last_dir_decision += 1
+
+		} else {
+			break
+		}
+	}
 
 	if rl.IsKeyPressed(.LEFT_CONTROL) && rl.IsKeyPressed(.LEFT_SHIFT) && rl.IsKeyPressed(.ESCAPE) {
 		g.run = false
@@ -92,6 +123,15 @@ draw :: proc() {
 	rl.DrawTextureEx(g.player_texture, g.player_pos, 0, 1, rl.WHITE)
 	rl.DrawRectangleV({20, 20}, {10, 10}, rl.RED)
 	rl.DrawRectangleV({-30, -20}, {10, 10}, rl.GREEN)
+
+	for rabbit in g.rabbits {
+		if rabbit != {}{
+			rl.DrawRectangleRec(rabbit, rl.WHITE)
+		} else {
+			break
+		}
+	}
+
 	rl.EndMode2D()
 
 	rl.BeginMode2D(ui_camera())
@@ -174,6 +214,12 @@ game_memory_size :: proc() -> int {
 @(export)
 game_hot_reloaded :: proc(mem: rawptr) {
 	g = (^Game_Memory)(mem)
+
+	g.rabbits[0] = {
+		rect = {100, 10, 10, 10,},
+		input = 1,
+		last_dir_decision = 0,
+	}
 
 	// Here you can also set your own global variables. A good idea is to make
 	// your global variables into pointers that point to something inside `g`.
