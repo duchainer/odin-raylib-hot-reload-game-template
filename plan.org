@@ -1,0 +1,39 @@
+#+title: Plan
+
+Inspired by DanDaDan season 2
+* Main objective
+- Kick rabbits in a hole to appease an active volcano
+- Grow carrots to feed rabbits and trick them near the hole
+* Player actions
+** Move left and right
+** Kick dirt and rabbit right in front
+** Plant carrots, 1 carrot = 2 seeds
+** Harvest grown carrots
+** ?Switch between 2 inventory slots?
+Because without that, you only can have one carrot on you at a time, doing much backtracking no?
+* Rabbit behavior
+** Randomly moves left and right, but never near hole
+** Normally, Jumps over the player when he is near.
+- In an arc over the player
+*** Not when eating though.
+So the player can get near and kick them in the hole
+** When there is a direct line of sight to a carrot (ignoring the player), moves toward the carrot
+So only one rabbit is attracted by one carrot, at a time
+
+* End state
+** The volcano erupts faster and faster
+** You get a screen with your time survived, and count of rabbits pushed
+** You can restart
+
+* Remaining questions
+** Should we have more then one lane for the rabbits and player to walk on?
+Because the player will have to run under the same rabbits for most of the game
+And because we might want more carrot holes to plant
+And because we can then try to trick multiple rabbits in the hole at once, if we want to play a bit more optimized for time.
+** Should we have rabbits get fatter as they eat?
+I think so, that would slow them down, but also have them be worth more when sacrificed
+** Should the rabbits need to be brought in the playing field by carrots in front of background bushes?
+If we want to have a bit more things to manage. That makes the rabbit population being in direct control of the player, as long as the carrots are not eaten by the other rabbits first
+
+** Since we kick, I don't think we want to allow falling in the hole by accident after all.
+Maybe later, if we have time, we could add an interaction to do that. And that would bring the volcano down too, and give you a bit more time, before eruption?
