@@ -40,6 +40,17 @@ Game_Memory :: struct {
 	run: bool,
 }
 
+ANIMATED_SPRITE_ENUM :: enum {
+	CAT,
+}
+
+animated_sprites_img: [ANIMATED_SPRITE_ENUM]rl.Image
+current_frame : i32
+nextFrameDataOffset : i32
+
+current_sprite: rl.Texture2D
+
+
 g: ^Game_Memory
 
 game_camera :: proc() -> rl.Camera2D {
@@ -47,7 +58,7 @@ game_camera :: proc() -> rl.Camera2D {
 	h := f32(rl.GetScreenHeight())
 
 	return {
-		zoom = h/PIXEL_WINDOW_HEIGHT,
+		zoom = h/PIXEL_WINDOW_HEIGHT * zoom,
 		target = g.player_pos,
 		offset = { w/2, h/2 },
 	}
@@ -55,9 +66,11 @@ game_camera :: proc() -> rl.Camera2D {
 
 ui_camera :: proc() -> rl.Camera2D {
 	return {
-		zoom = f32(rl.GetScreenHeight())/PIXEL_WINDOW_HEIGHT,
+		zoom = f32(rl.GetScreenHeight())/PIXEL_WINDOW_HEIGHT * zoom,
 	}
 }
+
+zoom : f32
 
 update :: proc() {
 	input: rl.Vector2
@@ -75,6 +88,13 @@ update :: proc() {
 		input.x += 1
 	}
 
+	if rl.IsKeyDown(.Q) {
+		zoom *= 1.05
+	}
+	if rl.IsKeyDown(.E) {
+		zoom *= 0.95
+	}
+
 	input = linalg.normalize0(input)
 	g.player_pos += input * rl.GetFrameTime() * 100
 	g.some_number += 1
@@ -85,6 +105,16 @@ update :: proc() {
 }
 
 draw :: proc() {
+	// Get memory offset position for next frame data in image.data
+	nextFrameDataOffset = animated_sprites_img[.CAT].width*animated_sprites_img[.CAT].height*4*current_frame
+
+	// Update GPU texture data with next frame image data
+	// WARNING: Data size (frame size) and pixel format must match already created texture
+	rl.UpdateTexture(
+		current_sprite,
+		(^i32) (animated_sprites_img[.CAT].data + nextFrameDataOffset),
+	)
+
 	rl.BeginDrawing()
 	rl.ClearBackground(rl.BLACK)
 
@@ -92,6 +122,7 @@ draw :: proc() {
 	rl.DrawTextureEx(g.player_texture, g.player_pos, 0, 1, rl.WHITE)
 	rl.DrawRectangleV({20, 20}, {10, 10}, rl.RED)
 	rl.DrawRectangleV({-30, -20}, {10, 10}, rl.GREEN)
+	rl.DrawTexture(current_sprite, 0, 0, rl.WHITE)
 	rl.EndMode2D()
 
 	rl.BeginMode2D(ui_camera())
@@ -99,7 +130,7 @@ draw :: proc() {
 	// NOTE: `fmt.ctprintf` uses the temp allocator. The temp allocator is
 	// cleared at the end of the frame by the main application, meaning inside
 	// `main_hot_reload.odin`, `main_release.odin` or `main_web_entry.odin`.
-	rl.DrawText(fmt.ctprintf("some_number: %v\nplayer_pos: %v", g.some_number, g.player_pos), 5, 5, 8, rl.WHITE)
+	rl.DrawText(fmt.ctprintf("some_number: %v\nplayer_pos: %v\ntexture: %#v", g.some_number, g.player_pos, animated_sprites_img[.CAT]), 5, 5, 8, rl.WHITE)
 
 	rl.EndMode2D()
 
@@ -175,6 +206,12 @@ game_memory_size :: proc() -> int {
 @(export)
 game_hot_reloaded :: proc(mem: rawptr) {
 	g = (^Game_Memory)(mem)
+
+	animated_sprites_img[.CAT] = rl.LoadImageAnim("assets/cat.gif", &current_frame)
+
+	current_sprite = rl.LoadTextureFromImage(animated_sprites_img[.CAT])
+
+	zoom = 1
 
 	// Here you can also set your own global variables. A good idea is to make
 	// your global variables into pointers that point to something inside `g`.
