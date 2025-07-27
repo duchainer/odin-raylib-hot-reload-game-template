@@ -28,6 +28,7 @@ created.
 package game
 
 import "core:fmt"
+import "core:math"
 import "core:math/rand"
 import "core:math/linalg"
 import rl "vendor:raylib"
@@ -58,11 +59,19 @@ breakpoint :: proc () {
 
 PIXEL_WINDOW_HEIGHT :: 180
 
+RabbitState :: enum {
+	DEFAULT,
+	JUMPING,
+}
+
 Rabbit :: struct {
 	using rect: rl.Rectangle,
-	input: f32,
+	input: rl.Vector2,
 	last_dir_decision: i32,
+	detection: f32,
+	state: RabbitState,
 }
+
 
 Game_Memory :: struct {
 	player_pos: rl.Vector2,
@@ -111,25 +120,48 @@ update :: proc() {
 	}
 
 	input = linalg.normalize0(input)
-	player_speed :: 50.0
+	player_speed :: 60.0
 	g.player_pos += input * delta_time * player_speed
 	g.frame_time += 1
 
 
-	rabbit_speed :: 1.0
-	for &rabbit, _ in g.rabbits {
+	rabbit_speed :: 30.0
+	rabbit_jump_initial_speed :: 30.0
+	for &rabbit, i in g.rabbits {
 		if rabbit != {}{
-			if rabbit.last_dir_decision > 120{
-				rand_time := rand.uint32() % 90
-				rand_num := rand.uint32() % 3
-				// We have an input between of -1, 0, or  1
-				rabbit.input = f32(rand_num) - 1
-				rabbit.last_dir_decision = i32(rand_time)
+			switch rabbit.state{
+			case .JUMPING :{
+				if rabbit.y + rabbit.height <= 0{
+					rabbit.state = .DEFAULT
+					rabbit.input.y = 0
+				}
+				rabbit.input.y -= 5
 			}
-			rabbit.x += rabbit.input// * rabbit_speed * delta_time
-			rabbit.last_dir_decision += 1
+			case .DEFAULT :{
+				rabbit_center_pos := center_pos(rabbit)
+				delta_pos_to_player := player_center_pos(g.player_pos).x - rabbit_center_pos.x
+				distance_to_player := math.abs(delta_pos_to_player)
+				if distance_to_player < rabbit.detection {
+					// We jump above the player
+					rabbit.input.x = delta_pos_to_player/distance_to_player
+					rabbit.input.y = rabbit_jump_initial_speed
+				}
+				is_rabbit_on_ground := rabbit.x - rabbit.height == 0
+				if is_rabbit_on_ground && rabbit.last_dir_decision > 120{
+					rand_time := rand.uint32() % 90
+					rand_num := rand.uint32() % 3
+					// We have an input between of -1, 0, or  1
+					rabbit.input.x = f32(rand_num) - 1
+					rabbit.input.y = 0
+					rabbit.last_dir_decision = i32(rand_time)
+				}
+				rabbit.last_dir_decision += 1
+				}
+			}
+			rabbit.x += rabbit.input.x * rabbit_speed * delta_time
+			rabbit.y += rabbit.input.y * rabbit_speed * delta_time
 
-		} else {
+		} else if i != 0 {
 			break
 		}
 	}
@@ -148,10 +180,22 @@ draw :: proc() {
 	rl.DrawRectangleV({20, 20}, {10, 10}, rl.RED)
 	rl.DrawRectangleV({-30, -20}, {10, 10}, rl.GREEN)
 
-	for rabbit in g.rabbits {
+	for rabbit, i in g.rabbits {
 		if rabbit != {}{
 			rl.DrawRectangleRec(rabbit, rl.WHITE)
-		} else {
+
+			// DEBUG:  center of rabbit
+			rabbit_center_pos := center_pos(rabbit)
+
+			left_detection := rabbit_center_pos
+			left_detection.x -= rabbit.detection
+
+			right_detection := rabbit_center_pos
+			right_detection.x += rabbit.detection
+
+			rl.DrawRectangleV(left_detection, {2,2}, rl.RED)
+			rl.DrawRectangleV(right_detection, {2,2}, rl.RED)
+		} else if i != 0 {
 			break
 		}
 	}
@@ -237,12 +281,15 @@ game_memory_size :: proc() -> int {
 
 @(export)
 game_hot_reloaded :: proc(mem: rawptr) {
+	breakpoint()
 	g = (^Game_Memory)(mem)
 
-	g.rabbits[0] = {
+	g.rabbits[1] = {
 		rect = {100, 10, 10, 10,},
-		input = 1,
+		input = {1, 0},
 		last_dir_decision = 0,
+		detection = 20,
+		state = .DEFAULT,
 	}
 
 	// Here you can also set your own global variables. A good idea is to make
@@ -263,4 +310,19 @@ game_force_restart :: proc() -> bool {
 // `rl.SetWindowSize` call if you don't want a resizable game.
 game_parent_window_size_changed :: proc(w, h: int) {
 	rl.SetWindowSize(i32(w), i32(h))
+}
+
+
+center_pos :: proc(rect: rl.Rectangle) -> rl.Vector2 {
+	return rl.Vector2{
+		rect.x + rect.width/2,
+		rect.y + rect.height/2,
+	}
+}
+
+player_center_pos :: proc(player_pos: rl.Vector2) -> rl.Vector2{
+	return rl.Vector2{
+		player_pos.x + f32(g.player_texture.width)/2,
+		player_pos.y + f32(g.player_texture.height)/2,
+	}
 }
