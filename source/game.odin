@@ -210,6 +210,8 @@ VOLCANO_BASE_Y :: VOLCANO_TOP_Y + VOLCANO_HEIGHT
 VOLCANO_SIDE_WIDTH :: 500
 VOLCANO_INNER_WIDTH :: 50
 
+LEFT_HOLE_START_X :: -500
+RIGHT_HOLE_START_X :: 200
 
 draw :: proc() {
 	rl.BeginDrawing()
@@ -228,14 +230,11 @@ draw :: proc() {
 
 	rl.BeginMode2D(game_camera())
 
-	LEFT_HOLE_START_X :: -500
-	RIGHT_HOLE_START_X :: 500
-	rl.DrawRectangle(LEFT_HOLE_START_X, 0, 2*RIGHT_HOLE_START_X, 500, rl.DARKBROWN)
+	rl.DrawRectangleGradientV(LEFT_HOLE_START_X, 0, RIGHT_HOLE_START_X-LEFT_HOLE_START_X, 100, rl.BROWN, rl.DARKBROWN)
 	// rl.DrawTextureEx(g.player_rect, pos_from_rect(g.player_rect), 0, 1, rl.WHITE)
 	// rl.DrawTextureEx(g.player_rect, pos_from_rect(g.player_rect), 0, 1, rl.WHITE)
 	rl.DrawRectangleRec(g.player_rect, rl.DARKPURPLE)
 	rl.DrawRectangleV({20, 20}, {10, 10}, rl.RED)
-	rl.DrawRectangleV({-30, -20}, {10, 10}, rl.GREEN)
 
 	for rabbit, i in g.rabbits {
 		if rabbit != {}{
