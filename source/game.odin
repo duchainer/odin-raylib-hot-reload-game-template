@@ -28,6 +28,7 @@ created.
 package game
 
 import "core:fmt"
+import "core:math"
 import "core:math/rand"
 import "core:math/linalg"
 import rl "vendor:raylib"
@@ -58,10 +59,17 @@ breakpoint :: proc () {
 
 PIXEL_WINDOW_HEIGHT :: 180
 
+RabbitState :: enum{
+	DEFAULT,
+	JUMPING,
+}
+
 Rabbit :: struct {
 	using rect: rl.Rectangle,
 	input: f32,
+	speed: rl.Vector2,
 	last_dir_decision: i32,
+	state: RabbitState,
 }
 
 Game_Memory :: struct {
@@ -111,25 +119,53 @@ update :: proc() {
 	}
 
 	input = linalg.normalize0(input)
-	player_speed :: 50.0
+	player_speed :: 60.0
 	g.player_pos += input * delta_time * player_speed
 	g.frame_time += 1
 
 
-	rabbit_speed :: 1.0
-	for &rabbit, _ in g.rabbits {
+	RABBIT_SPEED :: 30.0
+	RABBIT_INITIAL_JUMP_SPEED :: -60.0
+	GRAVITY_ON_RABBIT :: 60.0
+	RABBIT_DETECTION :: 20.0
+	rabbit_loop: for &rabbit, i in g.rabbits {
 		if rabbit != {}{
-			if rabbit.last_dir_decision > 120{
-				rand_time := rand.uint32() % 90
-				rand_num := rand.uint32() % 3
-				// We have an input between of -1, 0, or  1
-				rabbit.input = f32(rand_num) - 1
-				rabbit.last_dir_decision = i32(rand_time)
-			}
-			rabbit.x += rabbit.input// * rabbit_speed * delta_time
-			rabbit.last_dir_decision += 1
+			switch rabbit.state{
+			case .DEFAULT:{
+				player_center_pos := player_center_pos(g.player_pos)
+				rabbit_center_pos := center_pos(rabbit.rect)
 
-		} else {
+				delta_x_player_rabbit := player_center_pos.x - rabbit_center_pos.x
+				distance_player_rabbit := math.abs(delta_x_player_rabbit)
+
+				if distance_player_rabbit <= RABBIT_DETECTION {
+					rabbit.state = .JUMPING
+					rabbit.speed.y = RABBIT_INITIAL_JUMP_SPEED
+					rabbit.input = delta_x_player_rabbit / distance_player_rabbit
+					// continue rabbit_loop
+				}
+
+				if rabbit.last_dir_decision > 120{
+					rand_time := rand.uint32() % 90
+					rand_num := rand.uint32() % 3
+					// We have an input between of -1, 0, or  1
+					rabbit.input =  f32(rand_num) - 1
+					rabbit.last_dir_decision = i32(rand_time)
+				}
+			}
+			case .JUMPING:{
+				rabbit.speed.y += GRAVITY_ON_RABBIT * delta_time
+				if rabbit.y - rabbit.height >= 0{
+					rabbit.speed.y = 0
+					rabbit.state = .DEFAULT
+				}
+			}
+			}
+			rabbit.speed.x = rabbit.input * RABBIT_SPEED
+			rabbit.x += rabbit.speed.x * delta_time
+			rabbit.y += rabbit.speed.y * delta_time
+			rabbit.last_dir_decision += 1
+		} else if i != 0 {
 			break
 		}
 	}
@@ -148,10 +184,11 @@ draw :: proc() {
 	rl.DrawRectangleV({20, 20}, {10, 10}, rl.RED)
 	rl.DrawRectangleV({-30, -20}, {10, 10}, rl.GREEN)
 
-	for rabbit in g.rabbits {
+	for rabbit, i in g.rabbits {
 		if rabbit != {}{
 			rl.DrawRectangleRec(rabbit, rl.WHITE)
-		} else {
+		} else if i != 0 {
+			// We ignore the NULL Rabbit
 			break
 		}
 	}
@@ -164,6 +201,9 @@ draw :: proc() {
 	// cleared at the end of the frame by the main application, meaning inside
 	// `main_hot_reload.odin`, `main_release.odin` or `main_web_entry.odin`.
 	rl.DrawText(fmt.ctprintf("frame_time: %v\nplayer_pos: %v", g.frame_time, g.player_pos), 5, 5, 8, rl.WHITE)
+	if g.rabbits[1] != {} {
+		rl.DrawText(fmt.ctprintf("g.rabbits[1]: %#v", g.rabbits[1]), 200, 5, 8, rl.WHITE)
+	}
 
 	rl.EndMode2D()
 
@@ -239,9 +279,10 @@ game_memory_size :: proc() -> int {
 game_hot_reloaded :: proc(mem: rawptr) {
 	g = (^Game_Memory)(mem)
 
-	g.rabbits[0] = {
+	g.rabbits[1] = {
 		rect = {100, 10, 10, 10,},
 		input = 1,
+		speed = {0, 0},
 		last_dir_decision = 0,
 	}
 
@@ -263,4 +304,18 @@ game_force_restart :: proc() -> bool {
 // `rl.SetWindowSize` call if you don't want a resizable game.
 game_parent_window_size_changed :: proc(w, h: int) {
 	rl.SetWindowSize(i32(w), i32(h))
+}
+
+center_pos :: proc(rect: rl.Rectangle) -> rl.Vector2{
+	return {
+		rect.x + rect.width/2,
+		rect.y + rect.height/2,
+	}
+}
+
+player_center_pos :: proc(player_pos: rl.Vector2) -> rl.Vector2{
+	return {
+		player_pos.x + f32( g.player_texture.width )/2,
+		player_pos.y + f32( g.player_texture.height )/2,
+	}
 }
