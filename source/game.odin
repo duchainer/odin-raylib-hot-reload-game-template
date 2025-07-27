@@ -77,14 +77,14 @@ Carrot :: struct {
 }
 
 Game_Memory :: struct {
+	frame_time: int,
+	run: bool,
 	player_rect : rl.Rectangle,
 	rabbits : [1024]Rabbit,
 	last_rabbit_index: u32,
 	carrots : [1024]Carrot,
 	last_carrot_index: u32,
-	player_texture: rl.Texture,
-	frame_time: int,
-	run: bool,
+	lava_height: f32,
 }
 
 g: ^Game_Memory
@@ -202,12 +202,35 @@ update :: proc() {
 	}
 }
 
+VOLCANO_CENTER_X: f32
+VOLCANO_HEIGHT :: 300
+
+VOLCANO_TOP_Y :: 100
+VOLCANO_BASE_Y :: VOLCANO_TOP_Y + VOLCANO_HEIGHT
+VOLCANO_SIDE_WIDTH :: 500
+VOLCANO_INNER_WIDTH :: 50
+
+
 draw :: proc() {
 	rl.BeginDrawing()
 	rl.ClearBackground(rl.BLACK)
+	VOLCANO_CENTER_X = 1000.0
+
+
+	rl.DrawTriangle({VOLCANO_CENTER_X-30, VOLCANO_BASE_Y},{VOLCANO_CENTER_X, 0},{VOLCANO_CENTER_X+30,VOLCANO_BASE_Y}, rl.BROWN)
+	rl.DrawTriangle({0,0},{0, 30},{30,0}, rl.BROWN)
+
+	VOLCANO_CENTER_X -= g.player_rect.x /10
+	// rl.DrawTriangle({VOLCANO_CENTER_X,0},{VOLCANO_CENTER_X-30, VOLCANO_BASE_Y},{VOLCANO_CENTER_X+30, VOLCANO_BASE_Y}, rl.BROWN)
+	rl.DrawTriangle({VOLCANO_CENTER_X-VOLCANO_INNER_WIDTH,VOLCANO_TOP_Y},{VOLCANO_CENTER_X-VOLCANO_INNER_WIDTH-VOLCANO_SIDE_WIDTH, VOLCANO_BASE_Y},{VOLCANO_CENTER_X-VOLCANO_INNER_WIDTH, VOLCANO_BASE_Y}, rl.BROWN)
+	rl.DrawTriangle({VOLCANO_CENTER_X+VOLCANO_INNER_WIDTH,VOLCANO_TOP_Y},{VOLCANO_CENTER_X+VOLCANO_INNER_WIDTH, VOLCANO_BASE_Y},{VOLCANO_CENTER_X+VOLCANO_INNER_WIDTH+VOLCANO_SIDE_WIDTH, VOLCANO_BASE_Y}, rl.BROWN)
+	rl.DrawRectangleRec({VOLCANO_CENTER_X-VOLCANO_INNER_WIDTH, VOLCANO_BASE_Y-g.lava_height, VOLCANO_INNER_WIDTH*2, g.lava_height}, ( rl.RED/2+rl.ORANGE/2 ) )
 
 	rl.BeginMode2D(game_camera())
-	rl.DrawLine(-2000, 0, 2000, 0, rl.DARKBROWN)
+
+	LEFT_HOLE_START_X :: -500
+	RIGHT_HOLE_START_X :: 500
+	rl.DrawRectangle(LEFT_HOLE_START_X, 0, 2*RIGHT_HOLE_START_X, 500, rl.DARKBROWN)
 	// rl.DrawTextureEx(g.player_rect, pos_from_rect(g.player_rect), 0, 1, rl.WHITE)
 	// rl.DrawTextureEx(g.player_rect, pos_from_rect(g.player_rect), 0, 1, rl.WHITE)
 	rl.DrawRectangleRec(g.player_rect, rl.DARKPURPLE)
@@ -275,7 +298,6 @@ game_init :: proc() {
 
 		// You can put textures, sounds and music in the `assets` folder. Those
 		// files will be part any release or web build.
-		player_texture = rl.LoadTexture("assets/round_cat.png"),
 	}
 
 	game_hot_reloaded(g)
@@ -328,6 +350,9 @@ game_hot_reloaded :: proc(mem: rawptr) {
 
 	g.player_rect = {0, 0, 20, 24}
 	g.player_rect.y = -f32(g.player_rect.height)
+
+
+	g.lava_height = VOLCANO_HEIGHT/4
 
 	// Here you can also set your own global variables. A good idea is to make
 	// your global variables into pointers that point to something inside `g`.
