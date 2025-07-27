@@ -85,6 +85,7 @@ Game_Memory :: struct {
 	carrots : [1024]Carrot,
 	last_carrot_index: u32,
 	lava_height: f32,
+	lava_speed: f32,
 }
 
 g: ^Game_Memory
@@ -141,6 +142,9 @@ update :: proc() {
 	g.player_rect.y += input.y * delta_time * player_speed
 	g.frame_time += 1
 
+
+	g.lava_height += g.lava_speed
+	g.lava_speed *= 1.0001
 
 	RABBIT_SPEED :: 30.0
 	RABBIT_INITIAL_JUMP_SPEED :: -60.0
@@ -352,6 +356,7 @@ game_hot_reloaded :: proc(mem: rawptr) {
 
 
 	g.lava_height = VOLCANO_HEIGHT/4
+	g.lava_speed = 0.5
 
 	// Here you can also set your own global variables. A good idea is to make
 	// your global variables into pointers that point to something inside `g`.
