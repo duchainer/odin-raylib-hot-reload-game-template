@@ -77,7 +77,7 @@ Carrot :: struct {
 }
 
 Game_Memory :: struct {
-	player_pos: rl.Vector2,
+	player_rect : rl.Rectangle,
 	rabbits : [1024]Rabbit,
 	last_rabbit_index: u32,
 	carrots : [1024]Carrot,
@@ -96,7 +96,7 @@ game_camera :: proc() -> rl.Camera2D {
 
 	return {
 		zoom = h/PIXEL_WINDOW_HEIGHT,
-		target = g.player_pos,
+		target = pos_from_rect(g.player_rect),
 		offset = { w/2, h/2 },
 	}
 }
@@ -127,7 +127,7 @@ update :: proc() {
 	}
 	if rl.IsKeyPressed(.SPACE){
 		g.carrots[g.last_carrot_index+1] = Carrot{
-			x = g.player_pos.x + f32( g.player_texture.width ) /2 - CARROT_WIDTH/2,
+			x = g.player_rect.x + f32( g.player_rect.width ) /2 - CARROT_WIDTH/2,
 			y = 0 - CARROT_WIDTH,
 			width = CARROT_WIDTH,
 			height = CARROT_WIDTH,
@@ -137,7 +137,8 @@ update :: proc() {
 
 	input = linalg.normalize0(input)
 	player_speed :: 60.0
-	g.player_pos += input * delta_time * player_speed
+	g.player_rect.x += input.x * delta_time * player_speed
+	g.player_rect.y += input.y * delta_time * player_speed
 	g.frame_time += 1
 
 
@@ -149,7 +150,7 @@ update :: proc() {
 		if rabbit != {}{
 			switch rabbit.state{
 			case .DEFAULT:{
-				player_center_pos := player_center_pos(g.player_pos)
+				player_center_pos := player_center_pos(pos_from_rect(g.player_rect))
 				rabbit_center_pos := center_pos(rabbit.rect)
 
 				delta_x_player_rabbit := player_center_pos.x - rabbit_center_pos.x
@@ -206,8 +207,10 @@ draw :: proc() {
 	rl.ClearBackground(rl.BLACK)
 
 	rl.BeginMode2D(game_camera())
-	rl.DrawTextureEx(g.player_texture, g.player_pos, 0, 1, rl.WHITE)
 	rl.DrawLine(-2000, 0, 2000, 0, rl.DARKBROWN)
+	// rl.DrawTextureEx(g.player_rect, pos_from_rect(g.player_rect), 0, 1, rl.WHITE)
+	// rl.DrawTextureEx(g.player_rect, pos_from_rect(g.player_rect), 0, 1, rl.WHITE)
+	rl.DrawRectangleRec(g.player_rect, rl.DARKPURPLE)
 	rl.DrawRectangleV({20, 20}, {10, 10}, rl.RED)
 	rl.DrawRectangleV({-30, -20}, {10, 10}, rl.GREEN)
 
@@ -235,7 +238,7 @@ draw :: proc() {
 	// NOTE: `fmt.ctprintf` uses the temp allocator. The temp allocator is
 	// cleared at the end of the frame by the main application, meaning inside
 	// `main_hot_reload.odin`, `main_release.odin` or `main_web_entry.odin`.
-	rl.DrawText(fmt.ctprintf("frame_time: %v\nplayer_pos: %v\nlast_carrot_index: %v\nplayer_texture.width, height: %v, %v", g.frame_time, g.player_pos, g.last_carrot_index, g.player_texture.width, g.player_texture.height), 5, 5, 8, rl.WHITE)
+	rl.DrawText(fmt.ctprintf("frame_time: %v\nplayer_rect: %v\nlast_carrot_index: %v\nplayer_texture.width, height: %v, %v", g.frame_time, g.player_rect, g.last_carrot_index, g.player_rect.width, g.player_rect.height), 5, 5, 8, rl.WHITE)
 	if g.rabbits[1] != {} {
 		rl.DrawText(fmt.ctprintf("g.rabbits[1]: %#v", g.rabbits[1]), 200, 5, 8, rl.WHITE)
 	}
@@ -323,7 +326,8 @@ game_hot_reloaded :: proc(mem: rawptr) {
 	g.last_carrot_index = 0
 	g.carrots = {}
 
-	g.player_pos.y = -f32(g.player_texture.height)
+	g.player_rect = {0, 0, 20, 24}
+	g.player_rect.y = -f32(g.player_rect.height)
 
 	// Here you can also set your own global variables. A good idea is to make
 	// your global variables into pointers that point to something inside `g`.
@@ -354,7 +358,11 @@ center_pos :: proc(rect: rl.Rectangle) -> rl.Vector2{
 
 player_center_pos :: proc(player_pos: rl.Vector2) -> rl.Vector2{
 	return {
-		player_pos.x + f32( g.player_texture.width )/2,
-		player_pos.y + f32( g.player_texture.height )/2,
+		player_pos.x + f32( g.player_rect.width )/2,
+		player_pos.y + f32( g.player_rect.height )/2,
 	}
+}
+
+pos_from_rect :: proc(rect: rl.Rectangle) -> rl.Vector2{
+	return {rect.x, rect.y}
 }
