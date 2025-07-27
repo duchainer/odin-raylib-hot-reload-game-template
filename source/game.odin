@@ -62,6 +62,7 @@ PIXEL_WINDOW_HEIGHT :: 180
 RabbitState :: enum{
 	DEFAULT,
 	JUMPING,
+	FALLING,
 }
 
 Rabbit :: struct {
@@ -107,7 +108,7 @@ ui_camera :: proc() -> rl.Camera2D {
 		zoom = f32(rl.GetScreenHeight())/PIXEL_WINDOW_HEIGHT,
 	}
 }
-
+RABBIT_LAVA_WORTH :: 150
 CARROT_WIDTH :: 5.0
 update :: proc() {
 	delta_time := rl.GetFrameTime()
@@ -152,8 +153,13 @@ update :: proc() {
 	RABBIT_DETECTION :: 20.0
 	rabbit_loop: for &rabbit, i in g.rabbits {
 		if rabbit != {}{
+			is_rabbit_over_ground := rabbit.x > LEFT_HOLE_START_X && rabbit.x < RIGHT_HOLE_START_X
 			switch rabbit.state{
 			case .DEFAULT:{
+				if !is_rabbit_over_ground{
+					rabbit.state = .FALLING
+					continue
+				}
 				player_center_pos := player_center_pos(pos_from_rect(g.player_rect))
 				rabbit_center_pos := center_pos(rabbit.rect)
 
@@ -177,10 +183,23 @@ update :: proc() {
 			}
 			case .JUMPING:{
 				rabbit.speed.y += GRAVITY_ON_RABBIT * delta_time
-				is_rabbit_on_ground := rabbit.y + rabbit.height
-				if is_rabbit_on_ground >= 0{
-					rabbit.speed.y = 0
-					rabbit.state = .DEFAULT
+				is_rabbit_at_ground_level := rabbit.y + rabbit.height >= 0
+				if is_rabbit_at_ground_level{
+					if is_rabbit_over_ground && is_rabbit_at_ground_level{
+						rabbit.speed.y = 0
+						rabbit.state = .DEFAULT
+					} else {
+						rabbit.state = .FALLING
+					}
+				}
+			}
+			case .FALLING: {
+				rabbit.speed.y += GRAVITY_ON_RABBIT * delta_time
+				is_rabbit_deep_in_hole := rabbit.y + rabbit.height >= 500
+				if is_rabbit_deep_in_hole {
+					g.lava_height -= RABBIT_LAVA_WORTH
+					rabbit = {}
+					continue
 				}
 			}
 			}
