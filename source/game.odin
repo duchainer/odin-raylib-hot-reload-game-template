@@ -176,7 +176,7 @@ update :: proc() {
 	SHEEP_INITIAL_JUMP_SPEED :: -60.0
 	GRAVITY_ON_SHEEP :: 60.0
 	SHEEP_DETECTION :: 20.0
-	NEAR_HOLE_DISTANCE :: SHEEP_DETECTION * 2
+	NEAR_HOLE_DISTANCE :: SHEEP_DETECTION * 1.5
 
 	// Reverse loop, to allow for unordered remove of sheeps that fell in the hole
 	sheep_loop: for i := g.last_sheep_index;  i>0; i-=1 {
