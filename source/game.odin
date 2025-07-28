@@ -281,7 +281,8 @@ draw :: proc() {
 	rl.DrawRectangleRec(g.player_rect, rl.DARKPURPLE)
 	rl.DrawRectangleV({20, 20}, {10, 10}, rl.RED)
 
-	for rabbit, i in g.rabbits {
+	for i in 0..=g.last_rabbit_index {
+		rabbit := g.rabbits[i]
 		if rabbit != {}{
 			rl.DrawRectangleRec(rabbit, rl.WHITE)
 		} else if i != 0 {
