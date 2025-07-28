@@ -87,6 +87,7 @@ Game_Memory :: struct {
 	last_carrot_index: u32,
 	lava_height: f32,
 	lava_speed: f32,
+	last_rabbit_spawn: f32,
 }
 
 g: ^Game_Memory
@@ -147,11 +148,25 @@ update :: proc() {
 	g.lava_height += g.lava_speed
 	g.lava_speed *= 1.0001
 
+	if g.last_rabbit_spawn > 120 {
+		g.rabbits[g.last_rabbit_index+1] = Rabbit{
+			rect= rl.Rectangle{
+				-5, -20, 10, 10,
+			},
+			state=.JUMPING,
+		}
+		g.last_rabbit_index += 1
+		g.last_rabbit_spawn = 0
+	}
+	g.last_rabbit_spawn += 1
+
 	RABBIT_SPEED :: 30.0
 	RABBIT_INITIAL_JUMP_SPEED :: -60.0
 	GRAVITY_ON_RABBIT :: 60.0
 	RABBIT_DETECTION :: 20.0
-	rabbit_loop: for &rabbit, i in g.rabbits {
+	// Reverse loop, to allow for unordered remove of rabbits that fell in the hole
+	rabbit_loop: for i := g.last_rabbit_index;  i>0; i-=1 {
+		rabbit := &g.rabbits[i]
 		if rabbit != {}{
 			is_rabbit_over_ground := rabbit.x > LEFT_HOLE_START_X && rabbit.x < RIGHT_HOLE_START_X
 			switch rabbit.state{
@@ -198,7 +213,12 @@ update :: proc() {
 				is_rabbit_deep_in_hole := rabbit.y + rabbit.height >= 500
 				if is_rabbit_deep_in_hole {
 					g.lava_height -= RABBIT_LAVA_WORTH
-					rabbit = {}
+					// Unordered remove of rabbit, by replacing by last rabbit of g.rabbits
+					// Yes, if it is already the last rabbit, this line does nothing, but that's alright
+					g.rabbits[i] = g.rabbits[g.last_rabbit_index]
+					// No need to clear the previous last rabbit, because we will write over it when we use that slot
+					// g.rabbits[g.last_rabbit_index] = {}
+					g.last_rabbit_index -= 1
 					continue
 				}
 			}
@@ -207,8 +227,6 @@ update :: proc() {
 			rabbit.x += rabbit.speed.x * delta_time
 			rabbit.y += rabbit.speed.y * delta_time
 			rabbit.last_dir_decision += 1
-		} else if i != 0 {
-			break
 		}
 	}
 
@@ -367,6 +385,8 @@ game_hot_reloaded :: proc(mem: rawptr) {
 		speed = {0, 0},
 		last_dir_decision = 0,
 	}
+	g.last_rabbit_index += 1
+
 	g.last_carrot_index = 0
 	g.carrots = {}
 
