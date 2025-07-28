@@ -210,7 +210,7 @@ update :: proc() {
 			}
 			case .FALLING: {
 				rabbit.speed.y += GRAVITY_ON_RABBIT * delta_time
-				is_rabbit_deep_in_hole := rabbit.y + rabbit.height >= 500
+				is_rabbit_deep_in_hole := rabbit.y + rabbit.height >= 100
 				if is_rabbit_deep_in_hole {
 					g.lava_height -= RABBIT_LAVA_WORTH
 					if g.lava_height < 0{
