@@ -328,11 +328,11 @@ draw :: proc() {
 	rl.BeginMode2D(ui_camera())
 
 	if g.lava_height >= VOLCANO_HEIGHT{
-		rl.DrawRectangle(50-5, 100-5, 270, 75, {100, 100, 100, 230})
+		rl.DrawRectangle(30-5, 100-5, 270, 75, {100, 100, 100, 230})
 		rl.DrawText(fmt.ctprintf(
 "               GAME OVER\nSurvived %v seconds and %v frames\n  Sacrificed %v sheeps to the void\n      Press ENTER to restart",
 			g.frame_time/60, g.frame_time%60, g.count_sheep_sacrificed,
-		), 50, 100, 15, rl.WHITE)
+		), 30, 100, 15, rl.WHITE)
 
 	}
 
