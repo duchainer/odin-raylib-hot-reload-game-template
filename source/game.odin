@@ -60,18 +60,18 @@ breakpoint :: proc () {
 
 PIXEL_WINDOW_HEIGHT :: 180
 
-RabbitState :: enum{
+SheepState :: enum{
 	DEFAULT,
 	JUMPING,
 	FALLING,
 }
 
-Rabbit :: struct {
+Sheep :: struct {
 	using rect: rl.Rectangle,
 	input: f32,
 	speed: rl.Vector2,
 	last_dir_decision: i32,
-	state: RabbitState,
+	state: SheepState,
 }
 
 Carrot :: struct {
@@ -82,14 +82,14 @@ Game_Memory :: struct {
 	frame_time: int,
 	run: bool,
 	player_rect : rl.Rectangle,
-	rabbits : [1024]Rabbit,
-	last_rabbit_index: u32,
+	sheeps : [1024]Sheep,
+	last_sheep_index: u32,
 	carrots : [1024]Carrot,
 	last_carrot_index: u32,
 	lava_height: f32,
 	lava_speed: f32,
-	last_rabbit_spawn: f32,
-	count_rabbit_sacrificed: u32,
+	last_sheep_spawn: f32,
+	count_sheep_sacrificed: u32,
 }
 
 g: ^Game_Memory
@@ -111,7 +111,7 @@ ui_camera :: proc() -> rl.Camera2D {
 		zoom = f32(rl.GetScreenHeight())/PIXEL_WINDOW_HEIGHT,
 	}
 }
-RABBIT_LAVA_WORTH :: 50
+SHEEP_LAVA_WORTH :: 50
 CARROT_WIDTH :: 5.0
 update :: proc() {
 	if rl.IsKeyPressed(.ENTER){
@@ -160,99 +160,99 @@ update :: proc() {
 	g.lava_height += g.lava_speed * (1.1 - percent_lava_on_max)
 	g.lava_speed *= 1.001
 
-	if g.last_rabbit_spawn > 120 {
-		g.rabbits[g.last_rabbit_index+1] = Rabbit{
+	if g.last_sheep_spawn > 120 {
+		g.sheeps[g.last_sheep_index+1] = Sheep{
 			rect= rl.Rectangle{
 				-5, -20, 10, 10,
 			},
 			state=.JUMPING,
 		}
-		g.last_rabbit_index += 1
-		g.last_rabbit_spawn = 0
+		g.last_sheep_index += 1
+		g.last_sheep_spawn = 0
 	}
-	g.last_rabbit_spawn += 1
+	g.last_sheep_spawn += 1
 
-	RABBIT_SPEED :: 30.0
-	RABBIT_INITIAL_JUMP_SPEED :: -60.0
-	GRAVITY_ON_RABBIT :: 60.0
-	RABBIT_DETECTION :: 20.0
-	NEAR_HOLE_DISTANCE :: RABBIT_DETECTION * 2
+	SHEEP_SPEED :: 30.0
+	SHEEP_INITIAL_JUMP_SPEED :: -60.0
+	GRAVITY_ON_SHEEP :: 60.0
+	SHEEP_DETECTION :: 20.0
+	NEAR_HOLE_DISTANCE :: SHEEP_DETECTION * 2
 
-	// Reverse loop, to allow for unordered remove of rabbits that fell in the hole
-	rabbit_loop: for i := g.last_rabbit_index;  i>0; i-=1 {
-		rabbit := &g.rabbits[i]
-		if rabbit != {}{
-			is_rabbit_over_ground := rabbit.x > LEFT_HOLE_START_X && rabbit.x < RIGHT_HOLE_START_X
-			is_rabbit_near_left_hole := rabbit.x < LEFT_HOLE_START_X + NEAR_HOLE_DISTANCE
-			is_rabbit_near_right_hole := rabbit.x > RIGHT_HOLE_START_X - NEAR_HOLE_DISTANCE
-			switch rabbit.state{
+	// Reverse loop, to allow for unordered remove of sheeps that fell in the hole
+	sheep_loop: for i := g.last_sheep_index;  i>0; i-=1 {
+		sheep := &g.sheeps[i]
+		if sheep != {}{
+			is_sheep_over_ground := sheep.x > LEFT_HOLE_START_X && sheep.x < RIGHT_HOLE_START_X
+			is_sheep_near_left_hole := sheep.x < LEFT_HOLE_START_X + NEAR_HOLE_DISTANCE
+			is_sheep_near_right_hole := sheep.x > RIGHT_HOLE_START_X - NEAR_HOLE_DISTANCE
+			switch sheep.state{
 			case .DEFAULT:{
-				if !is_rabbit_over_ground{
-					rabbit.state = .FALLING
+				if !is_sheep_over_ground{
+					sheep.state = .FALLING
 					continue
 				}
 				player_center_pos := player_center_pos(pos_from_rect(g.player_rect))
-				rabbit_center_pos := center_pos(rabbit.rect)
+				sheep_center_pos := center_pos(sheep.rect)
 
-				delta_x_player_rabbit := player_center_pos.x - rabbit_center_pos.x
-				distance_player_rabbit := math.abs(delta_x_player_rabbit)
+				delta_x_player_sheep := player_center_pos.x - sheep_center_pos.x
+				distance_player_sheep := math.abs(delta_x_player_sheep)
 
 
-				if rabbit.last_dir_decision > 120 || is_rabbit_near_left_hole || is_rabbit_near_right_hole{
+				if sheep.last_dir_decision > 120 || is_sheep_near_left_hole || is_sheep_near_right_hole{
 					rand_time := rand.uint32() % 90
 					rand_num := rand.uint32() % 3
 					// We have an input between of -1, 0, or  1
-					rabbit.input =  f32(rand_num) - 1
-					if ( rabbit.input == -1 && is_rabbit_near_left_hole ) || ( rabbit.input == 1 && is_rabbit_near_right_hole ) {
-						rabbit.input = -rabbit.input
+					sheep.input =  f32(rand_num) - 1
+					if ( sheep.input == -1 && is_sheep_near_left_hole ) || ( sheep.input == 1 && is_sheep_near_right_hole ) {
+						sheep.input = -sheep.input
 					}
-					rabbit.last_dir_decision = i32(rand_time)
+					sheep.last_dir_decision = i32(rand_time)
 				}
 
-				if distance_player_rabbit <= RABBIT_DETECTION {
-					rabbit.state = .JUMPING
-					rabbit.speed.y = RABBIT_INITIAL_JUMP_SPEED
-					rabbit.input = delta_x_player_rabbit / distance_player_rabbit
-					// continue rabbit_loop
+				if distance_player_sheep <= SHEEP_DETECTION {
+					sheep.state = .JUMPING
+					sheep.speed.y = SHEEP_INITIAL_JUMP_SPEED
+					sheep.input = delta_x_player_sheep / distance_player_sheep
+					// continue sheep_loop
 				}
 
 			}
 			case .JUMPING:{
-				rabbit.speed.y += GRAVITY_ON_RABBIT * delta_time
-				is_rabbit_at_ground_level := rabbit.y + rabbit.height >= 0
-				if is_rabbit_at_ground_level{
-					if is_rabbit_over_ground && is_rabbit_at_ground_level{
-						rabbit.speed.y = 0
-						rabbit.state = .DEFAULT
+				sheep.speed.y += GRAVITY_ON_SHEEP * delta_time
+				is_sheep_at_ground_level := sheep.y + sheep.height >= 0
+				if is_sheep_at_ground_level{
+					if is_sheep_over_ground && is_sheep_at_ground_level{
+						sheep.speed.y = 0
+						sheep.state = .DEFAULT
 					} else {
-						rabbit.state = .FALLING
+						sheep.state = .FALLING
 					}
 				}
 			}
 			case .FALLING: {
-				rabbit.speed.y += GRAVITY_ON_RABBIT * delta_time
-				is_rabbit_deep_in_hole := rabbit.y + rabbit.height >= 100
-				if is_rabbit_deep_in_hole {
-					g.lava_height -= RABBIT_LAVA_WORTH
+				sheep.speed.y += GRAVITY_ON_SHEEP * delta_time
+				is_sheep_deep_in_hole := sheep.y + sheep.height >= 100
+				if is_sheep_deep_in_hole {
+					g.lava_height -= SHEEP_LAVA_WORTH
 					if g.lava_height < 0{
 						g.lava_height = 1
 					}
 
-					// Unordered remove of rabbit, by replacing by last rabbit of g.rabbits
-					// Yes, if it is already the last rabbit, this line does nothing, but that's alright
-					g.rabbits[i] = g.rabbits[g.last_rabbit_index]
-					// No need to clear the previous last rabbit, because we will write over it when we use that slot
-					// g.rabbits[g.last_rabbit_index] = {}
-					g.last_rabbit_index -= 1
-					g.count_rabbit_sacrificed += 1
+					// Unordered remove of sheep, by replacing by last sheep of g.sheeps
+					// Yes, if it is already the last sheep, this line does nothing, but that's alright
+					g.sheeps[i] = g.sheeps[g.last_sheep_index]
+					// No need to clear the previous last sheep, because we will write over it when we use that slot
+					// g.sheeps[g.last_sheep_index] = {}
+					g.last_sheep_index -= 1
+					g.count_sheep_sacrificed += 1
 					continue
 				}
 			}
 			}
-			rabbit.speed.x = rabbit.input * RABBIT_SPEED
-			rabbit.x += rabbit.speed.x * delta_time
-			rabbit.y += rabbit.speed.y * delta_time
-			rabbit.last_dir_decision += 1
+			sheep.speed.x = sheep.input * SHEEP_SPEED
+			sheep.x += sheep.speed.x * delta_time
+			sheep.y += sheep.speed.y * delta_time
+			sheep.last_dir_decision += 1
 		}
 	}
 
@@ -302,12 +302,12 @@ draw :: proc() {
 	rl.DrawRectangleRec(g.player_rect, rl.DARKPURPLE)
 	// rl.DrawRectangleV({20, 20}, {10, 10}, rl.RED)
 
-	for i in 0..=g.last_rabbit_index {
-		rabbit := g.rabbits[i]
-		if rabbit != {}{
-			rl.DrawRectangleRec(rabbit, rl.WHITE)
+	for i in 0..=g.last_sheep_index {
+		sheep := g.sheeps[i]
+		if sheep != {}{
+			rl.DrawRectangleRec(sheep, rl.WHITE)
 		} else if i != 0 {
-			// We ignore the NULL Rabbit
+			// We ignore the NULL Sheep
 			break
 		}
 	}
@@ -327,8 +327,8 @@ draw :: proc() {
 	if g.lava_height >= VOLCANO_HEIGHT{
 		rl.DrawRectangle(50-5, 100-5, 270, 75, {100, 100, 100, 230})
 		rl.DrawText(fmt.ctprintf(
-"               GAME OVER\nSurvived %v seconds and %v frames\n  Sacrificed %v rabbits to the void\n      Press ENTER to restart",
-			g.frame_time/60, g.frame_time%60, g.count_rabbit_sacrificed,
+"               GAME OVER\nSurvived %v seconds and %v frames\n  Sacrificed %v sheeps to the void\n      Press ENTER to restart",
+			g.frame_time/60, g.frame_time%60, g.count_sheep_sacrificed,
 		), 50, 100, 15, rl.WHITE)
 
 	}
@@ -338,8 +338,8 @@ draw :: proc() {
 	// `main_hot_reload.odin`, `main_release.odin` or `main_web_entry.odin`.
 	// rl.DrawText(fmt.ctprintf("%v", g.lava_height), 5, 5, 8, rl.WHITE)
 	// rl.DrawText(fmt.ctprintf("frame_time: %v\nplayer_rect: %v\nlast_carrot_index: %v\nplayer_texture.width, height: %v, %v", g.frame_time, g.player_rect, g.last_carrot_index, g.player_rect.width, g.player_rect.height), 5, 5, 8, rl.WHITE)
-	// if g.rabbits[1] != {} {
-	// 	rl.DrawText(fmt.ctprintf("g.rabbits[1]: %#v", g.rabbits[1]), 200, 5, 8, rl.WHITE)
+	// if g.sheeps[1] != {} {
+	// 	rl.DrawText(fmt.ctprintf("g.sheeps[1]: %#v", g.sheeps[1]), 200, 5, 8, rl.WHITE)
 	// }
 
 	rl.EndMode2D()
@@ -415,21 +415,21 @@ game_memory_size :: proc() -> int {
 game_hot_reloaded :: proc(mem: rawptr) {
 	g = (^Game_Memory)(mem)
 
-	g.rabbits[1] = {
+	g.sheeps[1] = {
 		rect = {200, -10, 10, 10,},
 		input = 1,
 		speed = {0, 0},
 		last_dir_decision = 0,
 	}
-	g.last_rabbit_index += 1
+	g.last_sheep_index += 1
 
-	g.rabbits[2] = {
+	g.sheeps[2] = {
 		rect = {-200, -10, 10, 10,},
 		input = -1,
 		speed = {0, 0},
 		last_dir_decision = 0,
 	}
-	g.last_rabbit_index += 1
+	g.last_sheep_index += 1
 
 	g.last_carrot_index = 0
 	g.carrots = {}
