@@ -151,6 +151,8 @@ update :: proc() {
 	player_speed :: 60.0
 	g.player_rect.x += input.x * delta_time * player_speed
 	g.player_rect.y += input.y * delta_time * player_speed
+	g.player_rect.x = max(g.player_rect.x, LEFT_HOLE_START_X)
+	g.player_rect.x = min(g.player_rect.x, RIGHT_HOLE_START_X-g.player_rect.width)
 	g.frame_time += 1
 
 
