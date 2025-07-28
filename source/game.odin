@@ -172,7 +172,7 @@ update :: proc() {
 	}
 	g.last_sheep_spawn += 1
 
-	SHEEP_SPEED :: 30.0
+	SHEEP_SPEED :: 35.0
 	SHEEP_INITIAL_JUMP_SPEED :: -60.0
 	GRAVITY_ON_SHEEP :: 60.0
 	SHEEP_DETECTION :: 20.0
