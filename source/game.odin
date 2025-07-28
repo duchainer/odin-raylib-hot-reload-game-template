@@ -89,6 +89,7 @@ Game_Memory :: struct {
 	lava_height: f32,
 	lava_speed: f32,
 	last_rabbit_spawn: f32,
+	count_rabbit_sacrificed: u32,
 }
 
 g: ^Game_Memory
@@ -113,6 +114,13 @@ ui_camera :: proc() -> rl.Camera2D {
 RABBIT_LAVA_WORTH :: 150
 CARROT_WIDTH :: 5.0
 update :: proc() {
+	if rl.IsKeyPressed(.ENTER){
+		game_init()
+	}
+
+	if g.lava_height >= VOLCANO_HEIGHT{
+		return
+	}
 	delta_time := rl.GetFrameTime()
 
 	input: rl.Vector2
@@ -224,6 +232,7 @@ update :: proc() {
 					// No need to clear the previous last rabbit, because we will write over it when we use that slot
 					// g.rabbits[g.last_rabbit_index] = {}
 					g.last_rabbit_index -= 1
+					g.count_rabbit_sacrificed += 1
 					continue
 				}
 			}
@@ -303,9 +312,19 @@ draw :: proc() {
 
 	rl.BeginMode2D(ui_camera())
 
+	if g.lava_height >= VOLCANO_HEIGHT{
+		rl.DrawRectangle(50-5, 100-5, 270, 75, {100, 100, 100, 230})
+		rl.DrawText(fmt.ctprintf(
+"               GAME OVER\nSurvived %v seconds and %v frames\n  Sacrificed %v rabbits to the void\n      Press ENTER to restart",
+			g.frame_time/60, g.frame_time%60, g.count_rabbit_sacrificed,
+		), 50, 100, 15, rl.WHITE)
+
+	}
+
 	// NOTE: `fmt.ctprintf` uses the temp allocator. The temp allocator is
 	// cleared at the end of the frame by the main application, meaning inside
 	// `main_hot_reload.odin`, `main_release.odin` or `main_web_entry.odin`.
+	// rl.DrawText(fmt.ctprintf("%v", g.lava_height), 5, 5, 8, rl.WHITE)
 	// rl.DrawText(fmt.ctprintf("frame_time: %v\nplayer_rect: %v\nlast_carrot_index: %v\nplayer_texture.width, height: %v, %v", g.frame_time, g.player_rect, g.last_carrot_index, g.player_rect.width, g.player_rect.height), 5, 5, 8, rl.WHITE)
 	// if g.rabbits[1] != {} {
 	// 	rl.DrawText(fmt.ctprintf("g.rabbits[1]: %#v", g.rabbits[1]), 200, 5, 8, rl.WHITE)
