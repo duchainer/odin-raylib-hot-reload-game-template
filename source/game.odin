@@ -175,11 +175,15 @@ update :: proc() {
 	RABBIT_INITIAL_JUMP_SPEED :: -60.0
 	GRAVITY_ON_RABBIT :: 60.0
 	RABBIT_DETECTION :: 20.0
+	NEAR_HOLE_DISTANCE :: RABBIT_DETECTION * 2
+
 	// Reverse loop, to allow for unordered remove of rabbits that fell in the hole
 	rabbit_loop: for i := g.last_rabbit_index;  i>0; i-=1 {
 		rabbit := &g.rabbits[i]
 		if rabbit != {}{
 			is_rabbit_over_ground := rabbit.x > LEFT_HOLE_START_X && rabbit.x < RIGHT_HOLE_START_X
+			is_rabbit_near_left_hole := rabbit.x < LEFT_HOLE_START_X + NEAR_HOLE_DISTANCE
+			is_rabbit_near_right_hole := rabbit.x > RIGHT_HOLE_START_X - NEAR_HOLE_DISTANCE
 			switch rabbit.state{
 			case .DEFAULT:{
 				if !is_rabbit_over_ground{
@@ -192,6 +196,18 @@ update :: proc() {
 				delta_x_player_rabbit := player_center_pos.x - rabbit_center_pos.x
 				distance_player_rabbit := math.abs(delta_x_player_rabbit)
 
+
+				if rabbit.last_dir_decision > 120 || is_rabbit_near_left_hole || is_rabbit_near_right_hole{
+					rand_time := rand.uint32() % 90
+					rand_num := rand.uint32() % 3
+					// We have an input between of -1, 0, or  1
+					rabbit.input =  f32(rand_num) - 1
+					if ( rabbit.input == -1 && is_rabbit_near_left_hole ) || ( rabbit.input == 1 && is_rabbit_near_right_hole ) {
+						rabbit.input = -rabbit.input
+					}
+					rabbit.last_dir_decision = i32(rand_time)
+				}
+
 				if distance_player_rabbit <= RABBIT_DETECTION {
 					rabbit.state = .JUMPING
 					rabbit.speed.y = RABBIT_INITIAL_JUMP_SPEED
@@ -199,13 +215,6 @@ update :: proc() {
 					// continue rabbit_loop
 				}
 
-				if rabbit.last_dir_decision > 120{
-					rand_time := rand.uint32() % 90
-					rand_num := rand.uint32() % 3
-					// We have an input between of -1, 0, or  1
-					rabbit.input =  f32(rand_num) - 1
-					rabbit.last_dir_decision = i32(rand_time)
-				}
 			}
 			case .JUMPING:{
 				rabbit.speed.y += GRAVITY_ON_RABBIT * delta_time
