@@ -156,7 +156,8 @@ update :: proc() {
 	g.frame_time += 1
 
 
-	g.lava_height += g.lava_speed
+	percent_lava_on_max := g.lava_height / VOLCANO_HEIGHT
+	g.lava_height += g.lava_speed * (1.1 - percent_lava_on_max)
 	g.lava_speed *= 1.001
 
 	if g.last_rabbit_spawn > 120 {
