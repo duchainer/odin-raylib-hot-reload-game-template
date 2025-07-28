@@ -147,7 +147,7 @@ update :: proc() {
 
 
 	g.lava_height += g.lava_speed
-	g.lava_speed *= 1.0001
+	g.lava_speed *= 1.001
 
 	if g.last_rabbit_spawn > 120 {
 		g.rabbits[g.last_rabbit_index+1] = Rabbit{
