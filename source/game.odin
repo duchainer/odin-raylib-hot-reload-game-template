@@ -111,7 +111,7 @@ ui_camera :: proc() -> rl.Camera2D {
 		zoom = f32(rl.GetScreenHeight())/PIXEL_WINDOW_HEIGHT,
 	}
 }
-SHEEP_LAVA_WORTH :: 50
+SHEEP_LAVA_WORTH :: 75
 CARROT_WIDTH :: 5.0
 update :: proc() {
 	if rl.IsKeyPressed(.ENTER){
@@ -437,7 +437,7 @@ game_hot_reloaded :: proc(mem: rawptr) {
 	g.player_rect = {230, 0, 10, 15}
 	g.player_rect.y = -f32(g.player_rect.height)
 
-	g.lava_height = VOLCANO_HEIGHT/4
+	g.lava_height = VOLCANO_HEIGHT/3.5
 	g.lava_speed = 0.25
 
 	// Here you can also set your own global variables. A good idea is to make
