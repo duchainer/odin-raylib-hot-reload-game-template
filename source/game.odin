@@ -431,6 +431,14 @@ game_hot_reloaded :: proc(mem: rawptr) {
 	}
 	g.last_sheep_index += 1
 
+	g.sheeps[3] = {
+		rect = {-150, -10, 10, 10,},
+		input = -1,
+		speed = {0, 0},
+		last_dir_decision = 0,
+	}
+	g.last_sheep_index += 1
+
 	g.last_carrot_index = 0
 	g.carrots = {}
 
