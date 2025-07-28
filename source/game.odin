@@ -385,7 +385,7 @@ game_hot_reloaded :: proc(mem: rawptr) {
 	g = (^Game_Memory)(mem)
 
 	g.rabbits[1] = {
-		rect = {100, -10, 10, 10,},
+		rect = {150, -10, 10, 10,},
 		input = 1,
 		speed = {0, 0},
 		last_dir_decision = 0,
@@ -395,12 +395,11 @@ game_hot_reloaded :: proc(mem: rawptr) {
 	g.last_carrot_index = 0
 	g.carrots = {}
 
-	g.player_rect = {0, 0, 20, 24}
+	g.player_rect = {210, 0, 20, 24}
 	g.player_rect.y = -f32(g.player_rect.height)
 
-
-	g.lava_height = VOLCANO_HEIGHT/4
-	g.lava_speed = 0.5
+	g.lava_height = VOLCANO_HEIGHT/2
+	g.lava_speed = 0.25
 
 	// Here you can also set your own global variables. A good idea is to make
 	// your global variables into pointers that point to something inside `g`.
