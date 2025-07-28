@@ -100,9 +100,9 @@ game_camera :: proc() -> rl.Camera2D {
 	h := f32(rl.GetScreenHeight())
 
 	return {
-		zoom = h/PIXEL_WINDOW_HEIGHT,
-		target = pos_from_rect(g.player_rect),
-		offset = { w/2, h/2 },
+		zoom = h/PIXEL_WINDOW_HEIGHT/2.5,
+		// target = pos_from_rect(g.player_rect),
+		offset = { w/2 , h/2 +200 },
 	}
 }
 
@@ -271,7 +271,7 @@ update :: proc() {
 volcano_center_x : f32
 VOLCANO_HEIGHT :: 300
 
-VOLCANO_TOP_Y :: 100
+VOLCANO_TOP_Y :: 50
 VOLCANO_BASE_Y :: VOLCANO_TOP_Y + VOLCANO_HEIGHT
 VOLCANO_SIDE_WIDTH :: 500
 VOLCANO_INNER_WIDTH :: 50
@@ -284,7 +284,7 @@ draw :: proc() {
 	rl.ClearBackground(rl.BLACK)
 
 	volcano_center_x = 965.0
-	volcano_center_x -= g.player_rect.x /10
+	// volcano_center_x -= g.player_rect.x /10
 
 	rl.DrawTriangle({volcano_center_x-30, VOLCANO_BASE_Y},{volcano_center_x, 0},{volcano_center_x+30,VOLCANO_BASE_Y}, rl.BROWN)
 
