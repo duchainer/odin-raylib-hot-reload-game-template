@@ -111,7 +111,7 @@ ui_camera :: proc() -> rl.Camera2D {
 		zoom = f32(rl.GetScreenHeight())/PIXEL_WINDOW_HEIGHT,
 	}
 }
-RABBIT_LAVA_WORTH :: 150
+RABBIT_LAVA_WORTH :: 50
 CARROT_WIDTH :: 5.0
 update :: proc() {
 	if rl.IsKeyPressed(.ENTER){
