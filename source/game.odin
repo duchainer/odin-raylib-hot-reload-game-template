@@ -306,6 +306,7 @@ draw :: proc() {
 		sheep := g.sheeps[i]
 		if sheep != {}{
 			rl.DrawRectangleRec(sheep, rl.WHITE)
+			rl.DrawRectangleLinesEx(sheep, 1, {210,210,210,255})
 		} else if i != 0 {
 			// We ignore the NULL Sheep
 			break
