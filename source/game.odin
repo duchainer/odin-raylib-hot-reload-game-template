@@ -425,7 +425,7 @@ game_hot_reloaded :: proc(mem: rawptr) {
 	g.last_carrot_index = 0
 	g.carrots = {}
 
-	g.player_rect = {210, 0, 10, 15}
+	g.player_rect = {230, 0, 10, 15}
 	g.player_rect.y = -f32(g.player_rect.height)
 
 	g.lava_height = VOLCANO_HEIGHT/4
