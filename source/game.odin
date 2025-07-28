@@ -129,15 +129,15 @@ update :: proc() {
 	if rl.IsKeyDown(.RIGHT) || rl.IsKeyDown(.D) {
 		input.x += 1
 	}
-	if rl.IsKeyPressed(.SPACE){
-		g.carrots[g.last_carrot_index+1] = Carrot{
-			x = g.player_rect.x + f32( g.player_rect.width ) /2 - CARROT_WIDTH/2,
-			y = 0 - CARROT_WIDTH,
-			width = CARROT_WIDTH,
-			height = CARROT_WIDTH,
-		}
-		g.last_carrot_index += 1
-	}
+	// if rl.IsKeyPressed(.SPACE){
+	// 	g.carrots[g.last_carrot_index+1] = Carrot{
+	// 		x = g.player_rect.x + f32( g.player_rect.width ) /2 - CARROT_WIDTH/2,
+	// 		y = 0 - CARROT_WIDTH,
+	// 		width = CARROT_WIDTH,
+	// 		height = CARROT_WIDTH,
+	// 	}
+	// 	g.last_carrot_index += 1
+	// }
 
 	input = linalg.normalize0(input)
 	player_speed :: 60.0
