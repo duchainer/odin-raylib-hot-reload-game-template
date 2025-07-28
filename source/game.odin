@@ -214,6 +214,8 @@ update :: proc() {
 					sheep.speed.y = SHEEP_INITIAL_JUMP_SPEED
 					sheep.input = delta_x_player_sheep / distance_player_sheep
 					// continue sheep_loop
+				} else{
+					sheep.y = -sheep.height
 				}
 
 			}
