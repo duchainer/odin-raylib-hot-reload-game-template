@@ -284,7 +284,7 @@ draw :: proc() {
 	rl.BeginDrawing()
 	rl.ClearBackground(rl.BLACK)
 
-	volcano_center_x = 965.0
+	volcano_center_x = f32(rl.GetScreenWidth())/2
 	// volcano_center_x -= g.player_rect.x /10
 
 	rl.DrawTriangle({volcano_center_x-30, VOLCANO_BASE_Y},{volcano_center_x, 0},{volcano_center_x+30,VOLCANO_BASE_Y}, rl.BROWN)
@@ -359,7 +359,7 @@ game_update :: proc() {
 @(export)
 game_init_window :: proc() {
 	rl.SetConfigFlags({.WINDOW_RESIZABLE, .VSYNC_HINT})
-	rl.InitWindow(1250, 900, "Odin + Raylib + Hot Reload template!")
+	rl.InitWindow(1500, 900, "Odin + Raylib + Hot Reload template!")
 	rl.SetWindowPosition(200, 200)
 	rl.SetTargetFPS(30)
 	rl.SetExitKey(nil)
