@@ -213,6 +213,10 @@ update :: proc() {
 				is_rabbit_deep_in_hole := rabbit.y + rabbit.height >= 500
 				if is_rabbit_deep_in_hole {
 					g.lava_height -= RABBIT_LAVA_WORTH
+					if g.lava_height < 0{
+						g.lava_height = 1
+					}
+
 					// Unordered remove of rabbit, by replacing by last rabbit of g.rabbits
 					// Yes, if it is already the last rabbit, this line does nothing, but that's alright
 					g.rabbits[i] = g.rabbits[g.last_rabbit_index]
