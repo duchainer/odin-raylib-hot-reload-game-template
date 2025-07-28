@@ -28,6 +28,7 @@ created.
 package game
 
 import "core:fmt"
+_ :: fmt
 import "core:math"
 import "core:math/rand"
 import "core:math/linalg"
@@ -279,7 +280,7 @@ draw :: proc() {
 	// rl.DrawTextureEx(g.player_rect, pos_from_rect(g.player_rect), 0, 1, rl.WHITE)
 	// rl.DrawTextureEx(g.player_rect, pos_from_rect(g.player_rect), 0, 1, rl.WHITE)
 	rl.DrawRectangleRec(g.player_rect, rl.DARKPURPLE)
-	rl.DrawRectangleV({20, 20}, {10, 10}, rl.RED)
+	// rl.DrawRectangleV({20, 20}, {10, 10}, rl.RED)
 
 	for i in 0..=g.last_rabbit_index {
 		rabbit := g.rabbits[i]
@@ -306,10 +307,10 @@ draw :: proc() {
 	// NOTE: `fmt.ctprintf` uses the temp allocator. The temp allocator is
 	// cleared at the end of the frame by the main application, meaning inside
 	// `main_hot_reload.odin`, `main_release.odin` or `main_web_entry.odin`.
-	rl.DrawText(fmt.ctprintf("frame_time: %v\nplayer_rect: %v\nlast_carrot_index: %v\nplayer_texture.width, height: %v, %v", g.frame_time, g.player_rect, g.last_carrot_index, g.player_rect.width, g.player_rect.height), 5, 5, 8, rl.WHITE)
-	if g.rabbits[1] != {} {
-		rl.DrawText(fmt.ctprintf("g.rabbits[1]: %#v", g.rabbits[1]), 200, 5, 8, rl.WHITE)
-	}
+	// rl.DrawText(fmt.ctprintf("frame_time: %v\nplayer_rect: %v\nlast_carrot_index: %v\nplayer_texture.width, height: %v, %v", g.frame_time, g.player_rect, g.last_carrot_index, g.player_rect.width, g.player_rect.height), 5, 5, 8, rl.WHITE)
+	// if g.rabbits[1] != {} {
+	// 	rl.DrawText(fmt.ctprintf("g.rabbits[1]: %#v", g.rabbits[1]), 200, 5, 8, rl.WHITE)
+	// }
 
 	rl.EndMode2D()
 
