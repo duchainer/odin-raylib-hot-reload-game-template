@@ -248,7 +248,7 @@ update :: proc() {
 	}
 }
 
-VOLCANO_CENTER_X: f32
+volcano_center_x : f32
 VOLCANO_HEIGHT :: 300
 
 VOLCANO_TOP_Y :: 100
@@ -256,23 +256,22 @@ VOLCANO_BASE_Y :: VOLCANO_TOP_Y + VOLCANO_HEIGHT
 VOLCANO_SIDE_WIDTH :: 500
 VOLCANO_INNER_WIDTH :: 50
 
-LEFT_HOLE_START_X :: -500
-RIGHT_HOLE_START_X :: 200
+LEFT_HOLE_START_X :: -250
+RIGHT_HOLE_START_X :: 250
 
 draw :: proc() {
 	rl.BeginDrawing()
 	rl.ClearBackground(rl.BLACK)
-	VOLCANO_CENTER_X = 1000.0
 
+	volcano_center_x = 965.0
+	volcano_center_x -= g.player_rect.x /10
 
-	rl.DrawTriangle({VOLCANO_CENTER_X-30, VOLCANO_BASE_Y},{VOLCANO_CENTER_X, 0},{VOLCANO_CENTER_X+30,VOLCANO_BASE_Y}, rl.BROWN)
-	rl.DrawTriangle({0,0},{0, 30},{30,0}, rl.BROWN)
+	rl.DrawTriangle({volcano_center_x-30, VOLCANO_BASE_Y},{volcano_center_x, 0},{volcano_center_x+30,VOLCANO_BASE_Y}, rl.BROWN)
 
-	VOLCANO_CENTER_X -= g.player_rect.x /10
-	// rl.DrawTriangle({VOLCANO_CENTER_X,0},{VOLCANO_CENTER_X-30, VOLCANO_BASE_Y},{VOLCANO_CENTER_X+30, VOLCANO_BASE_Y}, rl.BROWN)
-	rl.DrawTriangle({VOLCANO_CENTER_X-VOLCANO_INNER_WIDTH,VOLCANO_TOP_Y},{VOLCANO_CENTER_X-VOLCANO_INNER_WIDTH-VOLCANO_SIDE_WIDTH, VOLCANO_BASE_Y},{VOLCANO_CENTER_X-VOLCANO_INNER_WIDTH, VOLCANO_BASE_Y}, rl.BROWN)
-	rl.DrawTriangle({VOLCANO_CENTER_X+VOLCANO_INNER_WIDTH,VOLCANO_TOP_Y},{VOLCANO_CENTER_X+VOLCANO_INNER_WIDTH, VOLCANO_BASE_Y},{VOLCANO_CENTER_X+VOLCANO_INNER_WIDTH+VOLCANO_SIDE_WIDTH, VOLCANO_BASE_Y}, rl.BROWN)
-	rl.DrawRectangleRec({VOLCANO_CENTER_X-VOLCANO_INNER_WIDTH, VOLCANO_BASE_Y-g.lava_height, VOLCANO_INNER_WIDTH*2, g.lava_height}, ( rl.RED/2+rl.ORANGE/2 ) )
+	// rl.DrawTriangle({volcano_center_x,0},{volcano_center_x-30, VOLCANO_BASE_Y},{volcano_center_x+30, VOLCANO_BASE_Y}, rl.BROWN)
+	rl.DrawTriangle({volcano_center_x-VOLCANO_INNER_WIDTH,VOLCANO_TOP_Y},{volcano_center_x-VOLCANO_INNER_WIDTH-VOLCANO_SIDE_WIDTH, VOLCANO_BASE_Y},{volcano_center_x-VOLCANO_INNER_WIDTH, VOLCANO_BASE_Y}, rl.BROWN)
+	rl.DrawTriangle({volcano_center_x+VOLCANO_INNER_WIDTH,VOLCANO_TOP_Y},{volcano_center_x+VOLCANO_INNER_WIDTH, VOLCANO_BASE_Y},{volcano_center_x+VOLCANO_INNER_WIDTH+VOLCANO_SIDE_WIDTH, VOLCANO_BASE_Y}, rl.BROWN)
+	rl.DrawRectangleRec({volcano_center_x-VOLCANO_INNER_WIDTH, VOLCANO_BASE_Y-g.lava_height, VOLCANO_INNER_WIDTH*2, g.lava_height}, ( rl.RED/2+rl.ORANGE/2 ) )
 
 	rl.BeginMode2D(game_camera())
 
