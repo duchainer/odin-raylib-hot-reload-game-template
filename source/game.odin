@@ -182,7 +182,7 @@ update :: proc() {
 	sheep_loop: for i := g.last_sheep_index;  i>0; i-=1 {
 		sheep := &g.sheeps[i]
 		if sheep != {}{
-			is_sheep_over_ground := sheep.x > LEFT_HOLE_START_X && sheep.x < RIGHT_HOLE_START_X
+			is_sheep_over_ground := sheep.x + sheep.width > LEFT_HOLE_START_X && sheep.x < RIGHT_HOLE_START_X
 			is_sheep_near_left_hole := sheep.x < LEFT_HOLE_START_X + NEAR_HOLE_DISTANCE
 			is_sheep_near_right_hole := sheep.x > RIGHT_HOLE_START_X - NEAR_HOLE_DISTANCE
 			switch sheep.state{
