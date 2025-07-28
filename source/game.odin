@@ -428,7 +428,7 @@ game_hot_reloaded :: proc(mem: rawptr) {
 	g.player_rect = {210, 0, 10, 15}
 	g.player_rect.y = -f32(g.player_rect.height)
 
-	g.lava_height = VOLCANO_HEIGHT/2
+	g.lava_height = VOLCANO_HEIGHT/4
 	g.lava_speed = 0.25
 
 	// Here you can also set your own global variables. A good idea is to make
