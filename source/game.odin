@@ -33,11 +33,56 @@ import rl "vendor:raylib"
 
 PIXEL_WINDOW_HEIGHT :: 180
 
+LocationId :: u32
+
+Passenger :: struct {
+	generation_index : u32,
+	origin: LocationId,
+	destination: LocationId,
+}
+
+
+TrainMove :: struct {
+	origin: LocationId,
+	destination: LocationId,
+}
+TrainTake :: struct {
+	origin: LocationId,
+	// what we are taking?
+	// Like the position of that thing maybe?
+}
+TrainDeliver :: struct {
+	destination: LocationId,
+	// what we are delivering?
+	// Like the position of that thing maybe?
+}
+
+
+TrainActions :: union {
+	TrainMove,
+	TrainTake,
+	TrainDeliver,
+}
+
+Train :: struct {
+	programmed_actions : [64]TrainActions,
+}
+
+// Timeline :: struct {
+
+// }
+
+
 Game_Memory :: struct {
 	player_pos: rl.Vector2,
 	player_texture: rl.Texture,
 	total_frame_time: int,
 	run: bool,
+	//Train
+	trains: [126]Train
+
+	// Passengers
+	passengers: [1024]Passenger,
 }
 
 g: ^Game_Memory
@@ -91,9 +136,11 @@ draw :: proc() {
 	rl.ClearBackground(rl.BLACK)
 
 	rl.BeginMode2D(game_camera())
-	rl.DrawTextureEx(g.player_texture, g.player_pos, 0, 1, rl.WHITE)
-	rl.DrawRectangleV({20, 20}, {10, 10}, rl.RED)
-	rl.DrawRectangleV({-30, -20}, {10, 10}, rl.GREEN)
+	// rl.DrawTextureEx(g.player_texture, g.player_pos, 0, 1, rl.WHITE)
+	rl.DrawRectangleV({20, 20}, {30, 30}, rl.RED)
+	rl.DrawText(fmt.ctprintf("A"), 20, 20, 20, rl.WHITE)
+	rl.DrawRectangleV({-30, -20}, {30, 30}, rl.GREEN)
+	rl.DrawText(fmt.ctprintf("B"), -30, -20, 20, rl.WHITE)
 	rl.EndMode2D()
 
 	rl.BeginMode2D(ui_camera())
