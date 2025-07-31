@@ -230,6 +230,9 @@ draw :: proc() {
 				origin := center_pos(g.locations[a.origin])
 				destination := center_pos(g.locations[a.destination])
 				t := f32(g.frames_since_started_last_actions)/FRAMES_BETWEEN_TURNS
+				dx := destination.x - origin.x
+				dy := destination.y - origin.y
+				train.rotation = math.atan2(dy, dx) * 180 / math.PI
 				train.x = origin.x + (destination.x - origin.x) * t
 				train.y = origin.y + (destination.y - origin.y) * t
 				// rl.DrawRectangleRec(train.rect, rl.RED)
@@ -242,7 +245,7 @@ draw :: proc() {
 				train.y = loc_center_pos.y
 			}
 			}
-			rl.DrawRectanglePro(train.rect, {train.width/2,train.height/2}, 45.0, rl.RED)
+			rl.DrawRectanglePro(train.rect, {train.width/2,train.height/2}, train.rotation, rl.RED)
 
 		} else {
 			break
