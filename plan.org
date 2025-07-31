@@ -1,0 +1,11 @@
+#+title: Plan
+
+Train game where you have to choose between 2 directions each time.
+
+But at the same time, you have to do mental calculations
+
+The direction choosing and the calculations get harder over time.
+
+
+Also, might want to add a third thing to keep track of, a shop to buy stuff with coins you catch on the track?
+But what should/could be bought?
