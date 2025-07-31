@@ -147,15 +147,11 @@ draw :: proc() {
 	for location in g.locations {
 		if location != {}{
 			rl.DrawRectangleRec(location.rect, rl.RED)
-			rl.DrawText(fmt.ctprint(location.letter), 20, 20, 20, rl.WHITE)
+			rl.DrawText(fmt.ctprint(location.letter), i32(location.x), i32(location.y), 20, rl.WHITE)
 		} else {
 			break
 		}
 	}
-	rl.DrawRectangleV({20, 20}, {30, 30}, rl.RED)
-	rl.DrawText(fmt.ctprintf("A"), 20, 20, 20, rl.WHITE)
-	rl.DrawRectangleV({-30, -20}, {30, 30}, rl.GREEN)
-	rl.DrawText(fmt.ctprintf("B"), -30, -20, 20, rl.WHITE)
 	rl.EndMode2D()
 
 	rl.BeginMode2D(ui_camera())
@@ -241,19 +237,19 @@ game_hot_reloaded :: proc(mem: rawptr) {
 	g = (^Game_Memory)(mem)
 
 	g.locations[0] = Location {
-		rect = {-80, -80, 30, 30},
+		rect = {-60, -60, 30, 30},
 		letter  = 'A',
 	}
 	g.locations[1] = Location {
-		rect = {80, 80, 30, 30},
+		rect = {60, 60, 30, 30},
 		letter  = 'B',
 	}
 	g.locations[2] = Location {
-		rect = {-80, 80, 30, 30},
+		rect = {-60, 60, 30, 30},
 		letter  = 'C',
 	}
 	g.locations[3] = Location {
-		rect = {80, -80, 30, 30},
+		rect = {60, -60, 30, 30},
 		letter  = 'D',
 	}
 
