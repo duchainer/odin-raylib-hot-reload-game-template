@@ -1,5 +1,13 @@
 #+title: Plan
 
+* new idea, for the GMTK game jam
+
+Train game where you draw sygils
+
+Need to play a bit more than the 10 mins I did on the Sayonara Sigil game today.
+
+
+* first old idea
 Train game where you have to choose between 2 directions each time.
 
 But at the same time, you have to do mental calculations
