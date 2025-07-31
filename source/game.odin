@@ -144,10 +144,16 @@ draw :: proc() {
 
 	rl.BeginMode2D(game_camera())
 	// rl.DrawTextureEx(g.player_texture, g.player_pos, 0, 1, rl.WHITE)
-	for location in g.locations {
+	for location, i in g.locations {
 		if location != {}{
 			rl.DrawRectangleRec(location.rect, rl.RED)
 			rl.DrawText(fmt.ctprint(location.letter), i32(location.x), i32(location.y), 20, rl.WHITE)
+			for j := 0; j < i;j+=1{
+				other_location := g.locations[j]
+				start_pos = {location.x, location.y}
+				end_pos = center_pos(other_location.rect)
+				rl.DrawLineV(start_pos, end_pos, rl.GRAY )
+			}
 		} else {
 			break
 		}
