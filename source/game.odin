@@ -72,6 +72,11 @@ Train :: struct {
 
 // }
 
+Location :: struct {
+	using rect : rl.Rectangle,
+	letter : rune,
+}
+
 
 Game_Memory :: struct {
 	player_pos: rl.Vector2,
@@ -79,10 +84,12 @@ Game_Memory :: struct {
 	total_frame_time: int,
 	run: bool,
 	//Train
-	trains: [126]Train
+	trains: [126]Train,
 
 	// Passengers
 	passengers: [1024]Passenger,
+
+	locations : [16]Location,
 }
 
 g: ^Game_Memory
@@ -137,6 +144,14 @@ draw :: proc() {
 
 	rl.BeginMode2D(game_camera())
 	// rl.DrawTextureEx(g.player_texture, g.player_pos, 0, 1, rl.WHITE)
+	for location in g.locations {
+		if location != {}{
+			rl.DrawRectangleRec(location.rect, rl.RED)
+			rl.DrawText(fmt.ctprint(location.letter), 20, 20, 20, rl.WHITE)
+		} else {
+			break
+		}
+	}
 	rl.DrawRectangleV({20, 20}, {30, 30}, rl.RED)
 	rl.DrawText(fmt.ctprintf("A"), 20, 20, 20, rl.WHITE)
 	rl.DrawRectangleV({-30, -20}, {30, 30}, rl.GREEN)
@@ -224,6 +239,24 @@ game_memory_size :: proc() -> int {
 @(export)
 game_hot_reloaded :: proc(mem: rawptr) {
 	g = (^Game_Memory)(mem)
+
+	g.locations[0] = Location {
+		rect = {-80, -80, 30, 30},
+		letter  = 'A',
+	}
+	g.locations[1] = Location {
+		rect = {80, 80, 30, 30},
+		letter  = 'B',
+	}
+	g.locations[2] = Location {
+		rect = {-80, 80, 30, 30},
+		letter  = 'C',
+	}
+	g.locations[3] = Location {
+		rect = {80, -80, 30, 30},
+		letter  = 'D',
+	}
+
 
 	// Here you can also set your own global variables. A good idea is to make
 	// your global variables into pointers that point to something inside `g`.
