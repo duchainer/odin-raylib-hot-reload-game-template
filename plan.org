@@ -1,10 +1,49 @@
 #+title: Plan
 
 * new idea, for the GMTK game jam
+GMTK Game Jam 2025
+
+Train game
+
+Deliver passenger to their destination
+
+Repeat the day until every one reached their destination
+
+Each day, you control a new train while the previous one take the same actions ( take P1, deliver P1,)
+
+ always moving, can't wait at a station?
+
+Start looped day from last station of previous loop?
+
+Can take passenger that was supposed to be taken by previous train, but have to avoid paradoxes, by switching passengers by moving on same track, but opposite direction
+
+Can avoid paradoxes by redirecting past trains?
+
+Can't ride on same rail and direction as another train, hard limit on looping, if we have to move each turn, if so.
+ Be cause you can have max Rails * 2 trains
+
+Can you succeed with less loops,/trains?
+What about extra travel for passengers?
+
+What is train passenger capacity?
+
+Do you have to take passenger in order? I think the time travel part asks for it, as we are sort-of doing programmed actions.
+
+Rils can be blocked and unblocked at different times during the day.
+
+You might be able loop back with some passengers in your train, but don't have them be seen by their past self. Avoid putting theire past self in a wagon behind theirs, or maybe avoid any place they were?
+
+Passengers arrive to wait at station at some time, and might be urgent to arrive, for some
+
+Maybe, could sacrifice to get a stp skipped to grab passengers quicker efficient
+
+* old idea
 
 Train game where you draw sygils
 
 Need to play a bit more than the 10 mins I did on the Sayonara Sigil game today.
+
+EDIT: Played more of that game, and it is more of a "bullet-heal" with drawing, so not really good for a train game.
 
 
 * first old idea
