@@ -65,6 +65,8 @@ TrainActions :: union {
 }
 
 Train :: struct {
+	using rect : rl.Rectangle,
+	rotation : f32,
 	programmed_actions : [64]TrainActions,
 }
 
@@ -84,7 +86,7 @@ Game_Memory :: struct {
 	total_frame_time: int,
 	run: bool,
 	//Train
-	trains: [126]Train,
+	trains: [16]Train,
 
 	// Passengers
 	passengers: [1024]Passenger,
@@ -146,18 +148,29 @@ draw :: proc() {
 	// rl.DrawTextureEx(g.player_texture, g.player_pos, 0, 1, rl.WHITE)
 	for location, i in g.locations {
 		if location != {}{
-			rl.DrawRectangleRec(location.rect, rl.RED)
+			rl.DrawRectangleRec(location.rect, rl.GRAY)
 			rl.DrawText(fmt.ctprint(location.letter), i32(location.x), i32(location.y), 20, rl.WHITE)
 			for j := 0; j < i;j+=1{
 				other_location := g.locations[j]
-				start_pos = {location.x, location.y}
-				end_pos = center_pos(other_location.rect)
-				rl.DrawLineV(start_pos, end_pos, rl.GRAY )
+				start_pos := center_pos(location.rect)
+				end_pos := center_pos(other_location.rect)
+				rl.DrawLineV(start_pos, end_pos, rl.LIGHTGRAY )
 			}
 		} else {
 			break
 		}
 	}
+
+	for train, _ in g.trains {
+		if train != {}{
+			// DrawRectanglePro            :: proc(rec: Rectangle, origin: Vector2, rotation: f32, color: Color) ---                                             // Draw a color-filled rectangle with pro parameters
+			rl.DrawRectanglePro(train.rect, {train.width/2,train.height/2}, 45.0, rl.RED)
+			// rl.DrawRectangleRec(train.rect, rl.RED)
+		} else {
+			break
+		}
+	}
+
 	rl.EndMode2D()
 
 	rl.BeginMode2D(ui_camera())
@@ -259,6 +272,11 @@ game_hot_reloaded :: proc(mem: rawptr) {
 		letter  = 'D',
 	}
 
+	center_pos_loc_0 := center_pos(g.locations[0])
+	g.trains[0] = Train {
+		rect = {center_pos_loc_0.x, center_pos_loc_0.y, 10, 5},
+	}
+
 
 	// Here you can also set your own global variables. A good idea is to make
 	// your global variables into pointers that point to something inside `g`.
@@ -278,4 +296,25 @@ game_force_restart :: proc() -> bool {
 // `rl.SetWindowSize` call if you don't want a resizable game.
 game_parent_window_size_changed :: proc(w, h: int) {
 	rl.SetWindowSize(i32(w), i32(h))
+}
+
+
+// UTILS
+
+center_pos :: proc(rect: rl.Rectangle) -> rl.Vector2{
+	return {
+		rect.x + rect.width/2,
+		rect.y + rect.height/2,
+	}
+}
+
+// player_center_pos :: proc(player_pos: rl.Vector2) -> rl.Vector2{
+// 	return {
+// 		player_pos.x + f32( g.player_rect.width )/2,
+// 		player_pos.y + f32( g.player_rect.height )/2,
+// 	}
+// }
+
+pos_from_rect :: proc(rect: rl.Rectangle) -> rl.Vector2{
+	return {rect.x, rect.y}
 }
