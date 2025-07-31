@@ -28,12 +28,13 @@ created.
 package game
 
 import "core:fmt"
+import "core:math"
 import "core:math/linalg"
 import rl "vendor:raylib"
 
 PIXEL_WINDOW_HEIGHT :: 180
 
-LocationId :: u32
+LocationId :: i32
 
 Passenger :: struct {
 	generation_index : u32,
@@ -50,11 +51,13 @@ TrainTake :: struct {
 	origin: LocationId,
 	// what we are taking?
 	// Like the position of that thing maybe?
+	take_which: i32,
 }
 TrainDeliver :: struct {
 	destination: LocationId,
 	// what we are delivering?
 	// Like the position of that thing maybe?
+	deliver_which: i32,
 }
 
 
@@ -68,6 +71,10 @@ Train :: struct {
 	using rect : rl.Rectangle,
 	rotation : f32,
 	programmed_actions : [64]TrainActions,
+	current_location: LocationId,
+	origin: LocationId,
+	destination: LocationId,
+	passengers: [16]Passenger,
 }
 
 // Timeline :: struct {
@@ -77,6 +84,12 @@ Train :: struct {
 Location :: struct {
 	using rect : rl.Rectangle,
 	letter : rune,
+
+	passengers : [32]Passenger,
+	last_passenger_index: i32,
+
+	delivered_passengers : [1024]Passenger,
+	last_delivered_passenger_index: i32,
 }
 
 
@@ -87,11 +100,13 @@ Game_Memory :: struct {
 	run: bool,
 	//Train
 	trains: [16]Train,
+	frames_since_started_last_actions: i32,
 
 	// Passengers
 	passengers: [1024]Passenger,
 
 	locations : [16]Location,
+	turn_index : i32,
 }
 
 g: ^Game_Memory
@@ -103,7 +118,7 @@ game_camera :: proc() -> rl.Camera2D {
 	return {
 		zoom = h/PIXEL_WINDOW_HEIGHT,
 		target = g.player_pos,
-		offset = { w/2, h/2 },
+		offset = { w/2, h/2 + 20 },
 	}
 }
 
@@ -112,9 +127,53 @@ ui_camera :: proc() -> rl.Camera2D {
 		zoom = f32(rl.GetScreenHeight())/PIXEL_WINDOW_HEIGHT,
 	}
 }
+FRAMES_BETWEEN_TURNS :: 600
 
 update :: proc() {
 	input: rl.Vector2
+
+	g.frames_since_started_last_actions += 1
+	if rl.IsKeyPressed(.SPACE) || g.frames_since_started_last_actions >= FRAMES_BETWEEN_TURNS{
+		for &train, train_index in g.trains{
+			action := train.programmed_actions[g.turn_index]
+			action_switch: switch a in action {
+			case TrainMove: {
+				train.current_location = a.destination
+			}
+			case TrainTake: {
+				location := g.locations[train.current_location]
+				for seat, i in train.passengers{
+					if seat == {}{
+						passenger, did_take := take_from(&location, a.take_which)
+						if did_take{
+							train.passengers[i] = passenger
+						} else {
+							fmt.printfln("Cannot take that passenger index %v for train %v. In location: %#v", i, train_index, location)
+						}
+						break action_switch
+					}
+				}
+				// If no seat available
+				fmt.printfln("No seat available in train %v: %#v", train_index, train)
+			}
+			case TrainDeliver: {
+				delivered_passenger := &train.passengers[a.deliver_which]
+				location := g.locations[train.current_location]
+				if delivered_passenger.destination == train.current_location{
+					deliver_to(&location, delivered_passenger^)
+					delivered_passenger = {}
+				} else {
+					fmt.printfln("Can't deliver passenger from train %v, to location %v", train_index, location)
+				}
+				// If no seat available
+
+			}
+			}
+		}
+
+		g.turn_index += 1
+		g.frames_since_started_last_actions = 0
+	}
 
 	// if rl.IsKeyDown(.UP) || rl.IsKeyDown(.W) {
 	// 	input.y -= 1
@@ -161,11 +220,30 @@ draw :: proc() {
 		}
 	}
 
-	for train, _ in g.trains {
+	for &train, _ in g.trains {
 		if train != {}{
 			// DrawRectanglePro            :: proc(rec: Rectangle, origin: Vector2, rotation: f32, color: Color) ---                                             // Draw a color-filled rectangle with pro parameters
+
+			action := train.programmed_actions[g.turn_index]
+			action_switch: switch a in action {
+			case TrainMove: {
+				origin := center_pos(g.locations[a.origin])
+				destination := center_pos(g.locations[a.destination])
+				t := f32(g.frames_since_started_last_actions)/FRAMES_BETWEEN_TURNS
+				train.x = origin.x + (destination.x - origin.x) * t
+				train.y = origin.y + (destination.y - origin.y) * t
+				// rl.DrawRectangleRec(train.rect, rl.RED)
+			}
+			case TrainTake:
+			case TrainDeliver: {
+				location := g.locations[train.current_location]
+				loc_center_pos := center_pos(location)
+				train.x = loc_center_pos.x
+				train.y = loc_center_pos.y
+			}
+			}
 			rl.DrawRectanglePro(train.rect, {train.width/2,train.height/2}, 45.0, rl.RED)
-			// rl.DrawRectangleRec(train.rect, rl.RED)
+
 		} else {
 			break
 		}
@@ -178,7 +256,7 @@ draw :: proc() {
 	// NOTE: `fmt.ctprintf` uses the temp allocator. The temp allocator is
 	// cleared at the end of the frame by the main application, meaning inside
 	// `main_hot_reload.odin`, `main_release.odin` or `main_web_entry.odin`.
-	rl.DrawText(fmt.ctprintf("total_frame_time: %v\nplayer_pos: %v", g.total_frame_time, g.player_pos), 5, 5, 8, rl.WHITE)
+	rl.DrawText(fmt.ctprintf("total_frame_time: %v\nplayer_pos: %v\ng.frames_since_started_last_actions: %v\ng.trains[0].programmed_actions: %#v", g.total_frame_time, g.player_pos, g.frames_since_started_last_actions, g.trains[0].programmed_actions), 5, 5, 8, rl.WHITE)
 
 	rl.EndMode2D()
 
@@ -276,6 +354,11 @@ game_hot_reloaded :: proc(mem: rawptr) {
 	g.trains[0] = Train {
 		rect = {center_pos_loc_0.x, center_pos_loc_0.y, 10, 5},
 	}
+	g.trains[0].programmed_actions[0] = TrainMove{0, 1}
+	g.trains[0].programmed_actions[1] = TrainMove{1, 2}
+
+
+	g.turn_index = 0
 
 
 	// Here you can also set your own global variables. A good idea is to make
@@ -296,6 +379,25 @@ game_force_restart :: proc() -> bool {
 // `rl.SetWindowSize` call if you don't want a resizable game.
 game_parent_window_size_changed :: proc(w, h: int) {
 	rl.SetWindowSize(i32(w), i32(h))
+}
+
+deliver_to :: proc(loc: ^Location, p: Passenger){
+	loc.last_delivered_passenger_index += 1
+	loc.delivered_passengers[loc.last_delivered_passenger_index] = p
+}
+
+take_from :: proc(loc: ^Location, i: i32) -> (Passenger, bool) {
+	if loc.last_passenger_index >= i {
+		ret := loc.passengers[i]
+		for j := i; j <= loc.last_passenger_index; j += 1{
+			loc.passengers[j] = loc.passengers[j+1]
+		}
+		loc.last_passenger_index -= 1
+		return ret, true
+	} else{
+		fmt.printfln("Cannot take that passenger index %v. In location: %#v", i, loc)
+		return Passenger{}, false
+	}
 }
 
 
