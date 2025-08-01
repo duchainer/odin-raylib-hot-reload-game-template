@@ -56,6 +56,9 @@ main :: proc() {
 
 	rl.SetTargetFPS(60)
 
+
+	train_model := rl.LoadModel("../assets/kenney_train-kit/Models/GLB format/train-locomotive-a.glb")
+
 	for !rl.WindowShouldClose() {
 		rl.UpdateCamera(&camera, .ORBITAL)
 
@@ -72,11 +75,12 @@ main :: proc() {
 				rl.BeginMode3D(camera)
 				defer rl.EndMode3D()
 
-				rl.DrawMesh(cube, matDefault, rl.MatrixTranslate(-10, 0, 0))
+				// rl.DrawMesh(cube, matDefault, rl.MatrixTranslate(-10, 0, 0))
 
-				rl.DrawMeshInstanced(cube, matInstances, raw_data(transforms), MAX_INSTANCES)
+				// rl.DrawMeshInstanced(cube, matInstances, raw_data(transforms), MAX_INSTANCES)
 
-				rl.DrawMesh(cube, matDefault, rl.MatrixTranslate(10, 0, 0))
+				// rl.DrawMesh(cube, matDefault, rl.MatrixTranslate(10, 0, 0))
+				rl.DrawModel(train_model, {0,0,0}, 10.0, rl.WHITE)
 			}
 
 			rl.DrawFPS(10, 10)
