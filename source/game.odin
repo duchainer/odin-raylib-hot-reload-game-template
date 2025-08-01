@@ -203,7 +203,7 @@ draw :: proc() {
 	rl.BeginDrawing()
 	rl.ClearBackground(rl.BLACK)
 
-	rl.BeginMode2D(game_camera())
+	// rl.BeginMode2D(game_camera())
 	// rl.DrawTextureEx(g.player_texture, g.player_pos, 0, 1, rl.WHITE)
 	for location, i in g.locations {
 		if location != {}{
@@ -252,7 +252,7 @@ draw :: proc() {
 		}
 	}
 
-	rl.EndMode2D()
+	// rl.EndMode2D()
 
 	rl.BeginMode2D(ui_camera())
 
@@ -337,19 +337,19 @@ game_hot_reloaded :: proc(mem: rawptr) {
 	g = (^Game_Memory)(mem)
 
 	g.locations[0] = Location {
-		rect = {-60, -60, 30, 30},
+		rect = {400, 400, 30, 30},
 		letter  = 'A',
 	}
 	g.locations[1] = Location {
-		rect = {60, 60, 30, 30},
+		rect = {600, 600, 30, 30},
 		letter  = 'B',
 	}
 	g.locations[2] = Location {
-		rect = {-60, 60, 30, 30},
+		rect = {400, 600, 30, 30},
 		letter  = 'C',
 	}
 	g.locations[3] = Location {
-		rect = {60, -60, 30, 30},
+		rect = {600, 400, 30, 30},
 		letter  = 'D',
 	}
 
