@@ -58,8 +58,7 @@ main :: proc() {
 				rl.BeginMode3D(camera)
 				defer rl.EndMode3D()
 
-				rl.DrawModel(train_model, {0,0,0}, 30.0, rl.WHITE)
-				rl.DrawGrid(200 ,10.0)
+				rl.DrawModel(train_model, {0,0,0}, 10.0, rl.WHITE)
 			}
 
 			rl.DrawFPS(10, 10)
