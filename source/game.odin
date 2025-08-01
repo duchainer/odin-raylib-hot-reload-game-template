@@ -31,6 +31,7 @@ import "core:fmt"
 import "core:math"
 import "core:math/linalg"
 import rl "vendor:raylib"
+// import rlights "../odin-more-examples-raylib-shaders/rlights"
 
 PIXEL_WINDOW_HEIGHT :: 180
 
@@ -200,8 +201,48 @@ update :: proc() {
 }
 
 draw :: proc() {
+	// shader := rl.LoadShader("assets/shaders/lighting_instancing.vs", "assets/shaders/lighting.fs")
+	// defer rl.UnloadShader(shader)
+
+	// shader.locs[rl.ShaderLocationIndex.MATRIX_MVP]   = i32(rl.GetShaderLocation(shader, "mvp"))
+	// shader.locs[rl.ShaderLocationIndex.VECTOR_VIEW]  = i32(rl.GetShaderLocation(shader, "viewPos"))
+	// shader.locs[rl.ShaderLocationIndex.MATRIX_MODEL] = i32(rl.GetShaderLocationAttrib(shader, "instanceTransform"))
+
+	// ambientLoc := rl.GetShaderLocation(shader, "ambient")
+	// rl.SetShaderValue(shader, ambientLoc, &[4]f32{ 0.2, 0.2, 0.2, 1 }, .VEC4)
+
+	// rlights.CreateLight(.Directional, { 50, 50, 0 }, 0, rl.WHITE, shader)
+
+
 	rl.BeginDrawing()
-	rl.ClearBackground(rl.BLACK)
+	rl.ClearBackground(rl.WHITE)
+
+	train_3d_pos := rl.Vector3{g.trains[0].x/10,g.trains[0].y/10,0}
+	{
+		camera := rl.Camera{
+			position   = { 0,  300, 0 },
+			target     = train_3d_pos,
+			up         = { 0, 1, 0 },
+			fovy       = 45,
+			projection = .PERSPECTIVE,
+		}
+		rl.UpdateCamera(&camera, .ORBITAL)
+		movement := rl.Vector3{}
+		rotation := rl.Vector3{}
+		zoom : f32 = 1.0
+		rl.UpdateCameraPro(&camera, movement, rotation, zoom)
+
+
+		// cameraPos := [3]f32{ camera.position.x, camera.position.y, camera.position.z }
+		// rl.SetShaderValue(shader, rl.ShaderLocationIndex(shader.locs[rl.ShaderLocationIndex.VECTOR_VIEW]), &cameraPos, .VEC3)
+
+
+		rl.BeginMode3D(camera)
+		defer rl.EndMode3D()
+
+		rl.DrawModelEx(train_model, train_3d_pos, {0, 1, 0}, g.trains[0].rotation,  20.0, rl.WHITE)
+		rl.DrawGrid(200 ,10.0)
+	}
 
 	// rl.BeginMode2D(game_camera())
 	// rl.DrawTextureEx(g.player_texture, g.player_pos, 0, 1, rl.WHITE)
@@ -259,7 +300,7 @@ draw :: proc() {
 	// NOTE: `fmt.ctprintf` uses the temp allocator. The temp allocator is
 	// cleared at the end of the frame by the main application, meaning inside
 	// `main_hot_reload.odin`, `main_release.odin` or `main_web_entry.odin`.
-	rl.DrawText(fmt.ctprintf("total_frame_time: %v\nplayer_pos: %v\ng.frames_since_started_last_actions: %v\ng.trains[0].programmed_actions: %#v", g.total_frame_time, g.player_pos, g.frames_since_started_last_actions, g.trains[0].programmed_actions), 5, 5, 8, rl.WHITE)
+	rl.DrawText(fmt.ctprintf("total_frame_time: %v\nplayer_pos: %v\ng.frames_since_started_last_actions: %v\ng.trains[0].programmed_actions: %#v", g.total_frame_time, g.player_pos, g.frames_since_started_last_actions, g.trains[0].programmed_actions), 5, 5, 8, rl.BLACK)
 
 	rl.EndMode2D()
 
@@ -332,8 +373,12 @@ game_memory_size :: proc() -> int {
 	return size_of(Game_Memory)
 }
 
+train_model : rl.Model
+
 @(export)
 game_hot_reloaded :: proc(mem: rawptr) {
+	train_model = rl.LoadModel("assets/kenney_train-kit/Models/GLB format/train-locomotive-a.glb")
+
 	g = (^Game_Memory)(mem)
 
 	g.locations[0] = Location {
