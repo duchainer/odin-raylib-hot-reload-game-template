@@ -21,20 +21,6 @@ main :: proc() {
         projection = .PERSPECTIVE,
     }
 
-	cube := rl.GenMeshCube(1, 1, 1)
-
-	transforms := make([]rl.Matrix, MAX_INSTANCES)
-	defer delete(transforms)
-
-	for i in 0..<MAX_INSTANCES {
-		translation := rl.MatrixTranslate(f32(rl.GetRandomValue(-50, 50)), f32(rl.GetRandomValue(-50, 50)), f32(rl.GetRandomValue(-50, 50)))
-		axis        := rl.Vector3Normalize({f32(rl.GetRandomValue(0, 360)), f32(rl.GetRandomValue(0, 360)), f32(rl.GetRandomValue(0, 360))})
-		angle       := f32(rl.GetRandomValue(0, 10)) * f32(rl.DEG2RAD)
-		rotation    := rl.MatrixRotate(axis, angle)
-
-		transforms[i] = rotation * translation
-	}
-
 	shader := rl.LoadShader("resources/shaders/lighting_instancing.vs", "resources/shaders/lighting.fs")
 	defer rl.UnloadShader(shader)
 
@@ -50,9 +36,6 @@ main :: proc() {
 	matInstances := rl.LoadMaterialDefault()
 	matInstances.shader = shader
 	matInstances.maps[rl.MaterialMapIndex.ALBEDO].color = rl.RED
-
-	matDefault := rl.LoadMaterialDefault()
-	matDefault.maps[rl.MaterialMapIndex.ALBEDO].color = rl.BLUE
 
 	rl.SetTargetFPS(60)
 
@@ -75,11 +58,6 @@ main :: proc() {
 				rl.BeginMode3D(camera)
 				defer rl.EndMode3D()
 
-				// rl.DrawMesh(cube, matDefault, rl.MatrixTranslate(-10, 0, 0))
-
-				// rl.DrawMeshInstanced(cube, matInstances, raw_data(transforms), MAX_INSTANCES)
-
-				// rl.DrawMesh(cube, matDefault, rl.MatrixTranslate(10, 0, 0))
 				rl.DrawModel(train_model, {0,0,0}, 10.0, rl.WHITE)
 			}
 
