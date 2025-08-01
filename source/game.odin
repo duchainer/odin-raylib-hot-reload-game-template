@@ -217,10 +217,10 @@ draw :: proc() {
 	rl.BeginDrawing()
 	rl.ClearBackground(rl.WHITE)
 
-	train_3d_pos := rl.Vector3{g.trains[0].x/10,g.trains[0].y/10,0}
+	train_3d_pos := rl.Vector3{g.trains[0].y/10,0,g.trains[0].x/10}
 	{
 		camera := rl.Camera{
-			position   = { 0,  300, 0 },
+			position   = { 0,  30, 0 },
 			target     = train_3d_pos,
 			up         = { 0, 1, 0 },
 			fovy       = 45,
@@ -240,8 +240,27 @@ draw :: proc() {
 		rl.BeginMode3D(camera)
 		defer rl.EndMode3D()
 
-		rl.DrawModelEx(train_model, train_3d_pos, {0, 1, 0}, g.trains[0].rotation,  20.0, rl.WHITE)
-		rl.DrawGrid(200 ,10.0)
+		rl.DrawModelEx(train_model, train_3d_pos, {0, 1, 0}, g.trains[0].rotation,  1.0, rl.WHITE)
+		matDefault := rl.LoadMaterialDefault()
+		matDefault.maps[rl.MaterialMapIndex.ALBEDO].color = rl.BLUE
+
+		for location, _ in g.locations {
+			if location != {}{
+				cube := rl.GenMeshCube(location.width, 10, location.height)
+				rl.DrawMesh(cube, matDefault, rl.MatrixTranslate(location.y, 0, location.x))
+				// rl.DrawText(fmt.ctprint(location.letter), i32(location.x), i32(location.y), 20, rl.WHITE)
+				// for j := 0; j < i;j+=1{
+				// 	other_location := g.locations[j]
+				// 	start_pos := center_pos(location.rect)
+				// 	end_pos := center_pos(other_location.rect)
+				// 	rl.DrawLineV(start_pos, end_pos, rl.LIGHTGRAY )
+				// }
+			} else {
+				break
+			}
+		}
+
+		rl.DrawGrid(2000 ,1.0)
 	}
 
 	// rl.BeginMode2D(game_camera())
@@ -300,7 +319,7 @@ draw :: proc() {
 	// NOTE: `fmt.ctprintf` uses the temp allocator. The temp allocator is
 	// cleared at the end of the frame by the main application, meaning inside
 	// `main_hot_reload.odin`, `main_release.odin` or `main_web_entry.odin`.
-	rl.DrawText(fmt.ctprintf("total_frame_time: %v\nplayer_pos: %v\ng.frames_since_started_last_actions: %v\ng.trains[0].programmed_actions: %#v", g.total_frame_time, g.player_pos, g.frames_since_started_last_actions, g.trains[0].programmed_actions), 5, 5, 8, rl.BLACK)
+	rl.DrawText(fmt.ctprintf("total_frame_time: %v\ntrain_3d_pos: %v\ng.frames_since_started_last_actions: %v\ng.trains[0].programmed_actions: %#v", g.total_frame_time, train_3d_pos, g.frames_since_started_last_actions, g.trains[0].programmed_actions), 5, 5, 8, rl.BLACK)
 
 	rl.EndMode2D()
 
@@ -376,6 +395,11 @@ game_memory_size :: proc() -> int {
 
 train_model : rl.Model
 
+TOP_LEFT_STATION_X :: -10
+TOP_LEFT_STATION_Y :: -10
+BOTTOM_RIGHT_STATION_X :: 10
+BOTTOM_RIGHT_STATION_Y :: 10
+
 @(export)
 game_hot_reloaded :: proc(mem: rawptr) {
 	train_model = rl.LoadModel("assets/kenney_train-kit/Models/GLB format/train-locomotive-a.glb")
@@ -383,19 +407,19 @@ game_hot_reloaded :: proc(mem: rawptr) {
 	g = (^Game_Memory)(mem)
 
 	g.locations[0] = Location {
-		rect = {400, 400, 30, 30},
+		rect = {TOP_LEFT_STATION_X, TOP_LEFT_STATION_Y, 10, 10},
 		letter  = 'A',
 	}
 	g.locations[1] = Location {
-		rect = {600, 600, 30, 30},
+		rect = {BOTTOM_RIGHT_STATION_X, BOTTOM_RIGHT_STATION_Y, 10, 10},
 		letter  = 'B',
 	}
 	g.locations[2] = Location {
-		rect = {400, 600, 30, 30},
+		rect = {TOP_LEFT_STATION_X, BOTTOM_RIGHT_STATION_Y, 10, 10},
 		letter  = 'C',
 	}
 	g.locations[3] = Location {
-		rect = {600, 400, 30, 30},
+		rect = {BOTTOM_RIGHT_STATION_X, TOP_LEFT_STATION_Y, 10, 10},
 		letter  = 'D',
 	}
 
