@@ -356,6 +356,7 @@ game_should_run :: proc() -> bool {
 @(export)
 game_shutdown :: proc() {
 	free(g)
+	rl.UnloadModel(train_model)
 }
 
 @(export)
