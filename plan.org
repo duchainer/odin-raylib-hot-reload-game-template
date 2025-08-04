@@ -1,0 +1,25 @@
+#+title: Plan
+
+* Train Group Survival game : Text based adventure
+trijam 333-part1
+Train text game
+
+You always go forward, trying to survive longer, picking up people to keep your food, morale, fuel and water in check.
+
+Dropping people off costs morale, but allows to swap with new more useful people.
+
+Not picking someone up is a lesser cost.
+
+And when you run out of one thing, the other things are even more drained, or important.
+
+Randomness give different runs, and order of events
+You can always skip past both choices, but you can't go back.
+
+* Credits
+** The Void - WelbornWorks
+Music by <a href="https://pixabay.com/users/welbornworks-27363706/?utm_source=link-attribution&utm_medium=referral&utm_campaign=music&utm_content=326712">Bryan Welborn</a> from <a href="https://pixabay.com/music//?utm_source=link-attribution&utm_medium=referral&utm_campaign=music&utm_content=326712">Pixabay</a>
+
+Music by Bryan Welborn​ from Pixabay​
+
+** In The Night - Emmraan
+Music by <a href="https://pixabay.com/users/emmraan-24732583/?utm_source=link-attribution&utm_medium=referral&utm_campaign=music&utm_content=267247">Emmraan</a> from <a href="https://pixabay.com//?utm_source=link-attribution&utm_medium=referral&utm_campaign=music&utm_content=267247">Pixabay</a>
