@@ -33,49 +33,6 @@ import rl "vendor:raylib"
 
 PIXEL_WINDOW_HEIGHT :: 360
 
-Needs :: struct {
-	food: i32,
-	water: i32,
-	medecine: i32,
-	morale: i32,
-	// fuel maybe? for warmth?
-	// TODO next iteration, maybe?
-}
-NeedsLimits :: struct{
-	// "X is becoming hungry, and might start doing worse/different decisions"
-	soft : Needs,
-	// "X is really hungry, and wants to take over the train"
-	hard : Needs,
-	// "X died from lack of Y. Train morale dropped significantly"
-	death : Needs,
-}
-
-
-People :: struct {
-	name: [128]u8,
-	needs: struct {
-		// Every normal day, consumes these from its current.
-		daily: Needs,
-		// The accumulated needs met at this point, will go down daily until reaching some limits
-		current: Needs,
-		limits: NeedsLimits,
-	},
-}
-
-Event :: struct {
-	summary_text : [128]u8,
-	description : [2092]u8,
-	resources_template : [2092]u8,
-	left_choice : [2092]u8,
-	left_choice_modifier: i32,
-	right_choice : [2092]u8,
-	people: []People,
-	food: i32,
-	water: i32,
-	medecine: i32,
-	fuel: i32,
-	morale: i32,
-}
 
 Game_Memory :: struct {
 	total_frame_count: int,
@@ -101,33 +58,6 @@ Game_Memory :: struct {
 
 g: ^Game_Memory
 
-BASE_LINE_CURRENT_NEED := Needs{
-	food = 100,
-	water = 100,
-	medecine = 100,
-	morale = 100,
-}
-
-BASE_LINE_SOFT_LIMIT := Needs{
-	food = 30,
-	water = 30,
-	medecine = 30,
-	morale = 30,
-}
-
-BASE_LINE_HARD_LIMIT := Needs{
-	food = 15,
-	water = 15,
-	medecine = 15,
-	morale = 15,
-}
-
-BASE_LINE_DEATH_LIMIT := Needs{
-	food = 0,
-	water = 0,
-	medecine = 0,
-	morale = 0,
-}
 
 
 ui_camera :: proc() -> rl.Camera2D {
@@ -137,10 +67,44 @@ ui_camera :: proc() -> rl.Camera2D {
 }
 
 get_random_events :: proc() -> [2]Event{
-	return {
-		events[0],
-		events[0], // For now, just use the same event twice
+	name : [128]u8
+	name[0]= 'P'
+	name[1] = 'a'
+	name[2] = 'u'
+	name[3] = 'l'
+	// Create a person for the event
+	paul := People{
+		name = name,
+		needs = {
+			// Every normal day, consumes these from its current.
+			daily = Needs{
+				food = 1,
+				water = 1,
+				// He needs a bit of medecine every day, for his aging ailments
+				medecine = 1,
+				// He doesn't need much to stay motivated
+				morale = 0,
+			},
+			// The accumulated needs met at this point, will go down daily until reaching some limits
+			current = BASE_LINE_CURRENT_NEED,
+			limits = NeedsLimits{
+				// "X is becoming hungry, and might start doing worse/different decisions"
+				soft = BASE_LINE_SOFT_LIMIT,
+				// "X is really hungry, and wants to take over the train"
+				hard = BASE_LINE_HARD_LIMIT,
+				// "X died from lack of Y. Train morale dropped significantly"
+				death = BASE_LINE_DEATH_LIMIT,
+			},
+		},
 	}
+	
+	event1 := events[0]
+	event1.people[0] =  paul
+	
+	event2 := events[0]
+	event2.people[0] =  paul
+
+	return {event1, event2}
 }
 
 
