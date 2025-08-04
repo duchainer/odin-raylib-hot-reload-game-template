@@ -28,7 +28,7 @@ created.
 package game
 
 import "core:fmt"
-import "core:math/linalg"
+// import "core:math/linalg"
 import rl "vendor:raylib"
 
 PIXEL_WINDOW_HEIGHT :: 360
@@ -38,6 +38,8 @@ Game_Memory :: struct {
 	player_texture: rl.Texture,
 	total_frame_count: int,
 	run: bool,
+	passive_background_music: rl.Music,
+	active_background_music: rl.Music,
 }
 
 g: ^Game_Memory
@@ -60,7 +62,8 @@ ui_camera :: proc() -> rl.Camera2D {
 }
 
 update :: proc() {
-	g.player_pos += input * rl.GetFrameTime() * 100
+	rl.UpdateMusicStream(g.passive_background_music)
+	rl.UpdateMusicStream(g.active_background_music)
 	g.total_frame_count += 1
 
 	if rl.IsKeyPressed(.LEFT_CONTROL) && rl.IsKeyPressed(.LEFT_SHIFT) && rl.IsKeyPressed(.ESCAPE) {
@@ -110,6 +113,8 @@ game_init_window :: proc() {
 
 @(export)
 game_init :: proc() {
+	rl.InitAudioDevice()
+
 	g = new(Game_Memory)
 
 	g^ = Game_Memory {
@@ -118,7 +123,12 @@ game_init :: proc() {
 		// You can put textures, sounds and music in the `assets` folder. Those
 		// files will be part any release or web build.
 		player_texture = rl.LoadTexture("assets/round_cat.png"),
+
+		passive_background_music = rl.LoadMusicStream("assets/music/thevoid.mp3"),
+		active_background_music = rl.LoadMusicStream("assets/music/in-the-night.mp3"),
 	}
+
+
 
 	game_hot_reloaded(g)
 }
@@ -137,6 +147,9 @@ game_should_run :: proc() -> bool {
 
 @(export)
 game_shutdown :: proc() {
+    rl.UnloadMusicStream(g.passive_background_music)   // Unload music stream buffers from RAM
+    rl.UnloadMusicStream(g.active_background_music)    // Unload music stream buffers from RAM
+    rl.CloseAudioDevice()         // Close audio device (music streaming is automatically stopped)
 	free(g)
 }
 
@@ -159,6 +172,10 @@ game_memory_size :: proc() -> int {
 game_hot_reloaded :: proc(mem: rawptr) {
 	g = (^Game_Memory)(mem)
 
+    rl.PlayMusicStream(g.passive_background_music)
+    rl.PlayMusicStream(g.active_background_music)
+
+	fmt.printfln("Playing?: %v", rl.IsMusicStreamPlaying(g.active_background_music))
 	// Here you can also set your own global variables. A good idea is to make
 	// your global variables into pointers that point to something inside `g`.
 }
