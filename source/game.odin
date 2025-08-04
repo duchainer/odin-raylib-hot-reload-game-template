@@ -86,9 +86,21 @@ ui_camera :: proc() -> rl.Camera2D {
 	}
 }
 
+mute_music_button : rl.Rectangle
+pause_music : bool
+
 update :: proc() {
+	if rl.IsMouseButtonPressed(.LEFT){
+		mouse_pos := rl.GetMousePosition()
+		if rl.CheckCollisionPointRec(mouse_pos, mute_music_button){
+			pause_music = !pause_music
+            if (pause_music) do rl.PauseMusicStream(g.active_background_music)
+            else do rl.ResumeMusicStream(g.active_background_music)
+		}
+	}
 	// rl.UpdateMusicStream(g.passive_background_music)
 	rl.UpdateMusicStream(g.active_background_music)
+	
 	g.total_frame_count += 1
 
 	if rl.IsKeyPressed(.LEFT_CONTROL) && rl.IsKeyPressed(.LEFT_SHIFT) && rl.IsKeyPressed(.ESCAPE) {
@@ -108,6 +120,31 @@ draw :: proc() {
 	rl.DrawText(fmt.ctprintf("total_frame_count: %v\n", g.total_frame_count), 5, 5, 8, rl.WHITE)
 
 	rl.EndMode2D()
+
+	// Actual screen width can be different in full screen
+	real_screen_width := rl.GetScreenWidth()
+	mute_button_font_size :i32 = 16
+	if pause_music {
+		mute_text : cstring = "Unmute Music"
+		mute_music_button = rl.Rectangle{
+			f32(real_screen_width - 10 - 100),
+			10,
+			f32(rl.MeasureText(mute_text, mute_button_font_size)),
+			10,
+		}
+		rl.DrawText(mute_text, i32(mute_music_button.x), i32(mute_music_button.y), mute_button_font_size, rl.WHITE)
+
+	} else{
+		mute_text : cstring = "Mute Music"
+		mute_music_button = rl.Rectangle{
+			f32(real_screen_width - 10 - 100),
+			10,
+			f32(rl.MeasureText(mute_text, mute_button_font_size)),
+			10,
+		}
+		rl.DrawText(mute_text, i32(mute_music_button.x), i32(mute_music_button.y), mute_button_font_size, rl.WHITE)
+	}
+
 
 	rl.EndDrawing()
 }
@@ -192,7 +229,6 @@ game_hot_reloaded :: proc(mem: rawptr) {
     // rl.PlayMusicStream(g.passive_background_music)
     rl.PlayMusicStream(g.active_background_music)
 
-	fmt.printfln("Playing?: %v", rl.IsMusicStreamPlaying(g.active_background_music))
 	// Here you can also set your own global variables. A good idea is to make
 	// your global variables into pointers that point to something inside `g`.
 }
