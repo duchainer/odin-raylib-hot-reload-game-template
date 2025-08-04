@@ -61,7 +61,6 @@ People :: struct {
 }
 
 Game_Memory :: struct {
-	player_texture: rl.Texture,
 	total_frame_count: int,
 	run: bool,
 	passive_background_music: rl.Music,
@@ -142,8 +141,6 @@ game_init :: proc() {
 
 		// You can put textures, sounds and music in the `assets` folder. Those
 		// files will be part any release or web build.
-		player_texture = rl.LoadTexture("assets/round_cat.png"),
-
 		passive_background_music = rl.LoadMusicStream("assets/music/thevoid.mp3"),
 		active_background_music = rl.LoadMusicStream("assets/music/in-the-night.mp3"),
 	}
