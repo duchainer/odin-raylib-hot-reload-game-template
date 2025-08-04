@@ -173,6 +173,7 @@ update :: proc() {
 		}
 
 		g.turn_index += 1
+		g.turn_index %= 2
 		g.frames_since_started_last_actions = 0
 	}
 
@@ -427,8 +428,11 @@ game_hot_reloaded :: proc(mem: rawptr) {
 	g.trains[0] = Train {
 		rect = {center_pos_loc_0.x, center_pos_loc_0.y, 10, 5},
 	}
-	g.trains[0].programmed_actions[0] = TrainMove{0, 1}
-	g.trains[0].programmed_actions[1] = TrainMove{1, 2}
+	g.trains[0].programmed_actions[0] = TrainMove{0, 3}
+	g.trains[0].programmed_actions[1] = TrainMove{3, 0}
+	// g.trains[0].programmed_actions[1] = TrainMove{3, 2}
+	// g.trains[0].programmed_actions[2] = TrainMove{2, 1}
+	// g.trains[0].programmed_actions[3] = TrainMove{1, 0}
 
 
 	g.turn_index = 0
