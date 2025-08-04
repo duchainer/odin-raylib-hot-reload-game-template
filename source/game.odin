@@ -33,27 +33,53 @@ import rl "vendor:raylib"
 
 PIXEL_WINDOW_HEIGHT :: 360
 
+Needs :: struct {
+	food: i32,
+	water: i32,
+	medecine: i32,
+	morale: i32,
+	// fuel maybe? for warmth?
+	// TODO next iteration, maybe?
+}
+
+People :: struct {
+	name: [128]u8,
+	needs: struct {
+		// Every normal day, consumes these from its current.
+		daily: Needs,
+		// The accumulated needs met at this point, will go down daily until reaching some limits
+		current: Needs,
+		limits: struct{
+			// "X is becoming hungry, and might start doing worse/different decisions"
+			soft : Needs,
+			// "X is really hungry, and wants to take over the train"
+			hard : Needs,
+			// "X died from lack of Y. Train morale dropped significantly"
+			death : Needs,
+		},
+	},
+}
+
 Game_Memory :: struct {
-	player_pos: rl.Vector2,
 	player_texture: rl.Texture,
 	total_frame_count: int,
 	run: bool,
 	passive_background_music: rl.Music,
 	active_background_music: rl.Music,
+	resources: struct {
+		// For people
+		food: i32,
+		water: i32,
+		medecine: i32,
+		// For the train
+		fuel: i32,
+		// For the group
+		morale: i32,
+	},
+	people: []People,
 }
 
 g: ^Game_Memory
-
-game_camera :: proc() -> rl.Camera2D {
-	w := f32(rl.GetScreenWidth())
-	h := f32(rl.GetScreenHeight())
-
-	return {
-		zoom = h/PIXEL_WINDOW_HEIGHT,
-		target = g.player_pos,
-		offset = { w/2, h/2 },
-	}
-}
 
 ui_camera :: proc() -> rl.Camera2D {
 	return {
@@ -62,7 +88,7 @@ ui_camera :: proc() -> rl.Camera2D {
 }
 
 update :: proc() {
-	rl.UpdateMusicStream(g.passive_background_music)
+	// rl.UpdateMusicStream(g.passive_background_music)
 	rl.UpdateMusicStream(g.active_background_music)
 	g.total_frame_count += 1
 
@@ -75,18 +101,12 @@ draw :: proc() {
 	rl.BeginDrawing()
 	rl.ClearBackground(rl.BLACK)
 
-	// rl.BeginMode2D(game_camera())
-	// rl.DrawTextureEx(g.player_texture, g.player_pos, 0, 1, rl.WHITE)
-	// rl.DrawRectangleV({20, 20}, {10, 10}, rl.RED)
-	// rl.DrawRectangleV({-30, -20}, {10, 10}, rl.GREEN)
-	// rl.EndMode2D()
-
 	rl.BeginMode2D(ui_camera())
 
 	// NOTE: `fmt.ctprintf` uses the temp allocator. The temp allocator is
 	// cleared at the end of the frame by the main application, meaning inside
 	// `main_hot_reload.odin`, `main_release.odin` or `main_web_entry.odin`.
-	rl.DrawText(fmt.ctprintf("total_frame_count: %v\nplayer_pos: %v", g.total_frame_count, g.player_pos), 5, 5, 8, rl.WHITE)
+	rl.DrawText(fmt.ctprintf("total_frame_count: %v\n", g.total_frame_count), 5, 5, 8, rl.WHITE)
 
 	rl.EndMode2D()
 
@@ -172,7 +192,7 @@ game_memory_size :: proc() -> int {
 game_hot_reloaded :: proc(mem: rawptr) {
 	g = (^Game_Memory)(mem)
 
-    rl.PlayMusicStream(g.passive_background_music)
+    // rl.PlayMusicStream(g.passive_background_music)
     rl.PlayMusicStream(g.active_background_music)
 
 	fmt.printfln("Playing?: %v", rl.IsMusicStreamPlaying(g.active_background_music))
