@@ -31,7 +31,7 @@ import "core:fmt"
 import "core:math/linalg"
 import rl "vendor:raylib"
 
-PIXEL_WINDOW_HEIGHT :: 180
+PIXEL_WINDOW_HEIGHT :: 360
 
 Game_Memory :: struct {
 	player_pos: rl.Vector2,
@@ -88,11 +88,11 @@ draw :: proc() {
 	rl.BeginDrawing()
 	rl.ClearBackground(rl.BLACK)
 
-	rl.BeginMode2D(game_camera())
-	rl.DrawTextureEx(g.player_texture, g.player_pos, 0, 1, rl.WHITE)
-	rl.DrawRectangleV({20, 20}, {10, 10}, rl.RED)
-	rl.DrawRectangleV({-30, -20}, {10, 10}, rl.GREEN)
-	rl.EndMode2D()
+	// rl.BeginMode2D(game_camera())
+	// rl.DrawTextureEx(g.player_texture, g.player_pos, 0, 1, rl.WHITE)
+	// rl.DrawRectangleV({20, 20}, {10, 10}, rl.RED)
+	// rl.DrawRectangleV({-30, -20}, {10, 10}, rl.GREEN)
+	// rl.EndMode2D()
 
 	rl.BeginMode2D(ui_camera())
 
