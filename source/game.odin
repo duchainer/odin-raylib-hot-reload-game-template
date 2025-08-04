@@ -63,7 +63,7 @@ People :: struct {
 Game_Memory :: struct {
 	total_frame_count: int,
 	run: bool,
-	passive_background_music: rl.Music,
+	// passive_background_music: rl.Music,
 	active_background_music: rl.Music,
 	resources: struct {
 		// For people
@@ -178,11 +178,9 @@ game_init :: proc() {
 
 		// You can put textures, sounds and music in the `assets` folder. Those
 		// files will be part any release or web build.
-		passive_background_music = rl.LoadMusicStream("assets/music/thevoid.mp3"),
+		// passive_background_music = rl.LoadMusicStream("assets/music/thevoid.mp3"),
 		active_background_music = rl.LoadMusicStream("assets/music/in-the-night.mp3"),
 	}
-
-
 
 	game_hot_reloaded(g)
 }
@@ -201,7 +199,7 @@ game_should_run :: proc() -> bool {
 
 @(export)
 game_shutdown :: proc() {
-    rl.UnloadMusicStream(g.passive_background_music)   // Unload music stream buffers from RAM
+    // rl.UnloadMusicStream(g.passive_background_music)   // Unload music stream buffers from RAM
     rl.UnloadMusicStream(g.active_background_music)    // Unload music stream buffers from RAM
     rl.CloseAudioDevice()         // Close audio device (music streaming is automatically stopped)
 	free(g)
