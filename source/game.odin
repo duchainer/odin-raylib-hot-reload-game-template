@@ -33,14 +33,6 @@ import rl "vendor:raylib"
 
 PIXEL_WINDOW_HEIGHT :: 360
 
-Game_Memory :: struct {
-	player_pos: rl.Vector2,
-	player_texture: rl.Texture,
-	total_frame_count: int,
-	run: bool,
-}
-
-g: ^Game_Memory
 
 game_camera :: proc() -> rl.Camera2D {
 	w := f32(rl.GetScreenWidth())
@@ -58,6 +50,15 @@ ui_camera :: proc() -> rl.Camera2D {
 		zoom = f32(rl.GetScreenHeight())/PIXEL_WINDOW_HEIGHT,
 	}
 }
+
+Game_Memory :: struct {
+	player_pos: rl.Vector2,
+	player_texture: rl.Texture,
+	total_frame_count: int,
+	run: bool,
+}
+
+g: ^Game_Memory
 
 update :: proc() {
 	// g.player_pos += input * rl.GetFrameTime() * 100
