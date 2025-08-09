@@ -207,7 +207,9 @@ draw :: proc() {
 		for rect in g.panels {
 			rl.DrawRectangleRec(rect, rl.BROWN)
 		}
-		for rect in g.handles {
+		// reverse for loop, starting with the last existing element, and skipping the last "zero/null" element
+		for i:=g.handle_count; i>0; i-=1{
+			rect := g.handles[i]
 			rl.DrawRectangleRec(rect, rl.BEIGE)
 		}
 
