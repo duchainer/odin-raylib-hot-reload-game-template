@@ -59,12 +59,14 @@ Game_Memory :: struct {
 	run: bool,
 	windows: [2]rl.Rectangle,
 	panels : [64]rl.Rectangle,
-	panel_count: u32,
-	grabbed_panel_index: u32,
+
+	// int, because we want to match the type from `for x, i in arr` loops
+	panel_count: int,
+	grabbed_panel_index: int,
 	grabbed_panel_offset_mouse_x: f32,
 	handles : [64]rl.Rectangle,
-	handle_count: u32,
-	grabbed_handle_index: u32,
+	handle_count: int,
+	grabbed_handle_index: int,
 	grabbed_handle_offset_mouse_x: f32,
 	// leftover_panels : [64]rl.Rectangle,
 }
@@ -96,10 +98,10 @@ update :: proc() {
 	} else if rl.IsMouseButtonDown(.LEFT){
 		handle := &g.handles[g.grabbed_handle_index]
 		panel := &g.panels[g.grabbed_panel_index]
-		window_index: u32
+		window_index: int
 		for candidate, i in g.windows{
 			if candidate.x < handle.x && handle.x + handle.width < candidate.x + candidate.width{
-				window_index = u32(i)
+				window_index = i
 			}
 		}
 		window := g.windows[window_index]
