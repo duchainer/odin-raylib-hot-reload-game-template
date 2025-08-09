@@ -123,15 +123,16 @@ draw :: proc() {
 		// BROWN      :: Color{ 127, 106, 79, 255 }    // Brown
 		// DARKBROWN  :: Color{ 76, 63, 47, 255 }      // Dark Brown
 
-		for rect in g.windows {
-			rl.DrawRectangleLinesEx(rect, WINDOW_THICKNESS, rl.WHITE)
-		}
 
 		for rect in g.panels {
 			rl.DrawRectangleRec(rect, rl.BROWN)
 		}
 		for rect in g.handles {
 			rl.DrawRectangleRec(rect, rl.BEIGE)
+		}
+
+		for rect in g.windows {
+			rl.DrawRectangleLinesEx(rect, WINDOW_THICKNESS, rl.WHITE)
 		}
 
 		// rl.EndMode2D()
