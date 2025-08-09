@@ -60,6 +60,8 @@ Game_Memory :: struct {
 	windows: [2]rl.Rectangle,
 	panels : [64]rl.Rectangle,
 	panel_count: u32,
+	grabbed_panel_index: u32,
+	grabbed_panel_offset_mouse_x: f32,
 	handles : [64]rl.Rectangle,
 	handle_count: u32,
 	grabbed_handle_index: u32,
@@ -71,11 +73,6 @@ g: ^Game_Memory
 
 update :: proc() {
 
-	// reverse for loop, starting with the last existing element, and skipping the last "zero/null" element
-	// for i:=g.panel_count; i>0; i-=1{
-	// 	// rect := &g.panels[i]
-	// }
-
 	mouse_pos := rl.GetMousePosition()
 	if rl.IsMouseButtonPressed(.LEFT){
 		// reverse for loop, starting with the last existing element, and skipping the last "zero/null" element
@@ -84,14 +81,25 @@ update :: proc() {
 			if rl.CheckCollisionPointRec(mouse_pos, rect){
 				g.grabbed_handle_index = i
 				g.grabbed_handle_offset_mouse_x = mouse_pos.x - rect.x
+				// reverse for loop, starting with the last existing element, and skipping the last "zero/null" element
+				for j:=g.panel_count; j>0; j-=1{
+					panel_rect := g.panels[j]
+					if rl.CheckCollisionPointRec(mouse_pos, panel_rect){
+						g.grabbed_panel_index = j
+						g.grabbed_panel_offset_mouse_x = mouse_pos.x - panel_rect.x
+					}
+				}
+				// No need to search, we found it
+				break
 			}
-			// rl.DrawRectangleRec(rect, rl.BROWN)
 		}
 	} else if rl.IsMouseButtonDown(.LEFT){
+		g.panels[g.grabbed_panel_index].x = mouse_pos.x - g.grabbed_panel_offset_mouse_x
 		g.handles[g.grabbed_handle_index].x = mouse_pos.x - g.grabbed_handle_offset_mouse_x
 	} else{
 		// Nothing grabbed no longer
 		g.grabbed_handle_index = 0
+		g.grabbed_panel_index = 0
 	}
 
 
@@ -235,7 +243,7 @@ game_hot_reloaded :: proc(mem: rawptr) {
 
 	g.panels[1] = rl.Rectangle{
 		100, 100,
-		500, 100,
+		300, 100,
 	}
 	g.panel_count += 1
 
