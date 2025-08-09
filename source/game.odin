@@ -51,16 +51,51 @@ ui_camera :: proc() -> rl.Camera2D {
 	}
 }
 
+
 Game_Memory :: struct {
 	player_pos: rl.Vector2,
 	player_texture: rl.Texture,
 	total_frame_count: int,
 	run: bool,
+	windows: [2]rl.Rectangle,
+	panels : [64]rl.Rectangle,
+	panel_count: u32,
+	handles : [64]rl.Rectangle,
+	handle_count: u32,
+	grabbed_handle_index: u32,
+	grabbed_handle_offset_mouse_x: f32,
+	// leftover_panels : [64]rl.Rectangle,
 }
 
 g: ^Game_Memory
 
 update :: proc() {
+
+	// reverse for loop, starting with the last existing element, and skipping the last "zero/null" element
+	// for i:=g.panel_count; i>0; i-=1{
+	// 	// rect := &g.panels[i]
+	// }
+
+	mouse_pos := rl.GetMousePosition()
+	if rl.IsMouseButtonPressed(.LEFT){
+		// reverse for loop, starting with the last existing element, and skipping the last "zero/null" element
+		for i:=g.handle_count; i>0; i-=1{
+			rect := g.handles[i]
+			if rl.CheckCollisionPointRec(mouse_pos, rect){
+				g.grabbed_handle_index = i
+				g.grabbed_handle_offset_mouse_x = mouse_pos.x - rect.x
+			}
+			// rl.DrawRectangleRec(rect, rl.BROWN)
+		}
+	} else if rl.IsMouseButtonDown(.LEFT){
+		g.handles[g.grabbed_handle_index].x = mouse_pos.x - g.grabbed_handle_offset_mouse_x
+	} else{
+		// Nothing grabbed no longer
+		g.grabbed_handle_index = 0
+	}
+
+
+
 	// g.player_pos += input * rl.GetFrameTime() * 100
 	g.total_frame_count += 1
 
@@ -69,22 +104,48 @@ update :: proc() {
 	}
 }
 
+LEFTOVER_SMALLNESS_IN_UI_FACTOR :: 4
 draw :: proc() {
 	rl.BeginDrawing()
 	rl.ClearBackground(rl.BLACK)
 
-	// rl.BeginMode2D(game_camera())
-	// rl.DrawTextureEx(g.player_texture, g.player_pos, 0, 1, rl.WHITE)
-	// rl.DrawRectangleV({20, 20}, {10, 10}, rl.RED)
-	// rl.DrawRectangleV({-30, -20}, {10, 10}, rl.GREEN)
-	// rl.EndMode2D()
+	{
+		// rl.BeginMode2D(game_camera())
+		// BEIGE      :: Color{ 211, 176, 131, 255 }   // Beige
+		// BROWN      :: Color{ 127, 106, 79, 255 }    // Brown
+		// DARKBROWN  :: Color{ 76, 63, 47, 255 }      // Dark Brown
+
+		for rect in g.windows {
+			rl.DrawRectangleLinesEx(rect, WINDOW_THICKNESS, rl.WHITE)
+		}
+
+		for rect in g.panels {
+			rl.DrawRectangleRec(rect, rl.BROWN)
+		}
+		for rect in g.handles {
+			rl.DrawRectangleRec(rect, rl.BEIGE)
+		}
+
+		// rl.EndMode2D()
+	}
+	//
+
+	// for rect in g.leftover_panels {
+	// 	smaller_rect := rl.Rectangle{
+	// 		rect.x,
+	// 		rect.y,
+	// 		rect.width / LEFTOVER_SMALLNESS_IN_UI_FACTOR,
+	// 		rect.height / LEFTOVER_SMALLNESS_IN_UI_FACTOR,
+	// 	}
+	// 	rl.DrawRectangleRec(smaller_rect, rl.BROWN)
+	// }
 
 	rl.BeginMode2D(ui_camera())
 
 	// NOTE: `fmt.ctprintf` uses the temp allocator. The temp allocator is
 	// cleared at the end of the frame by the main application, meaning inside
 	// `main_hot_reload.odin`, `main_release.odin` or `main_web_entry.odin`.
-	rl.DrawText(fmt.ctprintf("total_frame_count: %v\nplayer_pos: %v", g.total_frame_count, g.player_pos), 5, 5, 8, rl.WHITE)
+	rl.DrawText(fmt.ctprintf("total_frame_count: %v\ng.grabbed_handle_index: %v", g.total_frame_count, g.grabbed_handle_index), 5, 5, 8, rl.WHITE)
 
 	rl.EndMode2D()
 
@@ -156,9 +217,33 @@ game_memory_size :: proc() -> int {
 	return size_of(Game_Memory)
 }
 
+WINDOW_THICKNESS :: 3
 @(export)
 game_hot_reloaded :: proc(mem: rawptr) {
 	g = (^Game_Memory)(mem)
+
+	g.windows[0] = rl.Rectangle{
+		100-WINDOW_THICKNESS, 100-WINDOW_THICKNESS,
+		500+2*WINDOW_THICKNESS, 100+2*WINDOW_THICKNESS,
+	}
+	g.windows[1] = rl.Rectangle{
+		1100-WINDOW_THICKNESS, 100-WINDOW_THICKNESS,
+		500+2*WINDOW_THICKNESS, 100+2*WINDOW_THICKNESS,
+	}
+
+
+
+	g.panels[1] = rl.Rectangle{
+		100, 100,
+		500, 100,
+	}
+	g.panel_count += 1
+
+	g.handles[1] = rl.Rectangle{
+		150, 150,
+		25, 50,
+	}
+	g.handle_count += 1
 
 	// Here you can also set your own global variables. A good idea is to make
 	// your global variables into pointers that point to something inside `g`.
