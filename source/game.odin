@@ -231,24 +231,24 @@ game_hot_reloaded :: proc(mem: rawptr) {
 	g = (^Game_Memory)(mem)
 
 	g.windows[0] = rl.Rectangle{
-		100-WINDOW_THICKNESS, 100-WINDOW_THICKNESS,
+		100-WINDOW_THICKNESS, 200-WINDOW_THICKNESS,
 		500+2*WINDOW_THICKNESS, 100+2*WINDOW_THICKNESS,
 	}
 	g.windows[1] = rl.Rectangle{
-		1100-WINDOW_THICKNESS, 100-WINDOW_THICKNESS,
+		1100-WINDOW_THICKNESS, 200-WINDOW_THICKNESS,
 		500+2*WINDOW_THICKNESS, 100+2*WINDOW_THICKNESS,
 	}
 
 
 
 	g.panels[1] = rl.Rectangle{
-		100, 100,
+		100, 200,
 		300, 100,
 	}
 	g.panel_count += 1
 
 	g.handles[1] = rl.Rectangle{
-		150, 150,
+		150, 250,
 		25, 50,
 	}
 	g.handle_count += 1
