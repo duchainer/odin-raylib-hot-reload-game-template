@@ -326,8 +326,16 @@ game_hot_reloaded :: proc(mem: rawptr) {
 
 	g.panel_count =0
 	{
-		g.panels[1] = rl.Rectangle{
+		g.panels[g.panel_count+1] = rl.Rectangle{
 			100, 200,
+			300, 100,
+		}
+		g.panel_count += 1
+	}
+
+	{
+		g.panels[g.panel_count+1] = rl.Rectangle{
+			1100, 200,
 			300, 100,
 		}
 		g.panel_count += 1
@@ -356,6 +364,14 @@ game_hot_reloaded :: proc(mem: rawptr) {
 		}
 		g.handle_count += 1
 	}
+
+	// {
+	// 	g.handle_count += 1
+	// 	g.handles[g.handle_count] = rl.Rectangle{
+	// 		1100+150, 250,
+	// 		25, 50,
+	// 	}
+	// }
 
 	// Here you can also set your own global variables. A good idea is to make
 	// your global variables into pointers that point to something inside `g`.
