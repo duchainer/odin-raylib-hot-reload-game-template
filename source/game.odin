@@ -95,7 +95,7 @@ update :: proc() {
 		}
 	} else if rl.IsMouseButtonDown(.LEFT){
 		handle := &g.handles[g.grabbed_handle_index]
-		// panel := &g.panels[g.grabbed_panel_index]
+		panel := &g.panels[g.grabbed_panel_index]
 		window_index: u32
 		for candidate, i in g.windows{
 			if candidate.x < handle.x && handle.x + handle.width < candidate.x + candidate.width{
@@ -106,17 +106,19 @@ update :: proc() {
 		new_handle_x := mouse_pos.x - g.grabbed_handle_offset_mouse_x
 		if window.x > new_handle_x{
 			// Too far left
-			g.panels[g.grabbed_panel_index].x = window.x - g.grabbed_panel_offset_mouse_x + g.grabbed_handle_offset_mouse_x
-			g.handles[g.grabbed_handle_index].x = window.x
+			clamped_x := window.x
+			panel.x = clamped_x - g.grabbed_panel_offset_mouse_x + g.grabbed_handle_offset_mouse_x
+			handle.x = clamped_x
 
-		} else if new_handle_x + handle.width < window.x + window.width{
+		} else if new_handle_x + handle.width > window.x + window.width{
 			// Too far right
-			g.panels[g.grabbed_panel_index].x = mouse_pos.x - g.grabbed_panel_offset_mouse_x
-			g.handles[g.grabbed_handle_index].x = new_handle_x
+			clamped_x := window.x + window.width
+			panel.x = clamped_x - handle.width - g.grabbed_panel_offset_mouse_x + g.grabbed_handle_offset_mouse_x
+			handle.x = clamped_x - handle.width
 		} else{
 			// handle is still inside the frame
-			g.panels[g.grabbed_panel_index].x = mouse_pos.x - g.grabbed_panel_offset_mouse_x
-			g.handles[g.grabbed_handle_index].x = new_handle_x
+			panel.x = mouse_pos.x - g.grabbed_panel_offset_mouse_x
+			handle.x = new_handle_x
 		}
 	} else{
 		// Nothing grabbed no longer
