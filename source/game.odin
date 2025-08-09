@@ -63,10 +63,13 @@ Game_Memory :: struct {
 
 	// int, because we want to match the type from `for x, i in arr` loops
 	panel_count: int,
-	grabbed_panel_index: int,
-	grabbed_panel_offset_mouse_x: f32,
-	grabbed_panel_handle_indexes: [64]int,
-	grabbed_panel_handle_indexes_count: int,
+	grabbed_panel: struct{
+		index: int,
+		offset_mouse_x: f32,
+		handle_indexes: [64]int,
+		handle_indexes_count: int,
+		blocking_rect: rl.Rectangle,
+	},
 
 	handles : [64]rl.Rectangle,
 	handle_count: int,
@@ -91,10 +94,10 @@ update :: proc() {
 				for j:=g.panel_count; j>0; j-=1{
 					panel_rect := g.panels[j]
 					if rl.CheckCollisionPointRec(mouse_pos, panel_rect){
-						g.grabbed_panel_index = j
-						g.grabbed_panel_offset_mouse_x = mouse_pos.x - panel_rect.x
-						g.grabbed_panel_handle_indexes[0] = i
-						g.grabbed_panel_handle_indexes_count = 1
+						g.grabbed_panel.index = j
+						g.grabbed_panel.offset_mouse_x = mouse_pos.x - panel_rect.x
+						g.grabbed_panel.handle_indexes[0] = i
+						g.grabbed_panel.handle_indexes_count = 1
 						for handle, k in g.handles{
 							if k == i {
 								continue
@@ -103,8 +106,8 @@ update :: proc() {
 							// No need to check for full handle rect, we always have the handle fully inside the panel
 							// So let's avoid checking 2 points, when 1 is enough
 							if rl.CheckCollisionPointRec({handle.x, handle.y}, panel_rect){
-								g.grabbed_panel_handle_indexes[g.grabbed_panel_handle_indexes_count] = k
-								g.grabbed_panel_handle_indexes_count += 1
+								g.grabbed_panel.handle_indexes[g.grabbed_panel.handle_indexes_count] = k
+								g.grabbed_panel.handle_indexes_count += 1
 							}
 						}
 					}
@@ -115,7 +118,7 @@ update :: proc() {
 		}
 	} else if rl.IsMouseButtonDown(.LEFT){
 		handle := &g.handles[g.grabbed_handle_index]
-		panel := &g.panels[g.grabbed_panel_index]
+		panel := &g.panels[g.grabbed_panel.index]
 		window_index: int
 		for candidate, i in g.windows{
 			if candidate.x < handle.x && handle.x + handle.width < candidate.x + candidate.width{
@@ -128,26 +131,26 @@ update :: proc() {
 		if window.x > new_handle_x{
 			// Too far left
 			clamped_x := window.x
-			panel.x = clamped_x - g.grabbed_panel_offset_mouse_x + g.grabbed_handle_offset_mouse_x
+			panel.x = clamped_x - g.grabbed_panel.offset_mouse_x + g.grabbed_handle_offset_mouse_x
 			// We set new_handle_x, because we still need it to update other handles x pos
 			new_handle_x = clamped_x
 			handle.x = new_handle_x
 		} else if new_handle_x + handle.width > window.x + window.width{
 			// Too far right
 			clamped_x := window.x + window.width
-			panel.x = clamped_x - handle.width - g.grabbed_panel_offset_mouse_x + g.grabbed_handle_offset_mouse_x
+			panel.x = clamped_x - handle.width - g.grabbed_panel.offset_mouse_x + g.grabbed_handle_offset_mouse_x
 			// We set new_handle_x, because we still need it to update other handles x pos
 			new_handle_x =  clamped_x - handle.width
 			handle.x = new_handle_x
 		} else{
 			// handle is still inside the frame
-			panel.x = mouse_pos.x - g.grabbed_panel_offset_mouse_x
+			panel.x = mouse_pos.x - g.grabbed_panel.offset_mouse_x
 			handle.x = new_handle_x
 		}
 		// reverse for loop, starting with the last existing element,
 		// and skipping the 0th element, as we already handled it, above
-		for i:=g.grabbed_panel_handle_indexes_count; i>0; i-=1{
-			other_handle := &g.handles[g.grabbed_panel_handle_indexes[i]]
+		for i:=g.grabbed_panel.handle_indexes_count; i>0; i-=1{
+			other_handle := &g.handles[g.grabbed_panel.handle_indexes[i]]
 			delta_x := other_handle.x - old_handle_x
 			other_handle.x = new_handle_x + delta_x
 		}
@@ -156,8 +159,8 @@ update :: proc() {
 	} else{
 		// Nothing grabbed no longer
 		g.grabbed_handle_index = 0
-		g.grabbed_panel_index = 0
-		g.grabbed_panel_handle_indexes_count = 0
+		g.grabbed_panel.index = 0
+		g.grabbed_panel.handle_indexes_count = 0
 	}
 
 
@@ -212,7 +215,8 @@ draw :: proc() {
 	// NOTE: `fmt.ctprintf` uses the temp allocator. The temp allocator is
 	// cleared at the end of the frame by the main application, meaning inside
 	// `main_hot_reload.odin`, `main_release.odin` or `main_web_entry.odin`.
-	rl.DrawText(fmt.ctprintf("total_frame_count: %v\ng.grabbed_handle_index: %v\ng.grabbed_panel_handle_indexes: %#v", g.total_frame_count, g.grabbed_handle_index, g.grabbed_panel_handle_indexes[:g.grabbed_panel_handle_indexes_count]), 5, 5, 8, rl.WHITE)
+	rl.DrawText(fmt.ctprintf("total_frame_count: %v\ng.grabbed_handle_index: %v\ng.grabbed_panel.blocking_rect: %#v\ng.handle_count:%v\ng.handles: %#v", g.total_frame_count, g.grabbed_handle_index, g.grabbed_panel.blocking_rect, g.handle_count,g.handles[1:][:g.handle_count],), 5, 5, 8, rl.WHITE)
+	rl.DrawText(fmt.ctprintf("g.grabbed_panel.handle_indexes: %#v", g.grabbed_panel.handle_indexes[:g.grabbed_panel.handle_indexes_count]), 250, 5, 8, rl.WHITE)
 
 	rl.EndMode2D()
 
@@ -299,30 +303,38 @@ game_hot_reloaded :: proc(mem: rawptr) {
 	}
 
 
-
-	g.panels[1] = rl.Rectangle{
-		100, 200,
-		300, 100,
+	g.panel_count =0
+	{
+		g.panels[1] = rl.Rectangle{
+			100, 200,
+			300, 100,
+		}
+		g.panel_count += 1
 	}
-	g.panel_count += 1
 
-	g.handles[1] = rl.Rectangle{
-		150, 250,
-		25, 50,
-	}
-	g.handle_count += 1
 
-	g.handles[2] = rl.Rectangle{
-		150+100, 250,
-		25, 50,
+	g.handle_count = 0
+	{
+		g.handles[1] = rl.Rectangle{
+			150, 250,
+			25, 50,
+		}
+		g.handle_count += 1
 	}
-	g.handle_count += 1
-
-	g.handles[3] = rl.Rectangle{
-		150+200, 250,
-		25, 50,
+	{
+		g.handles[2] = rl.Rectangle{
+			150+100, 250,
+			25, 50,
+		}
+		g.handle_count += 1
 	}
-	g.handle_count += 1
+	{
+		g.handles[3] = rl.Rectangle{
+			150+200, 250,
+			25, 50,
+		}
+		g.handle_count += 1
+	}
 
 	// Here you can also set your own global variables. A good idea is to make
 	// your global variables into pointers that point to something inside `g`.
