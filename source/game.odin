@@ -146,8 +146,8 @@ update :: proc() {
 		}
 		// reverse for loop, starting with the last existing element,
 		// and skipping the 0th element, as we already handled it, above
-		for i:=g.grabbed_panel_handle_indexes_count-1; i>0; i-=1{
-			other_handle := &g.handles[i]
+		for i:=g.grabbed_panel_handle_indexes_count; i>0; i-=1{
+			other_handle := &g.handles[g.grabbed_panel_handle_indexes[i]]
 			delta_x := other_handle.x - old_handle_x
 			other_handle.x = new_handle_x + delta_x
 		}
