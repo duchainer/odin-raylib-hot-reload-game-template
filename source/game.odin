@@ -68,7 +68,8 @@ Game_Memory :: struct {
 		offset_mouse_x: f32,
 		handle_indexes: [64]int,
 		handle_indexes_count: int,
-		blocking_rect: rl.Rectangle,
+		leftmost_handle_index: int,
+		rightmost_handle_index: int,
 	},
 
 	handles : [64]rl.Rectangle,
@@ -98,6 +99,9 @@ update :: proc() {
 						g.grabbed_panel.offset_mouse_x = mouse_pos.x - panel_rect.x
 						g.grabbed_panel.handle_indexes[0] = i
 						g.grabbed_panel.handle_indexes_count = 1
+						g.grabbed_panel.leftmost_handle_index = i
+						g.grabbed_panel.rightmost_handle_index = i
+
 						for handle, k in g.handles{
 							if k == i {
 								continue
@@ -106,6 +110,12 @@ update :: proc() {
 							// No need to check for full handle rect, we always have the handle fully inside the panel
 							// So let's avoid checking 2 points, when 1 is enough
 							if rl.CheckCollisionPointRec({handle.x, handle.y}, panel_rect){
+								if handle.x < g.handles[g.grabbed_panel.leftmost_handle_index].x {
+									g.grabbed_panel.leftmost_handle_index = k
+								}
+								if handle.x > g.handles[g.grabbed_panel.rightmost_handle_index].x {
+									g.grabbed_panel.rightmost_handle_index = k
+								}
 								g.grabbed_panel.handle_indexes[g.grabbed_panel.handle_indexes_count] = k
 								g.grabbed_panel.handle_indexes_count += 1
 							}
@@ -128,16 +138,25 @@ update :: proc() {
 		window := g.windows[window_index]
 		old_handle_x := handle.x
 		new_handle_x := mouse_pos.x - g.grabbed_handle_offset_mouse_x
-		if window.x > new_handle_x{
+
+		leftmost_handle := g.handles[g.grabbed_panel.leftmost_handle_index]
+		leftmost_handle_delta_x := leftmost_handle.x - old_handle_x
+
+		rightmost_handle := g.handles[g.grabbed_panel.rightmost_handle_index]
+		rightmost_handle_delta_x := rightmost_handle.x - old_handle_x
+
+
+
+		if window.x > new_handle_x + leftmost_handle_delta_x {
 			// Too far left
-			clamped_x := window.x
+			clamped_x := window.x - leftmost_handle_delta_x
 			panel.x = clamped_x - g.grabbed_panel.offset_mouse_x + g.grabbed_handle_offset_mouse_x
 			// We set new_handle_x, because we still need it to update other handles x pos
 			new_handle_x = clamped_x
 			handle.x = new_handle_x
-		} else if new_handle_x + handle.width > window.x + window.width{
+		} else if new_handle_x + rightmost_handle_delta_x + rightmost_handle.width > window.x + window.width{
 			// Too far right
-			clamped_x := window.x + window.width
+			clamped_x := window.x + window.width - rightmost_handle_delta_x
 			panel.x = clamped_x - handle.width - g.grabbed_panel.offset_mouse_x + g.grabbed_handle_offset_mouse_x
 			// We set new_handle_x, because we still need it to update other handles x pos
 			new_handle_x =  clamped_x - handle.width
@@ -215,7 +234,7 @@ draw :: proc() {
 	// NOTE: `fmt.ctprintf` uses the temp allocator. The temp allocator is
 	// cleared at the end of the frame by the main application, meaning inside
 	// `main_hot_reload.odin`, `main_release.odin` or `main_web_entry.odin`.
-	rl.DrawText(fmt.ctprintf("total_frame_count: %v\ng.grabbed_handle_index: %v\ng.grabbed_panel.blocking_rect: %#v\ng.handle_count:%v\ng.handles: %#v", g.total_frame_count, g.grabbed_handle_index, g.grabbed_panel.blocking_rect, g.handle_count,g.handles[1:][:g.handle_count],), 5, 5, 8, rl.WHITE)
+	rl.DrawText(fmt.ctprintf("total_frame_count: %v\ng.grabbed_handle_index: %v\ng.handle_count:%v\ng.handles: %#v", g.total_frame_count, g.grabbed_handle_index, g.handle_count,g.handles[1:][:g.handle_count],), 5, 5, 8, rl.WHITE)
 	rl.DrawText(fmt.ctprintf("g.grabbed_panel.handle_indexes: %#v", g.grabbed_panel.handle_indexes[:g.grabbed_panel.handle_indexes_count]), 250, 5, 8, rl.WHITE)
 
 	rl.EndMode2D()
