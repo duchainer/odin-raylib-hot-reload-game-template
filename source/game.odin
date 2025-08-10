@@ -50,6 +50,17 @@ ui_camera :: proc() -> rl.Camera2D {
 	}
 }
 
+CountedPanelsArrayRect :: struct {
+	panels : [64]rl.Rectangle,
+	// int, because we want to match the type from `for x, i in arr` loops
+	panel_count: int,
+}
+
+CountedHandlesArrayRect :: struct {
+	handles : [64]rl.Rectangle,
+	handle_count: int,
+}
+
 
 Game_Memory :: struct {
 	player_pos: rl.Vector2,
@@ -58,10 +69,7 @@ Game_Memory :: struct {
 	run: bool,
 	windows: [3]rl.Rectangle,
 
-	panels : [64]rl.Rectangle,
-
-	// int, because we want to match the type from `for x, i in arr` loops
-	panel_count: int,
+	using panels_counted_arr : CountedPanelsArrayRect,
 	grabbed_panel: struct{
 		window_index: int,
 		index: int,
@@ -72,6 +80,7 @@ Game_Memory :: struct {
 		rightmost_handle_index: int,
 	},
 
+	using handles_counted_arr : CountedHandlesArrayRect,
 	handles : [64]rl.Rectangle,
 	handle_count: int,
 	grabbed_handle_index: int,
