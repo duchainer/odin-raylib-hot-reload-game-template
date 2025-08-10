@@ -320,56 +320,45 @@ game_hot_reloaded :: proc(mem: rawptr) {
 
 
 	g.panels = {}
-	g.panel_count =0
-
-	{
-		g.panels[g.panel_count+1] = rl.Rectangle{
-			100, 200,
-			300, 100,
-		}
-		g.panel_count += 1
+	g.panel_count = 0
+	create_panel:: proc(rect: rl.Rectangle){
+		g.panels[g.panel_count+1] = rect
+ 		g.panel_count += 1
 	}
 
-	{
-		g.panels[g.panel_count+1] = rl.Rectangle{
-			1100, 200,
-			300, 100,
-		}
-		g.panel_count += 1
-	}
+	create_panel(rl.Rectangle{
+		100, 200,
+		300, 100,
+	})
+	create_panel(rl.Rectangle{
+		1100, 200,
+		300, 100,
+	})
 
 
 	g.handles = {}
 	g.handle_count = 0
-	{
-		g.handle_count += 1
-		g.handles[g.handle_count] = rl.Rectangle{
-			150, 250,
-			25, 50,
-		}
-	}
-	{
-		g.handle_count += 1
-		g.handles[g.handle_count] = rl.Rectangle{
-			150+100, 250,
-			25, 50,
-		}
-	}
-	{
-		g.handle_count += 1
-		g.handles[g.handle_count] = rl.Rectangle{
-			150+200, 250,
-			25, 50,
-		}
-	}
-	{
-		g.handle_count += 1
-		g.handles[g.handle_count] = rl.Rectangle{
-			1100+150, 250,
-			25, 50,
-		}
+	create_handle:: proc(rect: rl.Rectangle){
+		g.handles[g.handle_count+1] = rect
+ 		g.handle_count += 1
 	}
 
+	create_handle(rl.Rectangle{
+		150, 250,
+		25, 50,
+	})
+	create_handle(rl.Rectangle{
+		150+100, 250,
+		25, 50,
+	})
+	create_handle(rl.Rectangle{
+		150+200, 250,
+		25, 50,
+	})
+	create_handle(rl.Rectangle{
+		1100+150, 250,
+		25, 50,
+	})
 	// Here you can also set your own global variables. A good idea is to make
 	// your global variables into pointers that point to something inside `g`.
 }
