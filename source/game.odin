@@ -207,10 +207,16 @@ draw :: proc() {
 		// BROWN      :: Color{ 127, 106, 79, 255 }    // Brown
 		// DARKBROWN  :: Color{ 76, 63, 47, 255 }      // Dark Brown
 
+		for rect in g.windows {
+			// window outside
+			rl.DrawRectangleRec(rect, rl.DARKBLUE)
+		}
 
-		for rect in g.panels {
+		for i:=g.panel_count; i>0; i-=1{
+			rect := g.panels[i]
 			rl.DrawRectangleRec(rect, rl.BROWN)
 		}
+
 		// reverse for loop, starting with the last existing element, and skipping the last "zero/null" element
 		for i:=g.handle_count; i>0; i-=1{
 			rect := g.handles[i]
@@ -218,6 +224,7 @@ draw :: proc() {
 		}
 
 		for rect in g.windows {
+			// window frame
 			rl.DrawRectangleLinesEx(rect, WINDOW_THICKNESS, rl.WHITE)
 		}
 
