@@ -57,13 +57,14 @@ Game_Memory :: struct {
 	player_texture: rl.Texture,
 	total_frame_count: int,
 	run: bool,
-	windows: [2]rl.Rectangle,
+	windows: [3]rl.Rectangle,
 
 	panels : [64]rl.Rectangle,
 
 	// int, because we want to match the type from `for x, i in arr` loops
 	panel_count: int,
 	grabbed_panel: struct{
+		window_index: int,
 		index: int,
 		offset_mouse_x: f32,
 		handle_indexes: [64]int,
@@ -87,10 +88,10 @@ update :: proc() {
 	if rl.IsMouseButtonPressed(.LEFT){
 		// reverse for loop, starting with the last existing element, and skipping the last "zero/null" element
 		for i:=g.handle_count; i>0; i-=1{
-			rect := g.handles[i]
-			if rl.CheckCollisionPointRec(mouse_pos, rect){
+			handle_rect:= g.handles[i]
+			if rl.CheckCollisionPointRec(mouse_pos, handle_rect){
 				g.grabbed_handle_index = i
-				g.grabbed_handle_offset_mouse_x = mouse_pos.x - rect.x
+				g.grabbed_handle_offset_mouse_x = mouse_pos.x - handle_rect.x
 				// reverse for loop, starting with the last existing element, and skipping the last "zero/null" element
 				for j:=g.panel_count; j>0; j-=1{
 					panel_rect := g.panels[j]
@@ -101,6 +102,16 @@ update :: proc() {
 						g.grabbed_panel.handle_indexes_count = 1
 						g.grabbed_panel.leftmost_handle_index = i
 						g.grabbed_panel.rightmost_handle_index = i
+
+
+						g.grabbed_panel.window_index = 0
+						for candidate, window_index in g.windows{
+							if candidate.x <= handle_rect.x && handle_rect.x + handle_rect.width <= candidate.x + candidate.width{
+								g.grabbed_panel.window_index = window_index
+							}
+						}
+						assert(g.grabbed_panel.window_index != 0, "Handles should always be inside windows, if they are on a panel")
+
 
 						for handle, k in g.handles{
 							if k == i {
@@ -120,6 +131,7 @@ update :: proc() {
 								g.grabbed_panel.handle_indexes_count += 1
 							}
 						}
+
 					}
 				}
 				// No need to search, we found it
@@ -129,13 +141,8 @@ update :: proc() {
 	} else if rl.IsMouseButtonDown(.LEFT){
 		handle := &g.handles[g.grabbed_handle_index]
 		panel := &g.panels[g.grabbed_panel.index]
-		window_index: int
-		for candidate, i in g.windows{
-			if candidate.x < handle.x && handle.x + handle.width < candidate.x + candidate.width{
-				window_index = i
-			}
-		}
-		window := g.windows[window_index]
+		window := g.windows[g.grabbed_panel.window_index]
+
 		old_handle_x := handle.x
 		new_handle_x := mouse_pos.x - g.grabbed_handle_offset_mouse_x
 
@@ -314,11 +321,13 @@ WINDOW_THICKNESS :: 3
 game_hot_reloaded :: proc(mem: rawptr) {
 	g = (^Game_Memory)(mem)
 
-	g.windows[0] = rl.Rectangle{
+	g.windows = {}
+
+	g.windows[1] = rl.Rectangle{
 		100-WINDOW_THICKNESS, 200-WINDOW_THICKNESS,
 		500+2*WINDOW_THICKNESS, 100+2*WINDOW_THICKNESS,
 	}
-	g.windows[1] = rl.Rectangle{
+	g.windows[2] = rl.Rectangle{
 		1100-WINDOW_THICKNESS, 200-WINDOW_THICKNESS,
 		500+2*WINDOW_THICKNESS, 100+2*WINDOW_THICKNESS,
 	}
