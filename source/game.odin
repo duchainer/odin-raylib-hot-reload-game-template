@@ -28,7 +28,6 @@ created.
 package game
 
 import "core:fmt"
-// import "core:math/linalg"
 import rl "vendor:raylib"
 
 PIXEL_WINDOW_HEIGHT :: 360
@@ -77,7 +76,6 @@ Game_Memory :: struct {
 	handle_count: int,
 	grabbed_handle_index: int,
 	grabbed_handle_offset_mouse_x: f32,
-	// leftover_panels : [64]rl.Rectangle,
 }
 
 g: ^Game_Memory
@@ -191,7 +189,6 @@ update :: proc() {
 
 
 
-	// g.player_pos += input * rl.GetFrameTime() * 100
 	g.total_frame_count += 1
 
 	if rl.IsKeyPressed(.LEFT_CONTROL) && rl.IsKeyPressed(.LEFT_SHIFT) && rl.IsKeyPressed(.ESCAPE) {
@@ -226,17 +223,6 @@ draw :: proc() {
 
 		// rl.EndMode2D()
 	}
-	//
-
-	// for rect in g.leftover_panels {
-	// 	smaller_rect := rl.Rectangle{
-	// 		rect.x,
-	// 		rect.y,
-	// 		rect.width / LEFTOVER_SMALLNESS_IN_UI_FACTOR,
-	// 		rect.height / LEFTOVER_SMALLNESS_IN_UI_FACTOR,
-	// 	}
-	// 	rl.DrawRectangleRec(smaller_rect, rl.BROWN)
-	// }
 
 	rl.BeginMode2D(ui_camera())
 
