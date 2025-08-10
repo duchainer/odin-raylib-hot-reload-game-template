@@ -333,7 +333,9 @@ game_hot_reloaded :: proc(mem: rawptr) {
 	}
 
 
+	g.panels = {}
 	g.panel_count =0
+
 	{
 		g.panels[g.panel_count+1] = rl.Rectangle{
 			100, 200,
@@ -351,29 +353,29 @@ game_hot_reloaded :: proc(mem: rawptr) {
 	}
 
 
+	g.handles = {}
 	g.handle_count = 0
 	{
-		g.handles[1] = rl.Rectangle{
+		g.handle_count += 1
+		g.handles[g.handle_count] = rl.Rectangle{
 			150, 250,
 			25, 50,
 		}
-		g.handle_count += 1
 	}
 	{
-		g.handles[2] = rl.Rectangle{
+		g.handle_count += 1
+		g.handles[g.handle_count] = rl.Rectangle{
 			150+100, 250,
 			25, 50,
 		}
-		g.handle_count += 1
 	}
 	{
-		g.handles[3] = rl.Rectangle{
+		g.handle_count += 1
+		g.handles[g.handle_count] = rl.Rectangle{
 			150+200, 250,
 			25, 50,
 		}
-		g.handle_count += 1
 	}
-
 	{
 		g.handle_count += 1
 		g.handles[g.handle_count] = rl.Rectangle{
