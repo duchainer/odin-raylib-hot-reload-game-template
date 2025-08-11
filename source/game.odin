@@ -28,6 +28,8 @@ created.
 package game
 
 import "core:fmt"
+_ :: fmt
+import "core:math/rand"
 import rl "vendor:raylib"
 
 PIXEL_WINDOW_HEIGHT :: 360
@@ -61,13 +63,13 @@ CountedHandlesArrayRect :: struct {
 	handle_count: int,
 }
 
-
+WINDOW_COUNT :: 2
 Game_Memory :: struct {
 	player_pos: rl.Vector2,
 	player_texture: rl.Texture,
 	total_frame_count: int,
 	run: bool,
-	windows: [3]rl.Rectangle,
+	windows: [WINDOW_COUNT+1]rl.Rectangle,
 
 	using panels_counted_arr : CountedPanelsArrayRect,
 	grabbed_panel: struct{
@@ -83,6 +85,8 @@ Game_Memory :: struct {
 	using handles_counted_arr : CountedHandlesArrayRect,
 	grabbed_handle_index: int,
 	grabbed_handle_offset_mouse_x: f32,
+
+	wolves : [WINDOW_COUNT*3][2]f32,
 }
 
 g: ^Game_Memory
@@ -198,6 +202,30 @@ update :: proc() {
 
 	g.total_frame_count += 1
 
+	current_sprite_frame := ( g.total_frame_count /60 ) % 6
+	frameRec.x      = f32(current_sprite_frame) * f32(wolf_texture.width/WOLF_SPRITE_COUNT)
+	frameRec.height = (1+f32(current_sprite_frame)) * f32(wolf_texture.height)/6
+
+	spawn_points := WOLVES_SPAWNS
+
+	for &wolf, i in g.wolves{
+		if wolf != {} {
+			wolf.y = spawn_points[i].y - (1+f32(current_sprite_frame)) * f32(wolf_texture.height)/6
+		}
+	}
+	if g.total_frame_count %60 == 0{
+		// TODO have unsynced wolf animations
+		rand_num := rand.int_max(WINDOW_COUNT*3)
+		for i in 0..=5 {
+			rand_i := (rand_num+i) % (WINDOW_COUNT*3)
+			if g.wolves[rand_i] == {} {
+				g.wolves[rand_i] = spawn_points[rand_i]
+				g.wolves[rand_i].y = 300
+				break
+			}
+		}
+	}
+
 	if rl.IsKeyPressed(.LEFT_CONTROL) && rl.IsKeyPressed(.LEFT_SHIFT) && rl.IsKeyPressed(.ESCAPE) {
 		g.run = false
 	}
@@ -217,6 +245,12 @@ draw :: proc() {
 		for rect in g.windows {
 			// window outside
 			rl.DrawRectangleRec(rect, rl.DARKBLUE)
+		}
+
+		for wolf_pos in g.wolves{
+			if wolf_pos != {} {
+				rl.DrawTextureRec(wolf_texture, frameRec, wolf_pos, rl.WHITE)
+			}
 		}
 
 		for i:=g.panel_count; i>0; i-=1{
@@ -243,8 +277,10 @@ draw :: proc() {
 	// NOTE: `fmt.ctprintf` uses the temp allocator. The temp allocator is
 	// cleared at the end of the frame by the main application, meaning inside
 	// `main_hot_reload.odin`, `main_release.odin` or `main_web_entry.odin`.
-	rl.DrawText(fmt.ctprintf("total_frame_count: %v\ng.grabbed_handle_index: %v\ng.handle_count:%v\ng.handles: %#v", g.total_frame_count, g.grabbed_handle_index, g.handle_count,g.handles[1:][:g.handle_count],), 5, 5, 8, rl.WHITE)
-	rl.DrawText(fmt.ctprintf("g.grabbed_panel.handle_indexes: %#v", g.grabbed_panel.handle_indexes[:g.grabbed_panel.handle_indexes_count]), 250, 5, 8, rl.WHITE)
+	when ODIN_DEBUG {
+		rl.DrawText(fmt.ctprintf("total_frame_count: %v\ng.grabbed_handle_index: %v\ng.wolves: %#v", g.total_frame_count, g.grabbed_handle_index, g.wolves,), 5, 5, 8, rl.WHITE)
+		rl.DrawText(fmt.ctprintf("g.grabbed_panel.handle_indexes: %#v", g.grabbed_panel.handle_indexes[:g.grabbed_panel.handle_indexes_count]), 250, 5, 8, rl.WHITE)
+	}
 
 	rl.EndMode2D()
 
@@ -316,9 +352,17 @@ game_memory_size :: proc() -> int {
 	return size_of(Game_Memory)
 }
 
+WOLVES_SPAWNS : [WINDOW_COUNT*3][2]f32
 WINDOW_THICKNESS :: 3
+
+WOLF_SPRITE_COUNT :: 4
+wolf_texture : rl.Texture2D
+frameRec : rl.Rectangle
 @(export)
 game_hot_reloaded :: proc(mem: rawptr) {
+	wolf_texture = rl.LoadTexture("assets/wolf/wolf-head.png")
+	frameRec = { 0, 0, f32(wolf_texture.width/WOLF_SPRITE_COUNT), f32(wolf_texture.height) }
+
 	g = (^Game_Memory)(mem)
 
 	g.windows = {}
@@ -331,6 +375,17 @@ game_hot_reloaded :: proc(mem: rawptr) {
 		1100-WINDOW_THICKNESS, 200-WINDOW_THICKNESS,
 		500+2*WINDOW_THICKNESS, 100+2*WINDOW_THICKNESS,
 	}
+
+	WOLVES_SPAWNS = {
+		{g.windows[1].x + 0*g.windows[1].width/3, g.windows[1].y+g.windows[1].height},
+		{g.windows[1].x + 1*g.windows[1].width/3, g.windows[1].y+g.windows[1].height},
+		{g.windows[1].x + 2*g.windows[1].width/3, g.windows[1].y+g.windows[1].height},
+
+		{g.windows[2].x + 0*g.windows[2].width/3, g.windows[2].y+g.windows[2].height},
+		{g.windows[2].x + 1*g.windows[2].width/3, g.windows[2].y+g.windows[2].height},
+		{g.windows[2].x + 2*g.windows[2].width/3, g.windows[2].y+g.windows[1].height},
+	}
+
 
 
 	g.panels = {}
