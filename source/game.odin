@@ -81,8 +81,6 @@ Game_Memory :: struct {
 	},
 
 	using handles_counted_arr : CountedHandlesArrayRect,
-	handles : [64]rl.Rectangle,
-	handle_count: int,
 	grabbed_handle_index: int,
 	grabbed_handle_offset_mouse_x: f32,
 }
