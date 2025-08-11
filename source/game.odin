@@ -87,6 +87,7 @@ Game_Memory :: struct {
 	grabbed_handle_offset_mouse_x: f32,
 
 	wolves : [WINDOW_COUNT*3][2]f32,
+	slammed_wolves_timer : [WINDOW_COUNT*3]int,
 }
 
 g: ^Game_Memory
@@ -115,7 +116,7 @@ update :: proc() {
 
 						g.grabbed_panel.window_index = 0
 						for candidate, window_index in g.windows{
-							if candidate.x <= handle_rect.x && handle_rect.x + handle_rect.width <= candidate.x + candidate.width{
+								if is_this_small_aligned_rect_inside_big_rect(handle_rect, candidate){
 								g.grabbed_panel.window_index = window_index
 							}
 						}
@@ -198,7 +199,10 @@ update :: proc() {
 		g.grabbed_panel.handle_indexes_count = 0
 	}
 
-
+	wolf_flee :: proc(wolf:^[2]f32, wolf_index: int){
+		g.slammed_wolves_timer[wolf_index] = 120
+		wolf^ = {}
+	}
 
 	g.total_frame_count += 1
 
@@ -208,8 +212,22 @@ update :: proc() {
 
 	spawn_points := WOLVES_SPAWNS
 
-	for &wolf, i in g.wolves{
+	next_wolf: for &wolf, i in g.wolves{
+		g.slammed_wolves_timer[i] -= 1
 		if wolf != {} {
+			for j:=g.panel_count; j>0; j-=1{
+				rect := g.panels[j]
+				wolf_rect := rl.Rectangle{
+					wolf.x,
+					wolf.y,
+					f32( wolf_texture.width/WOLF_SPRITE_COUNT ),
+					frameRec.height,
+				}
+				if is_this_small_aligned_rect_inside_big_rect(wolf_rect, rect){
+					wolf_flee(&wolf, i)
+					continue next_wolf
+				}
+			}
 			wolf.y = spawn_points[i].y - (1+f32(current_sprite_frame)) * f32(wolf_texture.height)/6
 		}
 	}
@@ -247,7 +265,11 @@ draw :: proc() {
 			rl.DrawRectangleRec(rect, rl.DARKBLUE)
 		}
 
-		for wolf_pos in g.wolves{
+		for wolf_pos, i in g.wolves{
+			if g.slammed_wolves_timer[i] > 0{
+				rl.DrawText("GO AWAY!", i32(WOLVES_SPAWNS[i].x), i32(WOLVES_SPAWNS[i].y), 32, rl.WHITE)
+			}
+
 			if wolf_pos != {} {
 				rl.DrawTextureRec(wolf_texture, frameRec, wolf_pos, rl.WHITE)
 			}
