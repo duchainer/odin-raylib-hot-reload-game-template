@@ -206,9 +206,11 @@ update :: proc() {
 
 	g.total_frame_count += 1
 
-	current_sprite_frame := ( g.total_frame_count /60 ) % 6
+	frames_to_kill :: 20
+	current_sprite_frame := ( g.total_frame_count/ 5 ) % frames_to_kill
 	frameRec.x      = f32(current_sprite_frame) * f32(wolf_texture.width/WOLF_SPRITE_COUNT)
-	frameRec.height = (1+f32(current_sprite_frame)) * f32(wolf_texture.height)/6
+	frameRec.height = (1+f32(current_sprite_frame)) * f32(wolf_texture.height)/frames_to_kill
+	// frameRec.height = f32(wolf_texture.height)
 
 	spawn_points := WOLVES_SPAWNS
 
@@ -228,7 +230,7 @@ update :: proc() {
 					continue next_wolf
 				}
 			}
-			wolf.y = spawn_points[i].y - (1+f32(current_sprite_frame)) * f32(wolf_texture.height)/6
+			wolf.y = spawn_points[i].y - (1+f32(current_sprite_frame)) * f32(wolf_texture.height)/frames_to_kill
 		}
 	}
 	if g.total_frame_count %60 == 0{
