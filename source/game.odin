@@ -61,24 +61,13 @@ CountedHandlesArrayRect :: struct {
 	handle_count: int,
 }
 
-CountedArrayRect :: struct {
-	arr : [64]rl.Rectangle,
-	count: int,
-}
-
-Window :: struct{
-	using rect: rl.Rectangle,
-	last_time_spawn : u32,
-
-}
-
 
 Game_Memory :: struct {
 	player_pos: rl.Vector2,
 	player_texture: rl.Texture,
 	total_frame_count: int,
 	run: bool,
-	windows: [WINDOW_COUNT+1]Window,
+	windows: [3]rl.Rectangle,
 
 	using panels_counted_arr : CountedPanelsArrayRect,
 	grabbed_panel: struct{
@@ -100,152 +89,112 @@ Game_Memory :: struct {
 
 g: ^Game_Memory
 
-counted_array_rect_append ::proc(counted_array: ^CountedArrayRect, rect: rl.Rectangle){
-	counted_array.count += 1
-	counted_array.arr[counted_array.count]
-}
-
-WINDOW_COUNT :: 2
-
 update :: proc() {
 
-	// Handle grabbing handles
-	{
-		mouse_pos := rl.GetMousePosition()
-		if rl.IsMouseButtonPressed(.LEFT){
+	mouse_pos := rl.GetMousePosition()
+	if rl.IsMouseButtonPressed(.LEFT){
+		// reverse for loop, starting with the last existing element, and skipping the last "zero/null" element
+		for i:=g.handle_count; i>0; i-=1{
+			handle_rect:= g.handles[i]
+			if rl.CheckCollisionPointRec(mouse_pos, handle_rect){
+				g.grabbed_handle_index = i
+				g.grabbed_handle_offset_mouse_x = mouse_pos.x - handle_rect.x
 				// reverse for loop, starting with the last existing element, and skipping the last "zero/null" element
-				for i:=g.handle_count; i>0; i-=1{
-				   handle_rect:= g.handles[i]
-				   if rl.CheckCollisionPointRec(mouse_pos, handle_rect){
-					   g.grabbed_handle_index = i
-					   g.grabbed_handle_offset_mouse_x = mouse_pos.x - handle_rect.x
-					   // reverse for loop, starting with the last existing element, and skipping the last "zero/null" element
-					   for j:=g.panel_count; j>0; j-=1{
-						   panel_rect := g.panels[j]
-						   if rl.CheckCollisionPointRec(mouse_pos, panel_rect){
-							   g.grabbed_panel.index = j
-							   g.grabbed_panel.offset_mouse_x = mouse_pos.x - panel_rect.x
-							   g.grabbed_panel.handle_indexes[0] = i
-							   g.grabbed_panel.handle_indexes_count = 1
-							   g.grabbed_panel.leftmost_handle_index = i
-							   g.grabbed_panel.rightmost_handle_index = i
+				for j:=g.panel_count; j>0; j-=1{
+					panel_rect := g.panels[j]
+					if rl.CheckCollisionPointRec(mouse_pos, panel_rect){
+						g.grabbed_panel.index = j
+						g.grabbed_panel.offset_mouse_x = mouse_pos.x - panel_rect.x
+						g.grabbed_panel.handle_indexes[0] = i
+						g.grabbed_panel.handle_indexes_count = 1
+						g.grabbed_panel.leftmost_handle_index = i
+						g.grabbed_panel.rightmost_handle_index = i
 
 
-							   g.grabbed_panel.window_index = 0
-							   for candidate, window_index in g.windows{
-								   if candidate.x <= handle_rect.x && handle_rect.x + handle_rect.width <= candidate.x + candidate.width{
-									   g.grabbed_panel.window_index = window_index
+						g.grabbed_panel.window_index = 0
+						for candidate, window_index in g.windows{
+							if candidate.x <= handle_rect.x && handle_rect.x + handle_rect.width <= candidate.x + candidate.width{
+								g.grabbed_panel.window_index = window_index
 							}
 						}
-							   assert(g.grabbed_panel.window_index != 0, "Handles should always be inside windows, if they are on a panel")
+						assert(g.grabbed_panel.window_index != 0, "Handles should always be inside windows, if they are on a panel")
 
 
-							   for handle, k in g.handles{
-								   if k == i {
-									   continue
+						for handle, k in g.handles{
+							if k == i {
+								continue
 							}
-								   // ASSUMPTION
-								   // No need to check for full handle rect, we always have the handle fully inside the panel
-								   // So let's avoid checking 2 points, when 1 is enough
-								   if rl.CheckCollisionPointRec({handle.x, handle.y}, panel_rect){
-									   if handle.x < g.handles[g.grabbed_panel.leftmost_handle_index].x {
-										   g.grabbed_panel.leftmost_handle_index = k
+							// ASSUMPTION
+							// No need to check for full handle rect, we always have the handle fully inside the panel
+							// So let's avoid checking 2 points, when 1 is enough
+							if rl.CheckCollisionPointRec({handle.x, handle.y}, panel_rect){
+								if handle.x < g.handles[g.grabbed_panel.leftmost_handle_index].x {
+									g.grabbed_panel.leftmost_handle_index = k
 								}
-									   if handle.x > g.handles[g.grabbed_panel.rightmost_handle_index].x {
-										   g.grabbed_panel.rightmost_handle_index = k
+								if handle.x > g.handles[g.grabbed_panel.rightmost_handle_index].x {
+									g.grabbed_panel.rightmost_handle_index = k
 								}
-									   g.grabbed_panel.handle_indexes[g.grabbed_panel.handle_indexes_count] = k
-									   g.grabbed_panel.handle_indexes_count += 1
+								g.grabbed_panel.handle_indexes[g.grabbed_panel.handle_indexes_count] = k
+								g.grabbed_panel.handle_indexes_count += 1
 							}
 						}
 
 					}
 				}
-					   // No need to search, we found it
-					   break
+				// No need to search, we found it
+				break
 			}
 		}
-		} else if rl.IsMouseButtonDown(.LEFT){
-				handle := &g.handles[g.grabbed_handle_index]
-				panel := &g.panels[g.grabbed_panel.index]
-				window := g.windows[g.grabbed_panel.window_index]
+	} else if rl.IsMouseButtonDown(.LEFT){
+		handle := &g.handles[g.grabbed_handle_index]
+		panel := &g.panels[g.grabbed_panel.index]
+		window := g.windows[g.grabbed_panel.window_index]
 
-				old_handle_x := handle.x
-				new_handle_x := mouse_pos.x - g.grabbed_handle_offset_mouse_x
+		old_handle_x := handle.x
+		new_handle_x := mouse_pos.x - g.grabbed_handle_offset_mouse_x
 
-				leftmost_handle := g.handles[g.grabbed_panel.leftmost_handle_index]
-				leftmost_handle_delta_x := leftmost_handle.x - old_handle_x
+		leftmost_handle := g.handles[g.grabbed_panel.leftmost_handle_index]
+		leftmost_handle_delta_x := leftmost_handle.x - old_handle_x
 
-				rightmost_handle := g.handles[g.grabbed_panel.rightmost_handle_index]
-				rightmost_handle_delta_x := rightmost_handle.x - old_handle_x
+		rightmost_handle := g.handles[g.grabbed_panel.rightmost_handle_index]
+		rightmost_handle_delta_x := rightmost_handle.x - old_handle_x
 
 
 
-				if window.x > new_handle_x + leftmost_handle_delta_x {
-				   // Too far left
-				   clamped_x := window.x - leftmost_handle_delta_x
-				   panel.x = clamped_x - g.grabbed_panel.offset_mouse_x + g.grabbed_handle_offset_mouse_x
-				   // We set new_handle_x, because we still need it to update other handles x pos
-				   new_handle_x = clamped_x
-				   handle.x = new_handle_x
+		if window.x > new_handle_x + leftmost_handle_delta_x {
+			// Too far left
+			clamped_x := window.x - leftmost_handle_delta_x
+			panel.x = clamped_x - g.grabbed_panel.offset_mouse_x + g.grabbed_handle_offset_mouse_x
+			// We set new_handle_x, because we still need it to update other handles x pos
+			new_handle_x = clamped_x
+			handle.x = new_handle_x
 		} else if new_handle_x + rightmost_handle_delta_x + rightmost_handle.width > window.x + window.width{
-				   // Too far right
-				   clamped_x := window.x + window.width - rightmost_handle_delta_x
-				   panel.x = clamped_x - handle.width - g.grabbed_panel.offset_mouse_x + g.grabbed_handle_offset_mouse_x
-				   // We set new_handle_x, because we still need it to update other handles x pos
-				   new_handle_x =  clamped_x - handle.width
-				   handle.x = new_handle_x
+			// Too far right
+			clamped_x := window.x + window.width - rightmost_handle_delta_x
+			panel.x = clamped_x - handle.width - g.grabbed_panel.offset_mouse_x + g.grabbed_handle_offset_mouse_x
+			// We set new_handle_x, because we still need it to update other handles x pos
+			new_handle_x =  clamped_x - handle.width
+			handle.x = new_handle_x
 		} else{
-				   // handle is still inside the frame
-				   panel.x = mouse_pos.x - g.grabbed_panel.offset_mouse_x
-				   handle.x = new_handle_x
+			// handle is still inside the frame
+			panel.x = mouse_pos.x - g.grabbed_panel.offset_mouse_x
+			handle.x = new_handle_x
 		}
-				// reverse for loop, starting with the last existing element,
-				// and skipping the 0th element, as we already handled it, above
-				for i:=g.grabbed_panel.handle_indexes_count-1; i>0; i-=1{
-				   other_handle := &g.handles[g.grabbed_panel.handle_indexes[i]]
-				   delta_x := other_handle.x - old_handle_x
-				   other_handle.x = new_handle_x + delta_x
+		// reverse for loop, starting with the last existing element,
+		// and skipping the 0th element, as we already handled it, above
+		for i:=g.grabbed_panel.handle_indexes_count-1; i>0; i-=1{
+			other_handle := &g.handles[g.grabbed_panel.handle_indexes[i]]
+			delta_x := other_handle.x - old_handle_x
+			other_handle.x = new_handle_x + delta_x
 		}
 
 
-		} else{
-			// Nothing grabbed no longer
-			g.grabbed_handle_index = 0
-			g.grabbed_panel.index = 0
-			g.grabbed_panel.handle_indexes_count = 0
-		}
+	} else{
+		// Nothing grabbed no longer
+		g.grabbed_handle_index = 0
+		g.grabbed_panel.index = 0
+		g.grabbed_panel.handle_indexes_count = 0
 	}
-
-
-	// Get all the available rects to start spawning wolves heads
-	blocked_rect : [WINDOW_COUNT+1]rl.Rectangle
-	{
-		for window, i for g.windows{
-			if i == 0{
-				// skip the null window
-				continue
-			}
-
-			for j:=g.panels_counted_arr.panel_count; j>0; j-=1{
-				panel := g.panels_counted_arr.panels[j]
-				overlap := GetCollisionRec(panel, window)
-				if overlap != {} {
-					blocked_rect[i] = panel
-
-					// ASSUMPTION
-					// We only have 1 panel per window, for now
-					break
-				} else{
-					// Panel is not inside this window, or covers the whole window
-				}
-
-			}
-
-			// counted_array_rect_append(&g.available_wolf_spots, rect)
-		}
-	}
-
 
 
 
@@ -258,12 +207,6 @@ update :: proc() {
 
 LEFTOVER_SMALLNESS_IN_UI_FACTOR :: 4
 draw :: proc() {
-	anim_frames: i32
-    // NOTE: Textures MUST be loaded after Window initialization (OpenGL context is required)
-    wolf_texture: Texture2D = LoadTexture("assets/wolf/wolf-head.png");        // Texture loading
-	im_wolf_anim := rl.LoadImageAnim("resources/scarfy_run.gif", &anim_frames)
-	defer rl.UnloadImage(im_scarfy_anim)
-
 	rl.BeginDrawing()
 	rl.ClearBackground(rl.BLACK)
 
