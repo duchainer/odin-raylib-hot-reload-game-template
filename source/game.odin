@@ -422,7 +422,6 @@ game_init :: proc() {
 
 		// You can put textures, sounds and music in the `assets` folder. Those
 		// files will be part any release or web build.
-		player_texture = rl.LoadTexture("assets/round_cat.png"),
 	}
 
 	game_hot_reloaded(g)
