@@ -373,8 +373,10 @@ draw :: proc(has_won: bool) {
 	// `main_hot_reload.odin`, `main_release.odin` or `main_web_entry.odin`.
 
 	rl.EndMode2D()
-	rl.DrawText(fmt.ctprintf("frame_count: %v\nplayer_pos: %v\nmouse_pos: %v", g.frame_count, g.player.center, rl.GetMousePosition()), 5, 5, 16, rl.GRAY)
-	rl.DrawText(fmt.ctprintf("g.screen_resolution: %v, %v\nplayer: %#v", g.screen_width, g.screen_height, g.player), i32(g.screen_width)-300, 5, 16, rl.GRAY)
+	if ODIN_DEBUG{
+		rl.DrawText(fmt.ctprintf("frame_count: %v\nplayer_pos: %v\nmouse_pos: %v", g.frame_count, g.player.center, rl.GetMousePosition()), 5, 5, 16, rl.GRAY)
+		rl.DrawText(fmt.ctprintf("g.screen_resolution: %v, %v\nplayer: %#v", g.screen_width, g.screen_height, g.player), i32(g.screen_width)-300, 5, 16, rl.GRAY)
+	}
 
 	// To test the real resolution
 	rl.DrawRectangleLinesEx(
