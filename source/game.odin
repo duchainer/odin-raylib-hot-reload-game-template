@@ -379,12 +379,14 @@ game_hot_reloaded :: proc(mem: rawptr) {
 
 	g.lasers_count = 0
 
+
+	// create a debug laser
 	{
 		g.lasers_count += 1
 		g.lasers[g.lasers_count] = Laser {
 			p1 = {-100, -100},
 			p2 = {-100, 100},
-			velocity = {10, 0},
+			velocity = {20, 0},
 			color = rl.RED,
 		}
 	}
