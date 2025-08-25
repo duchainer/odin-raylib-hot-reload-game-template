@@ -84,6 +84,8 @@ update :: proc() {
 
 	input = linalg.normalize0(input)
 	g.player.center += input * rl.GetFrameTime() * 100
+	// We round the player pos, to have the shadow always centered under the player
+	// And it is using integer, so we have to use whole numbers
 	g.player.center = {
 		math.round(g.player.center.x),
 		math.round(g.player.center.y),
@@ -109,18 +111,57 @@ draw :: proc() {
 
 	shadow_center := [2]i32{i32(g.player.center.x), i32(math.round(g.player.center.y+g.player.radius))}
 	rl.DrawEllipse(shadow_center.x, shadow_center.y, g.player.radius, 3, rl.BLACK)
-	{
-		center : rl.Vector2 = g.player.center
-		innerRadius : f32 = 2
-		outerRadius : f32 = 4
-		startAngle: f32 = 0
-		endAngle: f32 = 0.5
-		segments : i32 = 10
-		color := rl.LIGHTGRAY
-		rl.DrawRing(center, innerRadius, outerRadius, startAngle, endAngle, segments, color)
-	}
 
 	rl.DrawCircleV(g.player.center, g.player.radius, g.player.color)
+
+	{
+		center : rl.Vector2 = g.player.center
+		innerRadius : f32 = g.player.radius
+		outerRadius : f32 = innerRadius + 4
+		startAngle: f32 = 180
+		endAngle: f32 = 360
+		segments : i32 = 30
+		color := rl.PINK
+		rl.DrawRing(center, innerRadius, outerRadius, startAngle, endAngle, segments, color)
+	}
+	{
+		SECS_TO_DO_FULL_ROPE_REVOLUTION :: 4
+		// u is between 0.0 and SECS_TO_DO_FULL_ROPE_REVOLUTION
+		u := math.mod(f32(g.some_number) / 60, SECS_TO_DO_FULL_ROPE_REVOLUTION)
+
+		// t is between 0.0 and SECS_TO_DO_FULL_ROPE_REVOLUTION/2
+		// because we ping-pong between the min and max values
+		t : f32
+
+		if u > SECS_TO_DO_FULL_ROPE_REVOLUTION/2{
+			t = SECS_TO_DO_FULL_ROPE_REVOLUTION - u
+		} else{
+			t = u
+		}
+
+		{
+			old_value := t
+			old_min : f32 = 0.0
+			old_max : f32 = +2.0
+			new_min : f32 = -1.0
+			new_max : f32 = +1.0
+			t = math.remap(old_value, old_min, old_max, new_min, new_max)
+		}
+		points: []rl.Vector2 = {
+			{g.player.center.x - g.player.radius, g.player.center.y},
+			{g.player.center.x - g.player.radius, g.player.center.y},
+			// {g.player.center.x - g.player.radius/3, g.player.center.y - g.player.radius/3},
+			// {g.player.center.x - g.player.radius/2, g.player.center.y - g.player.radius/2},
+			{g.player.center.x, g.player.center.y + g.player.radius * t},
+			// {g.player.center.x + g.player.radius/2, g.player.center.y + g.player.radius/2},
+			// {g.player.center.x + g.player.radius/3, g.player.center.y + g.player.radius/3},
+			{g.player.center.x + g.player.radius, g.player.center.y},
+			{g.player.center.x + g.player.radius, g.player.center.y},
+		}
+		thick: f32 = 4
+		color := rl.PURPLE
+		rl.DrawSplineCatmullRom(raw_data(points[:]), i32(len(points)), thick, color)// Draw spline: B-Spline, minimum 4 points
+	}
 
 	rl.DrawRectangleV({20, 20}, {10, 10}, rl.RED)
 	rl.DrawRectangleV({-30, -20}, {10, 10}, rl.GREEN)
