@@ -31,7 +31,7 @@ import "core:fmt"
 import "core:math/linalg"
 import rl "vendor:raylib"
 
-PIXEL_WINDOW_HEIGHT :: 180
+PIXEL_WINDOW_HEIGHT :: 540
 
 Game_Memory :: struct {
 	player_pos: rl.Vector2,
