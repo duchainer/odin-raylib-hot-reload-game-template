@@ -36,6 +36,17 @@ LEVELS : []Level = {
                 velocity = {50, 0},
                 color = rl.RED,
             },
+            Laser{
+                start_p1 = {800, 0},
+                start_p2 = {800, 600},
+                lifetime = {
+                    current = 0,
+                    end = 12 * 60, // seconds * frames
+                    repeating = true,
+                },
+                velocity = {-50, 0},
+                color = rl.RED,
+            },
         },
 
         dialog = {
@@ -80,6 +91,13 @@ LEVELS : []Level = {
                 color = rl.RED,
             },
         },
+        dialog = {
+            {
+                0 *60,
+                "Next level :D",
+            },
+        },
+
 
         goal = {
             5 * 60,
