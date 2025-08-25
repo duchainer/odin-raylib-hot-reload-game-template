@@ -37,13 +37,38 @@ PIXEL_WINDOW_HEIGHT :: 540
 Circle :: struct {
 	center: rl.Vector2,
 	radius: f32,
+	max_radius: f32,
 	color: rl.Color,
 }
 
+StateJumping :: struct {
+	jump_start_frame: int,
+	jump_height: int,
+	jump_duration: f32,
+}
+
+StateGrounded :: struct {
+
+}
+
+
+PlayerStates :: union #no_nil {
+	StateGrounded,
+	StateJumping,
+}
+Player :: struct {
+	using circle: Circle,
+	state : PlayerStates,
+}
+
 Game_Memory :: struct {
-	player : Circle,
+	player : Player,
+	rope : struct {
+		is_in_front: bool,
+		positive_ping_pong_t: f32,
+	},
 	player_texture: rl.Texture,
-	some_number: int,
+	frame_count: int,
 	run: bool,
 }
 
@@ -82,6 +107,46 @@ update :: proc() {
 		input.x += 1
 	}
 
+	// Rope jumping
+	// rope_modulo_frame_count is between 0.0 and SECS_TO_DO_FULL_ROPE_REVOLUTION
+	rope_modulo_frame_count := math.mod(f32(g.frame_count) / 60, SECS_TO_DO_FULL_ROPE_REVOLUTION)
+
+	// positive_ping_pont_t is between 0.0 and SECS_TO_DO_FULL_ROPE_REVOLUTION/2
+	// because we ping-pong between the min and max values
+	if rope_modulo_frame_count > SECS_TO_DO_FULL_ROPE_REVOLUTION/2{
+		g.rope.positive_ping_pong_t = SECS_TO_DO_FULL_ROPE_REVOLUTION - rope_modulo_frame_count
+	} else{
+		g.rope.positive_ping_pong_t = rope_modulo_frame_count
+	}
+
+	g.rope.is_in_front = ( rope_modulo_frame_count == g.rope.positive_ping_pong_t )
+
+	switch v in g.player.state {
+		case StateJumping : {
+			if g.frame_count >= v.jump_start_frame + int(f32(60) * v.jump_duration){
+				g.player.radius = g.player.max_radius
+				g.player.state = StateGrounded{}
+			} else{
+				g.player.radius = g.player.max_radius * 0.5
+			}
+
+		}
+		case StateGrounded :{
+			if (
+				SECS_TO_DO_FULL_ROPE_REVOLUTION - 0.1 < rope_modulo_frame_count
+					&& rope_modulo_frame_count < SECS_TO_DO_FULL_ROPE_REVOLUTION + 0.1
+			) {
+				// if we have to jump and haven't yet
+				g.player.state = StateJumping{
+					jump_start_frame = g.frame_count,
+					jump_height = 15,
+					jump_duration = 0.5,
+				}
+				g.player.radius = g.player.max_radius * 0.5
+			}
+		}
+	}
+
 	input = linalg.normalize0(input)
 	g.player.center += input * rl.GetFrameTime() * 100
 	// We round the player pos, to have the shadow always centered under the player
@@ -90,7 +155,7 @@ update :: proc() {
 		math.round(g.player.center.x),
 		math.round(g.player.center.y),
 	}
-	g.some_number += 1
+	g.frame_count += 1
 
 	if rl.IsKeyPressed(.LEFT_CONTROL) && rl.IsKeyPressed(.LEFT_SHIFT) && rl.IsKeyPressed(.ESCAPE) {
 		g.run = false
@@ -99,6 +164,8 @@ update :: proc() {
 	// Test in itch.io window size
 	rl.SetWindowSize(WINDOW_WIDTH, WINDOW_HEIGHT)
 }
+
+SECS_TO_DO_FULL_ROPE_REVOLUTION :: 1.0
 
 draw :: proc() {
 	screen_width := f32(rl.GetScreenWidth())
@@ -109,29 +176,16 @@ draw :: proc() {
 
 	rl.BeginMode2D(game_camera())
 
-	shadow_center := [2]i32{i32(g.player.center.x), i32(math.round(g.player.center.y+g.player.radius))}
+	shadow_center := [2]i32{i32(g.player.center.x), i32(math.round(g.player.center.y+g.player.max_radius))}
 	rl.DrawEllipse(shadow_center.x, shadow_center.y, g.player.radius, 3, rl.BLACK)
 
 
+	// Draw Rope
 	{
-		SECS_TO_DO_FULL_ROPE_REVOLUTION :: 1.0
-		// u is between 0.0 and SECS_TO_DO_FULL_ROPE_REVOLUTION
-		u := math.mod(f32(g.some_number) / 60, SECS_TO_DO_FULL_ROPE_REVOLUTION)
-
-		// t is between 0.0 and SECS_TO_DO_FULL_ROPE_REVOLUTION/2
-		// because we ping-pong between the min and max values
-		positive_ping_pong_t : f32
-
-		if u > SECS_TO_DO_FULL_ROPE_REVOLUTION/2{
-			positive_ping_pong_t = SECS_TO_DO_FULL_ROPE_REVOLUTION - u
-		} else{
-			positive_ping_pong_t = u
-		}
-
 		// ping-pongs between -1.0 and 1.0
 		t : f32
 		{
-			old_value := positive_ping_pong_t
+			old_value := g.rope.positive_ping_pong_t
 			old_min : f32 = 0.0
 			old_max : f32 = SECS_TO_DO_FULL_ROPE_REVOLUTION/2
 			new_min : f32 = -1.0
@@ -147,7 +201,8 @@ draw :: proc() {
 		}
 		thick: f32 = 4
 		color := rl.PURPLE
-		if u == positive_ping_pong_t{
+
+		if g.rope.is_in_front{
 			// moving rope downward
 			// We draw the player on behind the rope
 
@@ -160,7 +215,6 @@ draw :: proc() {
 			rl.DrawSplineCatmullRom(raw_data(points[:]), i32(len(points)), thick, color)// Draw spline: B-Spline, minimum 4 points
 			rl.DrawCircleV(g.player.center, g.player.radius, g.player.color)
 		}
-
 	}
 
 	rl.DrawRectangleV({20, 20}, {10, 10}, rl.RED)
@@ -174,8 +228,8 @@ draw :: proc() {
 	// `main_hot_reload.odin`, `main_release.odin` or `main_web_entry.odin`.
 
 	rl.EndMode2D()
-	rl.DrawText(fmt.ctprintf("some_number: %v\nplayer_pos: %v\nmouse_pos: %v", g.some_number, g.player.center, rl.GetMousePosition()), 5, 5, 16, rl.GRAY)
-	rl.DrawText(fmt.ctprintf("screen_resolution: %v, %v", screen_width, screen_height), i32(screen_width)-300, 5, 16, rl.GRAY)
+	rl.DrawText(fmt.ctprintf("frame_count: %v\nplayer_pos: %v\nmouse_pos: %v", g.frame_count, g.player.center, rl.GetMousePosition()), 5, 5, 16, rl.GRAY)
+	rl.DrawText(fmt.ctprintf("screen_resolution: %v, %v\nplayer: %#v", screen_width, screen_height, g.player), i32(screen_width)-300, 5, 16, rl.GRAY)
 
 	// To test the real resolution
 	rl.DrawRectangleLinesEx(
@@ -212,7 +266,7 @@ game_init :: proc() {
 
 	g^ = Game_Memory {
 		run = true,
-		some_number = 100,
+		frame_count = 100,
 
 		// You can put textures, sounds and music in the `assets` folder. Those
 		// files will be part any release or web build.
@@ -260,6 +314,7 @@ game_hot_reloaded :: proc(mem: rawptr) {
 	g.player = {
 		center = {0,0},
 		radius = 15,
+		max_radius = 15,
 		color = rl.GRAY,
 	}
 
