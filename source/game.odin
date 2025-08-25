@@ -182,8 +182,10 @@ update :: proc() {
 
 	for i:= g.lasers_count; i>0; i-=1{
 		laser := &g.lasers[i]
-		laser.p1 += input * delta_time * (laser.p1_velocity + laser.velocity)
-		laser.p2 += input * delta_time * (laser.p2_velocity + laser.velocity)
+		laser.p1.x += delta_time * (laser.p1_velocity.x + laser.velocity.x)
+		laser.p1.y += delta_time * (laser.p1_velocity.y + laser.velocity.y)
+		laser.p2.x += delta_time * (laser.p1_velocity.x + laser.velocity.x)
+		laser.p2.y += delta_time * (laser.p1_velocity.y + laser.velocity.y)
 	}
 
 	input = linalg.normalize0(input)
