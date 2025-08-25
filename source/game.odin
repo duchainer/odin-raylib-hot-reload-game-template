@@ -147,7 +147,7 @@ level_update :: proc() -> (has_won: bool ){
 			goal := level.goal.circle
 			if rl.CheckCollisionCircles(g.player.center, g.player.max_radius, goal.center, goal.radius){
 				g.level_index += 1
-				g.level_started_at_frame = 0
+				g.level_started_at_frame = g.frame_count + 1
 				// The rest of the level setup will be done at the start of next frame
 				if g.level_index >= len(LEVELS) {
 					return true
