@@ -165,7 +165,6 @@ update :: proc() {
 					jump_height = 15,
 					jump_duration = 1.0,
 				}
-				g.player.radius = g.player.max_radius * 0.5
 			} else {
 				for i:= g.lasers_count; i>0; i-=1{
 					laser := g.lasers[i]
