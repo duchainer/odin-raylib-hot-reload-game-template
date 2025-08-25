@@ -257,8 +257,11 @@ draw :: proc() {
 		}
 	}
 
-	rl.DrawRectangleV({20, 20}, {10, 10}, rl.RED)
-	rl.DrawRectangleV({-30, -20}, {10, 10}, rl.GREEN)
+	for i:= g.lasers_count; i>0; i-=1{
+		laser := g.lasers[i]
+		rl.DrawLineEx(laser.p1, laser.p2, 2, laser.color)
+	}
+
 	rl.EndMode2D()
 
 	rl.BeginMode2D(ui_camera())
@@ -357,6 +360,18 @@ game_hot_reloaded :: proc(mem: rawptr) {
 		max_radius = 15,
 		default_color = rl.GRAY,
 		color = rl.GRAY,
+	}
+
+	g.lasers_count = 0
+
+	{
+		g.lasers_count += 1
+		g.lasers[g.lasers_count] = Laser {
+			p1 = {-100, -100},
+			p2 = {-100, 100},
+			velocity = {10, 0},
+			color = rl.RED,
+		}
 	}
 
 	// Here you can also set your own global variables. A good idea is to make
