@@ -125,9 +125,11 @@ level_update :: proc() -> (has_won: bool ){
 		// Setup that new level
 
 		g.lasers_count = 0
-		for laser in g.lasers {
+		for laser in level.lasers {
 			g.lasers_count += 1
 			g.lasers[g.lasers_count] = laser
+			g.lasers[g.lasers_count].p1 = g.lasers[g.lasers_count].start_p1
+			g.lasers[g.lasers_count].p2 = g.lasers[g.lasers_count].start_p2
 		}
 	}
 
