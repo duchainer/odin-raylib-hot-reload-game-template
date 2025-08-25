@@ -26,25 +26,14 @@ LEVELS : []Level = {
     {
         lasers = {
             Laser{
-                start_p1 = {0, 0},
-                start_p2 = {0, 600},
+                start_p1 = {50, 0},
+                start_p2 = {50, 600},
                 lifetime = {
                     current = 0,
                     end = 5 * 60, // seconds * frames
                     repeating = true,
                 },
                 velocity = {50, 0},
-                color = rl.RED,
-            },
-            Laser{
-                start_p1 = {800, 0},
-                start_p2 = {800, 600},
-                lifetime = {
-                    current = 0,
-                    end = 12 * 60, // seconds * frames
-                    repeating = true,
-                },
-                velocity = {-50, 0},
                 color = rl.RED,
             },
         },
@@ -80,6 +69,108 @@ LEVELS : []Level = {
     {
         lasers = {
             Laser{
+                start_p1 = {50, 0},
+                start_p2 = {50, 600},
+                lifetime = {
+                    current = 0,
+                    end = 5 * 60, // seconds * frames
+                    repeating = true,
+                },
+                velocity = {50, 0},
+                color = rl.RED,
+            },
+            Laser{
+                start_p1 = {800, 0},
+                start_p2 = {800, 600},
+                lifetime = {
+                    current = 0,
+                    end = 12 * 60, // seconds * frames
+                    repeating = true,
+                },
+                velocity = {-50, 0},
+                color = rl.RED,
+            },
+        },
+        dialog = {
+            {
+                0 *60,
+                "Next level :D",
+            },
+        },
+
+
+        goal = {
+            1 * 60,
+            Circle{
+                center = { WINDOW_WIDTH - 10, WINDOW_HEIGHT/2 + 10/2},
+                radius = 10,
+                color = rl.GREEN,
+            },
+        },
+        additional_level_patterns = {},
+    },
+
+    // level 2
+    {
+        lasers = {
+            Laser{
+                start_p1 = {-600, 0},
+                start_p2 = {600, 600},
+                lifetime = {
+                    current = 0,
+                    end = 12 * 60, // seconds * frames
+                    repeating = true,
+                },
+                velocity = {50, -50},
+                color = rl.RED,
+            },
+        },
+        dialog = {
+            {
+                0 *60,
+                "Top Left?",
+            },
+        },
+
+
+        goal = {
+            1 * 60,
+            Circle{
+                center = { 10, 10 },
+                radius = 10,
+                color = rl.GREEN,
+            },
+        },
+        additional_level_patterns = {},
+    },
+
+    // level 1
+    // First real level, try to reach the right side
+    {
+        lasers = {
+            Laser{
+                start_p1 = {50, 0},
+                start_p2 = {50, 600},
+                lifetime = {
+                    current = 0,
+                    end = 5 * 60, // seconds * frames
+                    repeating = true,
+                },
+                velocity = {50, 0},
+                color = rl.RED,
+            },
+            Laser{
+                start_p1 = {800, 0},
+                start_p2 = {800, 600},
+                lifetime = {
+                    current = 0,
+                    end = 12 * 60, // seconds * frames
+                    repeating = true,
+                },
+                velocity = {-50, 0},
+                color = rl.RED,
+            },
+            Laser{
                 start_p1 = {600, 0},
                 start_p2 = {600, 600},
                 lifetime = {
@@ -100,7 +191,7 @@ LEVELS : []Level = {
 
 
         goal = {
-            5 * 60,
+            1 * 60,
             Circle{
                 center = { WINDOW_WIDTH - 10, WINDOW_HEIGHT/2 + 10/2},
                 radius = 10,
@@ -109,5 +200,4 @@ LEVELS : []Level = {
         },
         additional_level_patterns = {},
     },
-    //
 }
