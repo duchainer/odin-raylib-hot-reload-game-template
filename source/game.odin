@@ -33,8 +33,14 @@ import rl "vendor:raylib"
 
 PIXEL_WINDOW_HEIGHT :: 540
 
+Circle :: struct {
+	center: rl.Vector2,
+	radius: f32,
+	color: rl.Color,
+}
+
 Game_Memory :: struct {
-	player_pos: rl.Vector2,
+	player_circle : Circle,
 	player_texture: rl.Texture,
 	some_number: int,
 	run: bool,
@@ -48,7 +54,7 @@ game_camera :: proc() -> rl.Camera2D {
 
 	return {
 		zoom = h/PIXEL_WINDOW_HEIGHT,
-		target = g.player_pos,
+		target = g.player_circle.center,
 		offset = { w/2, h/2 },
 	}
 }
@@ -76,7 +82,7 @@ update :: proc() {
 	}
 
 	input = linalg.normalize0(input)
-	g.player_pos += input * rl.GetFrameTime() * 100
+	g.player_circle.center += input * rl.GetFrameTime() * 100
 	g.some_number += 1
 
 	if rl.IsKeyPressed(.LEFT_CONTROL) && rl.IsKeyPressed(.LEFT_SHIFT) && rl.IsKeyPressed(.ESCAPE) {
@@ -95,7 +101,7 @@ draw :: proc() {
 	rl.ClearBackground(rl.BLACK)
 
 	rl.BeginMode2D(game_camera())
-	rl.DrawTextureEx(g.player_texture, g.player_pos, 0, 1, rl.WHITE)
+	rl.DrawTextureEx(g.player_texture, g.player_circle.center, 0, 1, rl.WHITE)
 	rl.DrawRectangleV({20, 20}, {10, 10}, rl.RED)
 	rl.DrawRectangleV({-30, -20}, {10, 10}, rl.GREEN)
 	rl.EndMode2D()
@@ -105,9 +111,9 @@ draw :: proc() {
 	// NOTE: `fmt.ctprintf` uses the temp allocator. The temp allocator is
 	// cleared at the end of the frame by the main application, meaning inside
 	// `main_hot_reload.odin`, `main_release.odin` or `main_web_entry.odin`.
-	rl.DrawText(fmt.ctprintf("some_number: %v\nplayer_pos: %v", g.some_number, g.player_pos), 5, 5, 8, rl.WHITE)
 
 	rl.EndMode2D()
+	rl.DrawText(fmt.ctprintf("some_number: %v\nplayer_pos: %v\nmouse_pos: %v", g.some_number, g.player_circle.center, rl.GetMousePosition()), 5, 5, 16, rl.WHITE)
 	rl.DrawText(fmt.ctprintf("screen_resolution: %v, %v", screen_width, screen_height), i32(screen_width)-300, 5, 16, rl.WHITE)
 
 	// To test the real resolution
