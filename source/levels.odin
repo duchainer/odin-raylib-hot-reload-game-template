@@ -8,9 +8,9 @@ Level :: struct{
         spawns_at_frame: int,
         text : string,
     },
-    end_condition: struct {
+    goal: struct {
         spawns_at_frame: int,
-        circle : Circle,
+        using circle : Circle,
     },
     // If we want to reuse a full level pattern of lasers
     // Allow to combine levels in a way
@@ -53,10 +53,10 @@ LEVELS : []Level = {
             },
         },
 
-        end_condition = {
+        goal = {
             5 * 60,
             Circle{
-                center = { 10/2, WINDOW_HEIGHT/2 + 10/2},
+                center = { 12, WINDOW_HEIGHT/2 + 10/2},
                 radius = 10,
                 color = rl.GREEN,
             },
@@ -81,10 +81,10 @@ LEVELS : []Level = {
             },
         },
 
-        end_condition = {
+        goal = {
             5 * 60,
             Circle{
-                center = { WINDOW_WIDTH - 10/2, WINDOW_HEIGHT/2 + 10/2},
+                center = { WINDOW_WIDTH - 10, WINDOW_HEIGHT/2 + 10/2},
                 radius = 10,
                 color = rl.GREEN,
             },

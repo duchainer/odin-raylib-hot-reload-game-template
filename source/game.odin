@@ -116,7 +116,10 @@ ui_camera :: proc() -> rl.Camera2D {
 
 player_text : string
 
-level_update :: proc() {
+level_update :: proc() -> (has_won: bool ){
+	if g.level_index >= len(LEVELS) {
+		return true
+	}
 	level := LEVELS[g.level_index]
 	if g.level_started_at_frame == g.frame_count {
 		// Setup that new level
@@ -137,17 +140,22 @@ level_update :: proc() {
 		}
 	}
 
-	if level_frame_time >= level.end_condition.spawns_at_frame{
+	if level_frame_time >= level.goal.spawns_at_frame{
 		if _, ok := g.player.state.(StateGrounded); ok{
-			goal := level.end_condition.circle
+			goal := level.goal.circle
 			if rl.CheckCollisionCircles(g.player.center, g.player.max_radius, goal.center, goal.radius){
 				g.level_index += 1
 				g.level_started_at_frame = 0
 				// The rest of the level setup will be done at the start of next frame
+				if g.level_index >= len(LEVELS) {
+					return true
+				}
 			}
 		}
 	}
 
+	// Haven't won yet
+	return false
 }
 
 PLAYER_SPEED :: 150
@@ -272,12 +280,22 @@ update :: proc() {
 
 SECS_TO_DO_FULL_ROPE_REVOLUTION :: 2.0
 
-draw :: proc() {
+draw :: proc(has_won: bool) {
 
 	rl.BeginDrawing()
 	rl.ClearBackground(rl.WHITE)
 
 	rl.BeginMode2D(game_camera())
+	if has_won {
+		rl.DrawRectangleRec({250, 250, 400, 125}, rl.GRAY)
+		rl.DrawText(fmt.ctprintf("You Won!\nIn %v frames", g.frame_count), 350, 270, 32, rl.BLACK)
+		rl.EndDrawing()
+		return
+	}
+
+
+	level := LEVELS[g.level_index]
+	rl.DrawCircleV(level.goal.center, level.goal.radius, level.goal.color)
 
 	shadow_center := [2]i32{i32(g.player.center.x), i32(math.round(g.player.center.y+g.player.max_radius))}
 	rl.DrawEllipse(shadow_center.x, shadow_center.y, g.player.radius, 3, rl.BLACK)
@@ -360,11 +378,16 @@ draw :: proc() {
 	rl.EndDrawing()
 }
 
+has_won : bool
 @(export)
 game_update :: proc() {
-	level_update()
-	update()
-	draw()
+	if !has_won {
+		has_won = level_update()
+	}
+	if !has_won {
+		update()
+	}
+	draw(has_won)
 
 	// Everything on tracking allocator is valid until end-of-frame.
 	free_all(context.temp_allocator)
