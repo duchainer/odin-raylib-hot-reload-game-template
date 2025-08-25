@@ -80,6 +80,7 @@ Laser :: struct {
 }
 
 Game_Memory :: struct {
+	level : int,
 	player : Player,
 	rope : struct {
 		is_in_front: bool,
