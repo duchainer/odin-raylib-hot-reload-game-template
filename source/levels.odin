@@ -54,7 +54,7 @@ LEVELS : []Level = {
         },
 
         goal = {
-            5 * 60,
+            2 * 60,
             Circle{
                 center = { 12, WINDOW_HEIGHT/2 + 10/2},
                 radius = 10,
