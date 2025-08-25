@@ -95,7 +95,7 @@ game_camera :: proc() -> rl.Camera2D {
 
 	return {
 		zoom = h/PIXEL_WINDOW_HEIGHT,
-		target = g.player.center,
+		target = {0,0},//g.player.center,
 		offset = { w/2, h/2 },
 	}
 }
