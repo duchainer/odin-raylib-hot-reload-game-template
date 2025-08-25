@@ -117,6 +117,18 @@ ui_camera :: proc() -> rl.Camera2D {
 player_text : string
 
 level_update :: proc() -> (has_won: bool ){
+	if rl.IsKeyDown(.LEFT_SHIFT) || rl.IsKeyDown(.RIGHT_SHIFT){
+		if rl.IsKeyDown(.ONE  ){g.level_index=2}
+		if rl.IsKeyDown(.TWO  ){g.level_index=3}
+		if rl.IsKeyDown(.THREE){g.level_index=4}
+		if rl.IsKeyDown(.FOUR ){g.level_index=5}
+		if rl.IsKeyDown(.FIVE ){g.level_index=6}
+		if rl.IsKeyDown(.SIX  ){g.level_index=7}
+		if rl.IsKeyDown(.SEVEN){g.level_index=8}
+		if rl.IsKeyDown(.EIGHT){g.level_index=9}
+		if rl.IsKeyDown(.NINE ){g.level_index=10}
+		if rl.IsKeyDown(.ZERO ){g.level_index=11}
+	}
 	if g.level_index >= len(LEVELS) {
 		return true
 	}
