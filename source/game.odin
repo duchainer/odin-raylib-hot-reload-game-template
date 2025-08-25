@@ -148,8 +148,8 @@ update :: proc() {
 				if jump_progress >= 0.5 {
 					ping_pong_jump_progress	= 1.0 - jump_progress
 				}
-				g.player.radius = g.player.max_radius * (1-ping_pong_jump_progress)
-				g.player.color.a = u8(f32(g.player.default_color.a) * (1-ping_pong_jump_progress))
+				g.player.radius = g.player.max_radius * (1-2*ping_pong_jump_progress*ping_pong_jump_progress)
+				g.player.color.a = u8(f32(g.player.default_color.a) * (1-2*ping_pong_jump_progress*ping_pong_jump_progress))
 
 			}
 
