@@ -1,13 +1,17 @@
 package game
 import rl "vendor:raylib"
 
-touch_screen_left_side :: proc() -> bool{
-    return g.player.center.x <= 2
-}
 
 Level :: struct{
     lasers: []Laser,
-    end_condition: (proc()->bool),
+    dialog: []struct{
+        spawns_at_frame: int,
+        text : string,
+    },
+    end_condition: struct {
+        spawns_at_frame: int,
+        circle : Circle,
+    },
     // If we want to reuse a full level pattern of lasers
     // Allow to combine levels in a way
     //
@@ -17,7 +21,7 @@ Level :: struct{
 
 
 @(rodata)
-levels : []Level = {
+LEVELS : []Level = {
     // tutorial 0
     {
         lasers = {
@@ -34,7 +38,29 @@ levels : []Level = {
             },
         },
 
-        end_condition = touch_screen_left_side,
+        dialog = {
+            {
+                0 *60,
+                "Hey, I can time my jump to go above the lasers",
+            },
+            {
+                5 *60,
+                "Try to reach the green goals by jumping above the lasers",
+            },
+            {
+                30 *60,
+                "",
+            },
+        },
+
+        end_condition = {
+            5 * 60,
+            Circle{
+                center = { 10/2, WINDOW_HEIGHT/2 + 10/2},
+                radius = 10,
+                color = rl.GREEN,
+            },
+        },
         additional_level_patterns = {},
     },
 
@@ -55,7 +81,14 @@ levels : []Level = {
             },
         },
 
-        end_condition = touch_screen_left_side,
+        end_condition = {
+            5 * 60,
+            Circle{
+                center = { WINDOW_WIDTH - 10/2, WINDOW_HEIGHT/2 + 10/2},
+                radius = 10,
+                color = rl.GREEN,
+            },
+        },
         additional_level_patterns = {},
     },
     //

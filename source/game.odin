@@ -80,7 +80,8 @@ Laser :: struct {
 }
 
 Game_Memory :: struct {
-	level : int,
+	level_index : int,
+	level_started_at_frame: int,
 	player : Player,
 	rope : struct {
 		is_in_front: bool,
@@ -111,6 +112,42 @@ ui_camera :: proc() -> rl.Camera2D {
 	return {
 		zoom = f32(rl.GetScreenHeight())/PIXEL_WINDOW_HEIGHT,
 	}
+}
+
+player_text : string
+
+level_update :: proc() {
+	level := LEVELS[g.level_index]
+	if g.level_started_at_frame == g.frame_count {
+		// Setup that new level
+
+		g.lasers_count = 0
+		for laser in g.lasers {
+			g.lasers_count += 1
+			g.lasers[g.lasers_count] = laser
+		}
+	}
+
+	level_frame_time := g.frame_count - g.level_started_at_frame
+
+	#reverse for text in level.dialog{
+		if level_frame_time >= text.spawns_at_frame{
+			player_text = text.text
+			break
+		}
+	}
+
+	if level_frame_time >= level.end_condition.spawns_at_frame{
+		if _, ok := g.player.state.(StateGrounded); ok{
+			goal := level.end_condition.circle
+			if rl.CheckCollisionCircles(g.player.center, g.player.max_radius, goal.center, goal.radius){
+				g.level_index += 1
+				g.level_started_at_frame = 0
+				// The rest of the level setup will be done at the start of next frame
+			}
+		}
+	}
+
 }
 
 PLAYER_SPEED :: 150
@@ -325,6 +362,7 @@ draw :: proc() {
 
 @(export)
 game_update :: proc() {
+	level_update()
 	update()
 	draw()
 
