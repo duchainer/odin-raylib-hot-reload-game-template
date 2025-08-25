@@ -394,8 +394,13 @@ game_update :: proc() {
 
 	_, is_player_dead := g.player.state.(StateDead)
 
-	if !has_won && !is_player_dead {
+	if !has_won && !is_player_dead{
 		update()
+	} else if rl.IsKeyPressed(.SPACE){
+		// Restart the full game
+		game_shutdown()
+		game_init()
+		return
 	}
 	draw(has_won)
 
