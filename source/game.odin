@@ -375,6 +375,11 @@ draw :: proc(has_won: bool) {
 		2, rl.BLUE,
 	)
 
+	if _, ok := g.player.state.(StateDead); ok{
+		rl.DrawRectangleRec({250, 250, 400, 125}, rl.GRAY)
+		rl.DrawText(fmt.ctprintf("You Lost!\nIn %v frames", g.frame_count), 350, 270, 32, rl.BLACK)
+	}
+
 	rl.EndDrawing()
 }
 
@@ -384,7 +389,10 @@ game_update :: proc() {
 	if !has_won {
 		has_won = level_update()
 	}
-	if !has_won {
+
+	_, is_player_dead := g.player.state.(StateDead)
+
+	if !has_won && !is_player_dead {
 		update()
 	}
 	draw(has_won)
