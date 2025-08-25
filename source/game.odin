@@ -384,8 +384,8 @@ game_hot_reloaded :: proc(mem: rawptr) {
 	{
 		g.lasers_count += 1
 		g.lasers[g.lasers_count] = Laser {
-			p1 = {-100, -100},
-			p2 = {-100, 100},
+			p1 = {-400, -400},
+			p2 = {-400, 600},
 			velocity = {20, 0},
 			color = rl.RED,
 		}
