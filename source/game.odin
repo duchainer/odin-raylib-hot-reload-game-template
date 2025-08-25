@@ -375,7 +375,7 @@ draw :: proc(has_won: bool) {
 	rl.EndMode2D()
 	if ODIN_DEBUG{
 		rl.DrawText(fmt.ctprintf("frame_count: %v\nplayer_pos: %v\nmouse_pos: %v", g.frame_count, g.player.center, rl.GetMousePosition()), 5, 5, 16, rl.GRAY)
-		rl.DrawText(fmt.ctprintf("g.screen_resolution: %v, %v\nplayer: %#v", g.screen_width, g.screen_height, g.player), i32(g.screen_width)-300, 5, 16, rl.GRAY)
+		rl.DrawText(fmt.ctprintf("g.screen_resolution: %v, %v\nlasers: %#v", g.screen_width, g.screen_height, g.lasers[1:][:g.lasers_count]), i32(g.screen_width)-300, 5, 16, rl.GRAY)
 	}
 
 	// To test the real resolution
@@ -489,26 +489,26 @@ game_hot_reloaded :: proc(mem: rawptr) {
 		color = rl.GRAY,
 	}
 
-	g.lasers_count = 0
+	// g.lasers_count = 0
 
 
-	// create a debug laser
-	{
-		g.lasers_count += 1
-		g.lasers[g.lasers_count] = Laser {
-			start_p1 = {0, 0},
-			start_p2 = {0, 600},
-			lifetime = {
-				current = 0,
-				end = 5 * 60, // seconds * frames
-				repeating = true,
-			},
-			velocity = {50, 0},
-			color = rl.RED,
-		}
-		g.lasers[g.lasers_count].p1 = g.lasers[g.lasers_count].start_p1
-		g.lasers[g.lasers_count].p2 = g.lasers[g.lasers_count].start_p2
-	}
+	// // create a debug laser
+	// {
+	// 	g.lasers_count += 1
+	// 	g.lasers[g.lasers_count] = Laser {
+	// 		start_p1 = {0, 0},
+	// 		start_p2 = {0, 600},
+	// 		lifetime = {
+	// 			current = 0,
+	// 			end = 5 * 60, // seconds * frames
+	// 			repeating = true,
+	// 		},
+	// 		velocity = {50, 0},
+	// 		color = rl.RED,
+	// 	}
+	// 	g.lasers[g.lasers_count].p1 = g.lasers[g.lasers_count].start_p1
+	// 	g.lasers[g.lasers_count].p2 = g.lasers[g.lasers_count].start_p2
+	// }
 
 	// Here you can also set your own global variables. A good idea is to make
 	// your global variables into pointers that point to something inside `g`.
