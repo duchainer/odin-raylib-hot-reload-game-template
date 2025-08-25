@@ -405,6 +405,7 @@ game_update :: proc() {
 		update()
 	} else if rl.IsKeyPressed(.SPACE){
 		// Restart the full game
+		has_won = false
 		game_shutdown()
 		game_init()
 		return
