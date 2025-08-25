@@ -115,16 +115,6 @@ draw :: proc() {
 	rl.DrawCircleV(g.player.center, g.player.radius, g.player.color)
 
 	{
-		center : rl.Vector2 = g.player.center
-		innerRadius : f32 = g.player.radius
-		outerRadius : f32 = innerRadius + 4
-		startAngle: f32 = 180
-		endAngle: f32 = 360
-		segments : i32 = 30
-		color := rl.PINK
-		rl.DrawRing(center, innerRadius, outerRadius, startAngle, endAngle, segments, color)
-	}
-	{
 		SECS_TO_DO_FULL_ROPE_REVOLUTION :: 4
 		// u is between 0.0 and SECS_TO_DO_FULL_ROPE_REVOLUTION
 		u := math.mod(f32(g.some_number) / 60, SECS_TO_DO_FULL_ROPE_REVOLUTION)
@@ -135,6 +125,7 @@ draw :: proc() {
 
 		if u > SECS_TO_DO_FULL_ROPE_REVOLUTION/2{
 			t = SECS_TO_DO_FULL_ROPE_REVOLUTION - u
+
 		} else{
 			t = u
 		}
