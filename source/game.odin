@@ -82,9 +82,15 @@ update :: proc() {
 	if rl.IsKeyPressed(.LEFT_CONTROL) && rl.IsKeyPressed(.LEFT_SHIFT) && rl.IsKeyPressed(.ESCAPE) {
 		g.run = false
 	}
+
+	// Test in itch.io window size
+	rl.SetWindowSize(WINDOW_WIDTH, WINDOW_HEIGHT)
 }
 
 draw :: proc() {
+	screen_width := f32(rl.GetScreenWidth())
+	screen_height := f32(rl.GetScreenHeight())
+
 	rl.BeginDrawing()
 	rl.ClearBackground(rl.BLACK)
 
@@ -102,6 +108,13 @@ draw :: proc() {
 	rl.DrawText(fmt.ctprintf("some_number: %v\nplayer_pos: %v", g.some_number, g.player_pos), 5, 5, 8, rl.WHITE)
 
 	rl.EndMode2D()
+	rl.DrawText(fmt.ctprintf("screen_resolution: %v, %v", screen_width, screen_height), i32(screen_width)-300, 5, 16, rl.WHITE)
+
+	// To test the real resolution
+	rl.DrawRectangleLinesEx(
+		{0,0, screen_width, screen_height},
+		2, rl.BLUE,
+	)
 
 	rl.EndDrawing()
 }
@@ -114,11 +127,13 @@ game_update :: proc() {
 	// Everything on tracking allocator is valid until end-of-frame.
 	free_all(context.temp_allocator)
 }
+WINDOW_WIDTH :: 960
+WINDOW_HEIGHT :: 540
 
 @(export)
 game_init_window :: proc() {
 	rl.SetConfigFlags({.WINDOW_RESIZABLE, .VSYNC_HINT})
-	rl.InitWindow(1920, 1080, "Odin + Raylib + Hot Reload template!")
+	rl.InitWindow(WINDOW_WIDTH, WINDOW_HEIGHT, "Odin + Raylib + Hot Reload template!")
 	rl.SetWindowPosition(200, 200)
 	rl.SetTargetFPS(30)
 	rl.SetExitKey(nil)
