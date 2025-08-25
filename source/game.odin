@@ -59,6 +59,7 @@ PlayerStates :: union #no_nil {
 Player :: struct {
 	using circle: Circle,
 	state : PlayerStates,
+	default_color: rl.Color,
 }
 
 Game_Memory :: struct {
@@ -123,11 +124,19 @@ update :: proc() {
 
 	switch v in g.player.state {
 		case StateJumping : {
-			if g.frame_count >= v.jump_start_frame + int(f32(60) * v.jump_duration){
+			jump_progress : f32=  f32(g.frame_count - v.jump_start_frame)/( f32(60) * v.jump_duration )
+			if jump_progress >= 1.0{
 				g.player.radius = g.player.max_radius
 				g.player.state = StateGrounded{}
-			} else{
-				g.player.radius = g.player.max_radius * 0.5
+				g.player.color = g.player.default_color
+			} else {
+				ping_pong_jump_progress : f32 = jump_progress
+				if jump_progress >= 0.5 {
+					ping_pong_jump_progress	= 1.0 - jump_progress
+				}
+				g.player.radius = g.player.max_radius * (1-ping_pong_jump_progress)
+				g.player.color.a = u8(f32(g.player.default_color.a) * (1-ping_pong_jump_progress))
+
 			}
 
 		}
@@ -315,6 +324,7 @@ game_hot_reloaded :: proc(mem: rawptr) {
 		center = {0,0},
 		radius = 15,
 		max_radius = 15,
+		default_color = rl.GRAY,
 		color = rl.GRAY,
 	}
 
