@@ -112,46 +112,55 @@ draw :: proc() {
 	shadow_center := [2]i32{i32(g.player.center.x), i32(math.round(g.player.center.y+g.player.radius))}
 	rl.DrawEllipse(shadow_center.x, shadow_center.y, g.player.radius, 3, rl.BLACK)
 
-	rl.DrawCircleV(g.player.center, g.player.radius, g.player.color)
 
 	{
-		SECS_TO_DO_FULL_ROPE_REVOLUTION :: 4
+		SECS_TO_DO_FULL_ROPE_REVOLUTION :: 1.0
 		// u is between 0.0 and SECS_TO_DO_FULL_ROPE_REVOLUTION
 		u := math.mod(f32(g.some_number) / 60, SECS_TO_DO_FULL_ROPE_REVOLUTION)
 
 		// t is between 0.0 and SECS_TO_DO_FULL_ROPE_REVOLUTION/2
 		// because we ping-pong between the min and max values
-		t : f32
+		positive_ping_pong_t : f32
 
 		if u > SECS_TO_DO_FULL_ROPE_REVOLUTION/2{
-			t = SECS_TO_DO_FULL_ROPE_REVOLUTION - u
-
+			positive_ping_pong_t = SECS_TO_DO_FULL_ROPE_REVOLUTION - u
 		} else{
-			t = u
+			positive_ping_pong_t = u
 		}
 
+		// ping-pongs between -1.0 and 1.0
+		t : f32
 		{
-			old_value := t
+			old_value := positive_ping_pong_t
 			old_min : f32 = 0.0
-			old_max : f32 = +2.0
+			old_max : f32 = SECS_TO_DO_FULL_ROPE_REVOLUTION/2
 			new_min : f32 = -1.0
 			new_max : f32 = +1.0
 			t = math.remap(old_value, old_min, old_max, new_min, new_max)
 		}
 		points: []rl.Vector2 = {
-			{g.player.center.x - g.player.radius, g.player.center.y},
-			{g.player.center.x - g.player.radius, g.player.center.y},
-			// {g.player.center.x - g.player.radius/3, g.player.center.y - g.player.radius/3},
-			// {g.player.center.x - g.player.radius/2, g.player.center.y - g.player.radius/2},
+			{g.player.center.x - g.player.radius - 4, g.player.center.y},
+			{g.player.center.x - g.player.radius - 4, g.player.center.y},
 			{g.player.center.x, g.player.center.y + g.player.radius * t},
-			// {g.player.center.x + g.player.radius/2, g.player.center.y + g.player.radius/2},
-			// {g.player.center.x + g.player.radius/3, g.player.center.y + g.player.radius/3},
-			{g.player.center.x + g.player.radius, g.player.center.y},
-			{g.player.center.x + g.player.radius, g.player.center.y},
+			{g.player.center.x + g.player.radius + 4, g.player.center.y},
+			{g.player.center.x + g.player.radius + 4, g.player.center.y},
 		}
 		thick: f32 = 4
 		color := rl.PURPLE
-		rl.DrawSplineCatmullRom(raw_data(points[:]), i32(len(points)), thick, color)// Draw spline: B-Spline, minimum 4 points
+		if u == positive_ping_pong_t{
+			// moving rope downward
+			// We draw the player on behind the rope
+
+			rl.DrawCircleV(g.player.center, g.player.radius, g.player.color)
+			rl.DrawSplineCatmullRom(raw_data(points[:]), i32(len(points)), thick, color)// Draw spline: B-Spline, minimum 4 points
+		} else {
+			// moving rope upward
+			// We draw the player on top of the rope
+
+			rl.DrawSplineCatmullRom(raw_data(points[:]), i32(len(points)), thick, color)// Draw spline: B-Spline, minimum 4 points
+			rl.DrawCircleV(g.player.center, g.player.radius, g.player.color)
+		}
+
 	}
 
 	rl.DrawRectangleV({20, 20}, {10, 10}, rl.RED)
