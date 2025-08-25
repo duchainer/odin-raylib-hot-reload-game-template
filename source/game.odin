@@ -202,7 +202,7 @@ game_init_window :: proc() {
 	rl.SetConfigFlags({.WINDOW_RESIZABLE, .VSYNC_HINT})
 	rl.InitWindow(WINDOW_WIDTH, WINDOW_HEIGHT, "Odin + Raylib + Hot Reload template!")
 	rl.SetWindowPosition(200, 200)
-	rl.SetTargetFPS(30)
+	rl.SetTargetFPS(60)
 	rl.SetExitKey(nil)
 }
 
