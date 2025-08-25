@@ -220,6 +220,15 @@ draw :: proc() {
 	shadow_center := [2]i32{i32(g.player.center.x), i32(math.round(g.player.center.y+g.player.max_radius))}
 	rl.DrawEllipse(shadow_center.x, shadow_center.y, g.player.radius, 3, rl.BLACK)
 
+	if _, ok := g.player.state.(StateJumping); ok {
+		// We draw the lasers behind the player if the player is jumping
+
+		for i:= g.lasers_count; i>0; i-=1{
+			laser := g.lasers[i]
+			rl.DrawLineEx(laser.p1, laser.p2, 4, laser.color)
+		}
+
+	}
 
 	// Draw Rope
 	{
@@ -258,9 +267,14 @@ draw :: proc() {
 		}
 	}
 
-	for i:= g.lasers_count; i>0; i-=1{
-		laser := g.lasers[i]
-		rl.DrawLineEx(laser.p1, laser.p2, 2, laser.color)
+	if _, ok := g.player.state.(StateJumping); !ok {
+		// We draw the lasers over the player if the player is not jumping
+
+		for i:= g.lasers_count; i>0; i-=1{
+			laser := g.lasers[i]
+			rl.DrawLineEx(laser.p1, laser.p2, 4, laser.color)
+		}
+
 	}
 
 	rl.EndMode2D()
