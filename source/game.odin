@@ -418,7 +418,7 @@ game_init :: proc() {
 
 	g^ = Game_Memory {
 		run = true,
-		frame_count = 100,
+		frame_count = 0,
 
 		// You can put textures, sounds and music in the `assets` folder. Those
 		// files will be part any release or web build.
