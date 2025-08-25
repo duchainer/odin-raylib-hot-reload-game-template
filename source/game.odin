@@ -364,7 +364,7 @@ draw :: proc(has_won: bool) {
 
 	rl.EndMode2D()
 
-	rl.DrawText(fmt.ctprintf("%v", player_text), 5,5, 16, rl.GRAY)
+	rl.DrawText(fmt.ctprintf("%v", player_text), 5,WINDOW_HEIGHT-35, 25, rl.GRAY)
 
 	rl.BeginMode2D(ui_camera())
 
