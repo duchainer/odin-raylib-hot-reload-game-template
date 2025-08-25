@@ -37,7 +37,6 @@ PIXEL_WINDOW_HEIGHT :: 540
 Circle :: struct {
 	center: rl.Vector2,
 	radius: f32,
-	max_radius: f32,
 	color: rl.Color,
 }
 
@@ -51,15 +50,28 @@ StateGrounded :: struct {
 
 }
 
+StateDead :: struct {
+
+}
+
 
 PlayerStates :: union #no_nil {
 	StateGrounded,
 	StateJumping,
+	StateDead,
 }
 Player :: struct {
 	using circle: Circle,
 	state : PlayerStates,
+	max_radius: f32,
 	default_color: rl.Color,
+}
+
+Laser :: struct {
+	p1, p2: rl.Vector2,
+	p1_velocity, p2_velocity: rl.Vector2,
+	velocity: rl.Vector2,
+	color: rl.Color,
 }
 
 Game_Memory :: struct {
@@ -68,6 +80,8 @@ Game_Memory :: struct {
 		is_in_front: bool,
 		positive_ping_pong_t: f32,
 	},
+	lasers : [2048]Laser,
+	lasers_count : int,
 	player_texture: rl.Texture,
 	frame_count: int,
 	run: bool,
@@ -142,22 +156,39 @@ update :: proc() {
 		}
 		case StateGrounded :{
 			if (
-				SECS_TO_DO_FULL_ROPE_REVOLUTION - 0.1 < rope_modulo_frame_count
-					&& rope_modulo_frame_count < SECS_TO_DO_FULL_ROPE_REVOLUTION + 0.1
+				SECS_TO_DO_FULL_ROPE_REVOLUTION/2 - 0.1 < rope_modulo_frame_count
+					&& rope_modulo_frame_count < SECS_TO_DO_FULL_ROPE_REVOLUTION/2 + 0.1
 			) {
 				// if we have to jump and haven't yet
 				g.player.state = StateJumping{
 					jump_start_frame = g.frame_count,
 					jump_height = 15,
-					jump_duration = 0.5,
+					jump_duration = 1.0,
 				}
 				g.player.radius = g.player.max_radius * 0.5
+			} else {
+				for i:= g.lasers_count; i>0; i-=1{
+					laser := g.lasers[i]
+					if rl.CheckCollisionCircleLine(g.player.center, g.player.radius, laser.p1, laser.p2){
+						g.player.state = StateDead{}
+						break
+					}
+				}
 			}
 		}
+	case StateDead : {}
+	}
+
+	delta_time := rl.GetFrameTime()
+
+	for i:= g.lasers_count; i>0; i-=1{
+		laser := &g.lasers[i]
+		laser.p1 += input * delta_time * (laser.p1_velocity + laser.velocity)
+		laser.p2 += input * delta_time * (laser.p2_velocity + laser.velocity)
 	}
 
 	input = linalg.normalize0(input)
-	g.player.center += input * rl.GetFrameTime() * 100
+	g.player.center += input * delta_time * 100
 	// We round the player pos, to have the shadow always centered under the player
 	// And it is using integer, so we have to use whole numbers
 	g.player.center = {
@@ -174,7 +205,7 @@ update :: proc() {
 	rl.SetWindowSize(WINDOW_WIDTH, WINDOW_HEIGHT)
 }
 
-SECS_TO_DO_FULL_ROPE_REVOLUTION :: 1.0
+SECS_TO_DO_FULL_ROPE_REVOLUTION :: 2.0
 
 draw :: proc() {
 	screen_width := f32(rl.GetScreenWidth())
