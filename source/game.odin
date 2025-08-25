@@ -297,7 +297,10 @@ draw :: proc(has_won: bool) {
 
 
 	level := LEVELS[g.level_index]
-	rl.DrawCircleV(level.goal.center, level.goal.radius, level.goal.color)
+	level_frame_time := g.frame_count - g.level_started_at_frame
+	if level_frame_time >= level.goal.spawns_at_frame{
+		rl.DrawCircleV(level.goal.center, level.goal.radius, level.goal.color)
+	}
 
 	shadow_center := [2]i32{i32(g.player.center.x), i32(math.round(g.player.center.y+g.player.max_radius))}
 	rl.DrawEllipse(shadow_center.x, shadow_center.y, g.player.radius, 3, rl.BLACK)
