@@ -68,9 +68,14 @@ Player :: struct {
 }
 
 Laser :: struct {
+	start_p1, start_p2: rl.Vector2,
 	p1, p2: rl.Vector2,
 	p1_velocity, p2_velocity: rl.Vector2,
 	velocity: rl.Vector2,
+	lifetime : struct {
+		current, end : int,
+		repeating: bool,
+	},
 	color: rl.Color,
 }
 
@@ -85,6 +90,7 @@ Game_Memory :: struct {
 	player_texture: rl.Texture,
 	frame_count: int,
 	run: bool,
+	screen_width, screen_height : f32,
 }
 
 g: ^Game_Memory
@@ -95,7 +101,7 @@ game_camera :: proc() -> rl.Camera2D {
 
 	return {
 		zoom = h/PIXEL_WINDOW_HEIGHT,
-		target = {0,0},//g.player.center,
+		target = {w/2,h/2},//g.player.center,
 		offset = { w/2, h/2 },
 	}
 }
@@ -106,7 +112,12 @@ ui_camera :: proc() -> rl.Camera2D {
 	}
 }
 
+PLAYER_SPEED :: 150
+
 update :: proc() {
+	g.screen_width  = f32(rl.GetScreenWidth())
+	g.screen_height = f32(rl.GetScreenHeight())
+
 	input: rl.Vector2
 
 	if rl.IsKeyDown(.UP) || rl.IsKeyDown(.W) {
@@ -186,15 +197,30 @@ update :: proc() {
 		laser.p1.y += delta_time * (laser.p1_velocity.y + laser.velocity.y)
 		laser.p2.x += delta_time * (laser.p1_velocity.x + laser.velocity.x)
 		laser.p2.y += delta_time * (laser.p1_velocity.y + laser.velocity.y)
+		if laser.lifetime.current >= laser.lifetime.end{
+			laser.lifetime.current = 0
+			if laser.lifetime.repeating{
+				// restart the laser
+
+				laser.p1 = laser.start_p1
+				laser.p2 = laser.start_p2
+			} else{
+				// unordered remove
+
+				laser^ = g.lasers[g.lasers_count]
+				g.lasers_count -= 1
+			}
+		}
+		laser.lifetime.current += 1
 	}
 
 	input = linalg.normalize0(input)
-	g.player.center += input * delta_time * 100
+	g.player.center += input * delta_time * PLAYER_SPEED
 	// We round the player pos, to have the shadow always centered under the player
 	// And it is using integer, so we have to use whole numbers
 	g.player.center = {
-		math.round(g.player.center.x),
-		math.round(g.player.center.y),
+		math.clamp(math.round(g.player.center.x), 0+g.player.max_radius, g.screen_width-g.player.max_radius),
+		math.clamp(math.round(g.player.center.y), 0+g.player.max_radius, g.screen_height-g.player.max_radius),
 	}
 	g.frame_count += 1
 
@@ -209,8 +235,6 @@ update :: proc() {
 SECS_TO_DO_FULL_ROPE_REVOLUTION :: 2.0
 
 draw :: proc() {
-	screen_width := f32(rl.GetScreenWidth())
-	screen_height := f32(rl.GetScreenHeight())
 
 	rl.BeginDrawing()
 	rl.ClearBackground(rl.WHITE)
@@ -287,11 +311,11 @@ draw :: proc() {
 
 	rl.EndMode2D()
 	rl.DrawText(fmt.ctprintf("frame_count: %v\nplayer_pos: %v\nmouse_pos: %v", g.frame_count, g.player.center, rl.GetMousePosition()), 5, 5, 16, rl.GRAY)
-	rl.DrawText(fmt.ctprintf("screen_resolution: %v, %v\nplayer: %#v", screen_width, screen_height, g.player), i32(screen_width)-300, 5, 16, rl.GRAY)
+	rl.DrawText(fmt.ctprintf("g.screen_resolution: %v, %v\nplayer: %#v", g.screen_width, g.screen_height, g.player), i32(g.screen_width)-300, 5, 16, rl.GRAY)
 
 	// To test the real resolution
 	rl.DrawRectangleLinesEx(
-		{0,0, screen_width, screen_height},
+		{0,0, g.screen_width, g.screen_height},
 		2, rl.BLUE,
 	)
 
@@ -369,8 +393,12 @@ game_memory_size :: proc() -> int {
 @(export)
 game_hot_reloaded :: proc(mem: rawptr) {
 	g = (^Game_Memory)(mem)
+	g.screen_width  = f32(rl.GetScreenWidth())
+	g.screen_height = f32(rl.GetScreenHeight())
+
+
 	g.player = {
-		center = {0,0},
+		center = {g.screen_width/2, g.screen_height/2},
 		radius = 15,
 		max_radius = 15,
 		default_color = rl.GRAY,
@@ -384,11 +412,18 @@ game_hot_reloaded :: proc(mem: rawptr) {
 	{
 		g.lasers_count += 1
 		g.lasers[g.lasers_count] = Laser {
-			p1 = {-400, -400},
-			p2 = {-400, 600},
-			velocity = {20, 0},
+			start_p1 = {0, 0},
+			start_p2 = {0, 600},
+			lifetime = {
+				current = 0,
+				end = 5 * 60, // seconds * frames
+				repeating = true,
+			},
+			velocity = {50, 0},
 			color = rl.RED,
 		}
+		g.lasers[g.lasers_count].p1 = g.lasers[g.lasers_count].start_p1
+		g.lasers[g.lasers_count].p2 = g.lasers[g.lasers_count].start_p2
 	}
 
 	// Here you can also set your own global variables. A good idea is to make
