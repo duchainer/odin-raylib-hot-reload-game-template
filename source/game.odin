@@ -28,6 +28,7 @@ created.
 package game
 
 import "core:fmt"
+import "core:math"
 import "core:math/linalg"
 import rl "vendor:raylib"
 
@@ -40,7 +41,7 @@ Circle :: struct {
 }
 
 Game_Memory :: struct {
-	player_circle : Circle,
+	player : Circle,
 	player_texture: rl.Texture,
 	some_number: int,
 	run: bool,
@@ -54,7 +55,7 @@ game_camera :: proc() -> rl.Camera2D {
 
 	return {
 		zoom = h/PIXEL_WINDOW_HEIGHT,
-		target = g.player_circle.center,
+		target = g.player.center,
 		offset = { w/2, h/2 },
 	}
 }
@@ -82,7 +83,11 @@ update :: proc() {
 	}
 
 	input = linalg.normalize0(input)
-	g.player_circle.center += input * rl.GetFrameTime() * 100
+	g.player.center += input * rl.GetFrameTime() * 100
+	g.player.center = {
+		math.round(g.player.center.x),
+		math.round(g.player.center.y),
+	}
 	g.some_number += 1
 
 	if rl.IsKeyPressed(.LEFT_CONTROL) && rl.IsKeyPressed(.LEFT_SHIFT) && rl.IsKeyPressed(.ESCAPE) {
@@ -98,10 +103,25 @@ draw :: proc() {
 	screen_height := f32(rl.GetScreenHeight())
 
 	rl.BeginDrawing()
-	rl.ClearBackground(rl.BLACK)
+	rl.ClearBackground(rl.WHITE)
 
 	rl.BeginMode2D(game_camera())
-	rl.DrawTextureEx(g.player_texture, g.player_circle.center, 0, 1, rl.WHITE)
+
+	shadow_center := [2]i32{i32(g.player.center.x), i32(math.round(g.player.center.y+g.player.radius))}
+	rl.DrawEllipse(shadow_center.x, shadow_center.y, g.player.radius, 3, rl.BLACK)
+	{
+		center : rl.Vector2 = g.player.center
+		innerRadius : f32 = 2
+		outerRadius : f32 = 4
+		startAngle: f32 = 0
+		endAngle: f32 = 0.5
+		segments : i32 = 10
+		color := rl.LIGHTGRAY
+		rl.DrawRing(center, innerRadius, outerRadius, startAngle, endAngle, segments, color)
+	}
+
+	rl.DrawCircleV(g.player.center, g.player.radius, g.player.color)
+
 	rl.DrawRectangleV({20, 20}, {10, 10}, rl.RED)
 	rl.DrawRectangleV({-30, -20}, {10, 10}, rl.GREEN)
 	rl.EndMode2D()
@@ -113,8 +133,8 @@ draw :: proc() {
 	// `main_hot_reload.odin`, `main_release.odin` or `main_web_entry.odin`.
 
 	rl.EndMode2D()
-	rl.DrawText(fmt.ctprintf("some_number: %v\nplayer_pos: %v\nmouse_pos: %v", g.some_number, g.player_circle.center, rl.GetMousePosition()), 5, 5, 16, rl.WHITE)
-	rl.DrawText(fmt.ctprintf("screen_resolution: %v, %v", screen_width, screen_height), i32(screen_width)-300, 5, 16, rl.WHITE)
+	rl.DrawText(fmt.ctprintf("some_number: %v\nplayer_pos: %v\nmouse_pos: %v", g.some_number, g.player.center, rl.GetMousePosition()), 5, 5, 16, rl.GRAY)
+	rl.DrawText(fmt.ctprintf("screen_resolution: %v, %v", screen_width, screen_height), i32(screen_width)-300, 5, 16, rl.GRAY)
 
 	// To test the real resolution
 	rl.DrawRectangleLinesEx(
@@ -196,6 +216,11 @@ game_memory_size :: proc() -> int {
 @(export)
 game_hot_reloaded :: proc(mem: rawptr) {
 	g = (^Game_Memory)(mem)
+	g.player = {
+		center = {0,0},
+		radius = 15,
+		color = rl.GRAY,
+	}
 
 	// Here you can also set your own global variables. A good idea is to make
 	// your global variables into pointers that point to something inside `g`.
