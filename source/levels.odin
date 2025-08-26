@@ -375,7 +375,7 @@ LEVELS : []Level = {
         goal = {
             3 * 60,
             Circle{
-                center = {WINDOW_WIDTH - 150, WINDOW_HEIGHT - 50},
+                center = {WINDOW_WIDTH - 250, WINDOW_HEIGHT - 50},
                 radius = 10,
                 color = rl.GREEN,
             },
@@ -739,7 +739,7 @@ LEVELS : []Level = {
         goal = {
             2 * 60,
             Circle{
-                center = {WINDOW_WIDTH - 50, WINDOW_HEIGHT - 50},
+                center = { 100, WINDOW_HEIGHT - 50},
                 radius = 15,
                 color = rl.GREEN,
             },
