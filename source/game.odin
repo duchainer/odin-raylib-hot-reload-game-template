@@ -81,7 +81,7 @@ Game_Memory :: struct {
 		positive_ping_pong_t: f32,
 	},
 	lasers : [1466/*+1*/]Laser,
-	extra_memory: [8]u8,
+	extra_memory: [8+1]u8,
 	lasers_count : int,
 	player_texture: rl.Texture,
 	frame_count: int,
