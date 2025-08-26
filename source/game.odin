@@ -397,8 +397,8 @@ draw :: proc(has_won: bool) {
 	)
 
 	if _, ok := g.player.state.(StateDead); ok{
-		rl.DrawRectangleRec({250, 250, 400, 125}, rl.GRAY)
-		rl.DrawText(fmt.ctprintf("You Lost!\nIn %v frames", g.frame_count), 350, 270, 32, rl.BLACK)
+		rl.DrawRectangleRec({300, 250, 400, 125}, rl.GRAY)
+		rl.DrawText(fmt.ctprintf("You Lost at level %v!\nIn %v frames", g.level_index, g.frame_count), 350, 270, 32, rl.BLACK)
 	}
 
 	rl.EndDrawing()
