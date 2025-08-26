@@ -31,7 +31,7 @@ files="$OUT_DIR/game.wasm.o ${ODIN_PATH}/vendor/raylib/wasm/libraylib.a ${ODIN_P
 flags="-sUSE_GLFW=3 -sWASM_BIGINT -sWARN_ON_UNDEFINED_SYMBOLS=0 -sASSERTIONS --shell-file source/main_web/index_template.html --preload-file assets -sALLOW_MEMORY_GROWTH=1 -sINITIAL_HEAP=33554432 -sSTACK_SIZE=131072"
 
 # For debugging: Add `-g` to `emcc` (gives better error callstack in chrome)
-emcc -o $OUT_DIR/index.html $files $flags
+emcc -g -o $OUT_DIR/index.html $files $flags
 
 rm $OUT_DIR/game.wasm.o
 

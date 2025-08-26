@@ -80,7 +80,7 @@ Game_Memory :: struct {
 		is_in_front: bool,
 		positive_ping_pong_t: f32,
 	},
-	lasers : [1466/*+1*/]Laser,
+	lasers : [1466*20/*+1*/]Laser,
 	extra_memory: [8+1]u8,
 	lasers_count : int,
 	player_texture: rl.Texture,
@@ -301,6 +301,7 @@ draw :: proc() {
 
 @(export)
 game_update :: proc() {
+	// fmt.println("size_of(Game_Memory): %v", size_of(Game_Memory))
 	update()
 	draw()
 
@@ -333,6 +334,7 @@ game_init :: proc() {
 	}
 
 	game_hot_reloaded(g)
+
 }
 
 @(export)

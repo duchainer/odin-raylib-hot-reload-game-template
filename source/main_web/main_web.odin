@@ -8,6 +8,7 @@ import "base:runtime"
 import "core:c"
 import "core:mem"
 import game ".."
+import "core:fmt"
 
 @(private="file")
 web_context: runtime.Context
@@ -31,11 +32,13 @@ main_start :: proc "c" () {
 
 	game.game_init_window()
 	game.game_init()
+	fmt.println("game_init: size_of(Game_Memory): %v", size_of(game.Game_Memory))
 }
 
 @export
 main_update :: proc "c" () -> bool {
 	context = web_context
+	fmt.println("game_update: size_of(Game_Memory): %v", size_of(game.Game_Memory))
 	game.game_update()
 	return game.game_should_run()
 }
