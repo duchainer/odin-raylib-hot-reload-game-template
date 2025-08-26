@@ -20,7 +20,7 @@ Level :: struct{
 }
 
 
-@(rodata)
+// @(rodata)
 LEVELS : []Level = {
     // tutorial 0
     {
