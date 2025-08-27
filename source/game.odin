@@ -75,6 +75,9 @@ draw :: proc() {
 	rl.BeginMode2D(game_camera())
 	rl.DrawRectangleV({20, 20}, {10, 10}, rl.RED)
 	rl.DrawRectangleV({-30, -20}, {10, 10}, rl.GREEN)
+
+	draw_point({0,0}, rl.GOLD)
+
 	rl.EndMode2D()
 
 	rl.BeginMode2D(ui_camera())
