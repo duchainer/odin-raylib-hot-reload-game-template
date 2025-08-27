@@ -37,8 +37,11 @@ PIXEL_WINDOW_HEIGHT :: 180
 RagdollSegmentId :: int
 
 RagdollSegment :: struct {
+	// The .x and .y of that rect are calculated
 	using rect: rl.Rectangle,
 	origin: rl.Vector2,
+	// The rotation is calculated from the sum of all ancestor joint rotation
+	// and, in a sense, all the ancestor segment rotations
 	rotation: f32,
 	color: rl.Color,
 }
@@ -61,8 +64,8 @@ Game_Memory :: struct {
 	total_frame_count: int,
 	run: bool,
 	ragdoll : struct {
-		segments: [3]RagdollSegment,
-		joints : [2]RagdollJoint,
+		segments: [6]RagdollSegment,
+		joints : [6]RagdollJoint,
 		segments_count, joints_count: int,
 	},
 	last_right_clicked_pos: rl.Vector2,
@@ -95,13 +98,19 @@ update :: proc() {
 	BODY_SIZE :: rl.Vector2{40, 50}
 	ARM_SIZE1 :: rl.Vector2{25, 10}
 
-	g.ragdoll.segments[g.ragdoll.segments_count] = RagdollSegment{
-		rl.Rectangle{0, 0, BODY_SIZE.x, BODY_SIZE.y},
-		{BODY_SIZE.x/2, BODY_SIZE.y/2},
-		f32(g.total_frame_count%360),
-		rl.DARKGRAY,
+	ragdoll_base_segment_create:: proc(size: rl.Vector2, color: rl.Color = rl.GRAY, rotation :f32 = 0) -> RagdollSegmentId{
+		g.ragdoll.segments[g.ragdoll.segments_count] = RagdollSegment{
+			rl.Rectangle{0, 0, size.x, size.y},
+			{size.x/2, size.y/2},
+			rotation,
+			color,
+		}
+		g.ragdoll.segments_count += 1
+		return g.ragdoll.segments_count
 	}
-	g.ragdoll.segments_count += 1
+	ragdoll_base_segment_create(BODY_SIZE, rl.DARKGRAY, f32(g.total_frame_count%360))
+
+
 
 	// Adapted from rl.DrawRectanglePro
 	// https://github.com/raysan5/raylib/blob/71037033137e692f1a39003e06f570fa2744dce3/src/rshapes.c#L714
@@ -118,49 +127,55 @@ update :: proc() {
 		return segment_percent_offset_point
 	}
 
-
-	g.ragdoll.joints[g.ragdoll.joints_count] = {
-		circle = Circle{
-			segment_percent_offset_point(g.ragdoll.segments[0], {1.0, 0.3}),
-			5,
-			rl.GREEN,
-		},
-		parent_id= 0,
-		child_id= 1,
-		rel_rotation = 45,
-	}
-	g.ragdoll.joints_count += 1
-
-
-	joint : RagdollJoint = g.ragdoll.joints[0]
-	g.ragdoll.segments[g.ragdoll.segments_count] = RagdollSegment{
-		rl.Rectangle{joint.x, joint.y, ARM_SIZE1.x, ARM_SIZE1.y},
-		{0, ARM_SIZE1.y/2},
-		// {},
-		g.ragdoll.segments[joint.parent_id].rotation+joint.rel_rotation,
-		rl.GRAY,
-	}
-	g.ragdoll.segments_count += 1
-
-	g.ragdoll.joints[g.ragdoll.joints_count] = {
-		circle = Circle{
-			segment_percent_offset_point(g.ragdoll.segments[1], {1.0, 0.5}),
-			5,
-			rl.GREEN,
-		},
-		parent_id= 1,
-		child_id= 2,
-		rel_rotation= 15,
+	ragdoll_joint_create:: proc(parent_id, child_id: RagdollSegmentId, percent_offset: rl.Vector2, rel_rotation: f32) -> RagdollJoint{
+		g.ragdoll.joints[g.ragdoll.joints_count] = {
+			circle = Circle{
+				segment_percent_offset_point(g.ragdoll.segments[parent_id], percent_offset),
+				5,
+				rl.GREEN,
+			},
+			parent_id = parent_id,
+			child_id = child_id,
+			rel_rotation = rel_rotation,
+		}
+		g.ragdoll.joints_count += 1
+		return g.ragdoll.joints[g.ragdoll.joints_count-1]
 	}
 
-	joint = g.ragdoll.joints[g.ragdoll.joints_count]
-	g.ragdoll.segments[g.ragdoll.segments_count] = RagdollSegment{
-		rl.Rectangle{joint.x, joint.y, ARM_SIZE1.x, ARM_SIZE1.y},
-		{0, ARM_SIZE1.y/2},
-		g.ragdoll.segments[joint.parent_id].rotation+joint.rel_rotation,
-		rl.GRAY,
+	ragdoll_segment_create:: proc(size: rl.Vector2, color: rl.Color = rl.GRAY, joint: RagdollJoint) -> RagdollSegmentId{
+		g.ragdoll.segments[g.ragdoll.segments_count] = RagdollSegment{
+			rl.Rectangle{joint.x, joint.y, size.x, size.y},
+			{0, size.y/2},
+			g.ragdoll.segments[joint.parent_id].rotation+joint.rel_rotation,
+			color,
+		}
+		g.ragdoll.segments_count += 1
+		return g.ragdoll.segments_count - 1
 	}
-	g.ragdoll.segments_count += 1
+
+	segment_id : RagdollSegmentId
+	joint : RagdollJoint
+
+	joint = ragdoll_joint_create(RagdollSegmentId(0), segment_id+1, {1.0, 0.3}, 45)
+
+	segment_id = ragdoll_segment_create(ARM_SIZE1, rl.GRAY, joint)
+
+	joint = ragdoll_joint_create(segment_id, segment_id+1, {1.0, 0.5}, 15)
+
+	segment_id = ragdoll_segment_create(ARM_SIZE1, rl.GRAY, joint)
+
+	joint = ragdoll_joint_create(segment_id, segment_id+1, {1.0, 0.5}, 15)
+
+	segment_id = ragdoll_segment_create(ARM_SIZE1, rl.GRAY, joint)
+
+
+	joint = ragdoll_joint_create(RagdollSegmentId(0), segment_id+1, {0.0, 0.3}, 180)
+
+	segment_id = ragdoll_segment_create(ARM_SIZE1, rl.GRAY, joint)
+
+	joint = ragdoll_joint_create(segment_id, segment_id+1, {1.0, 0.5}, -15)
+
+	segment_id = ragdoll_segment_create(ARM_SIZE1, rl.GRAY, joint)
 
 
 	if rl.IsKeyPressed(.LEFT_CONTROL) && rl.IsKeyPressed(.LEFT_SHIFT) && rl.IsKeyPressed(.ESCAPE) {
