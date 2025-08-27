@@ -160,9 +160,6 @@ draw :: proc() {
 		// for segment in g.ragdoll.segments{
 		for segment in segments{
 			//rec: Rectangle, origin: Vector2, rotation: f32, color: Color
-			offset_down_rect := segment.rect
-			offset_down_rect.y += 40
-			rl.DrawRectangleRec(offset_down_rect, segment.color)
 			rl.DrawRectanglePro(segment.rect, segment.origin, segment.rotation, segment.color)
 		}
 		rl.DrawCircleV(joints[0].circle.center, 1, rl.GREEN)
