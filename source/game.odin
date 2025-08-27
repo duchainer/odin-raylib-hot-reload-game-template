@@ -35,7 +35,7 @@ PIXEL_WINDOW_HEIGHT :: 180
 
 Game_Memory :: struct {
 	player_pos: rl.Vector2,
-	some_number: int,
+	total_frame_count: int,
 	run: bool,
 }
 
@@ -76,7 +76,7 @@ update :: proc() {
 
 	input = linalg.normalize0(input)
 	g.player_pos += input * rl.GetFrameTime() * 100
-	g.some_number += 1
+	g.total_frame_count += 1
 
 	if rl.IsKeyPressed(.LEFT_CONTROL) && rl.IsKeyPressed(.LEFT_SHIFT) && rl.IsKeyPressed(.ESCAPE) {
 		g.run = false
@@ -97,7 +97,7 @@ draw :: proc() {
 	// NOTE: `fmt.ctprintf` uses the temp allocator. The temp allocator is
 	// cleared at the end of the frame by the main application, meaning inside
 	// `main_hot_reload.odin`, `main_release.odin` or `main_web_entry.odin`.
-	rl.DrawText(fmt.ctprintf("some_number: %v\nplayer_pos: %v", g.some_number, g.player_pos), 5, 5, 8, rl.WHITE)
+	rl.DrawText(fmt.ctprintf("total_frame_count: %v\nplayer_pos: %v", g.total_frame_count, g.player_pos), 5, 5, 8, rl.WHITE)
 
 	rl.EndMode2D()
 
@@ -129,7 +129,7 @@ game_init :: proc() {
 
 	g^ = Game_Memory {
 		run = true,
-		some_number = 100,
+		total_frame_count = 0,
 
 		// You can put textures, sounds and music in the `assets` folder. Those
 		// files will be part any release or web build.
