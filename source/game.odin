@@ -68,6 +68,7 @@ Game_Memory :: struct {
 		segments: [6]RagdollSegment,
 		joints : [6]RagdollJoint,
 		segments_count, joints_count: int,
+		selected_joint_id: int,
 	},
 	last_right_clicked_pos: rl.Vector2,
 }
@@ -91,25 +92,55 @@ ui_camera :: proc() -> rl.Camera2D {
 	}
 }
 
+ROTATION_SPEED :: 2
+
 update :: proc() {
 	g.total_frame_count += 1
 
 	// g.ragdoll.segments[0].rotation = f32(g.total_frame_count%360)
 
 	if rl.IsKeyDown(.W){
-		g.ragdoll.segments[0].rotation += 1
+		g.ragdoll.segments[0].rotation += ROTATION_SPEED
 	}
 	if rl.IsKeyDown(.S){
-		g.ragdoll.segments[0].rotation -= 1
+		g.ragdoll.segments[0].rotation -= ROTATION_SPEED
 	}
 
+	if rl.IsKeyDown(.A){
+		g.ragdoll.joints[g.ragdoll.selected_joint_id].rel_rotation += ROTATION_SPEED
+	}
+	if rl.IsKeyDown(.D){
+		g.ragdoll.joints[g.ragdoll.selected_joint_id].rel_rotation -= ROTATION_SPEED
+	}
+
+	world_mouse_pos := rl.GetScreenToWorld2D(rl.GetMousePosition(), game_camera())
+
+
+	// We recreate all non-base segments
+	// As only their size (width & height) is constant
 	g.ragdoll.segments_count = 1
 	for &joint, i in g.ragdoll.joints{
-		if i >= g.ragdoll.joints_count{
+		if i == 0 do continue
+		if i > g.ragdoll.joints_count{
 			// We have gone through all the created joints
 			break
 		}
+
 		joint.center = segment_percent_offset_point(g.ragdoll.segments[joint.parent_id], joint.percent_offset)
+
+		if rl.CheckCollisionPointCircle(world_mouse_pos, joint.center, joint.radius/2){
+			joint.radius = 2*JOINT_BASE_RADIUS
+			if rl.IsMouseButtonPressed(.LEFT){
+				fmt.println("", world_mouse_pos, joint.center, joint.radius, i)
+				fmt.println(g.ragdoll.selected_joint_id)
+				g.ragdoll.joints[g.ragdoll.selected_joint_id].color = JOINT_BASE_COLOR
+				g.ragdoll.selected_joint_id = i
+				joint.color = JOINT_SELECTED_COLOR
+			}
+		} else {
+			joint.radius = JOINT_BASE_RADIUS
+		}
+
 		_ = ragdoll_segment_create(ARM_SIZE1, rl.GRAY, joint)
 	}
 
@@ -133,8 +164,10 @@ draw :: proc() {
 			//rec: Rectangle, origin: Vector2, rotation: f32, color: Color
 			rl.DrawRectanglePro(segment.rect, segment.origin, segment.rotation, segment.color)
 		}
-		for joint in g.ragdoll.joints{
-			rl.DrawCircleV(joint.circle.center, 1, rl.GREEN)
+		for joint, i in g.ragdoll.joints{
+			if i == 0 do continue
+			rl.DrawCircleV(joint.circle.center, joint.circle.radius, joint.circle.color)
+			rl.DrawText(fmt.ctprintf("%v", i), i32(joint.circle.center.x), i32(joint.circle.center.y-10), 5, rl.GOLD)
 		}
 		// for i in -10..=10{
 		// 	for j in -10..=i{
@@ -246,20 +279,24 @@ segment_percent_offset_point :: proc(body: RagdollSegment, percent_offset := rl.
 	return segment_percent_offset_point
 }
 
+JOINT_BASE_COLOR :: rl.GREEN
+JOINT_SELECTED_COLOR :: rl.RED
+JOINT_BASE_RADIUS :: 2
+
 ragdoll_joint_create:: proc(parent_id, child_id: RagdollSegmentId, percent_offset: rl.Vector2, rel_rotation: f32) -> RagdollJoint{
+	g.ragdoll.joints_count += 1
 	g.ragdoll.joints[g.ragdoll.joints_count] = {
 		circle = Circle{
 			segment_percent_offset_point(g.ragdoll.segments[parent_id], percent_offset),
-			5,
-			rl.GREEN,
+			JOINT_BASE_RADIUS,
+			JOINT_BASE_COLOR,
 		},
 		parent_id = parent_id,
 		child_id = child_id,
 		rel_rotation = rel_rotation,
 		percent_offset = percent_offset,
 	}
-	g.ragdoll.joints_count += 1
-	return g.ragdoll.joints[g.ragdoll.joints_count-1]
+	return g.ragdoll.joints[g.ragdoll.joints_count]
 }
 
 ragdoll_segment_create:: proc(size: rl.Vector2, color: rl.Color = rl.GRAY, joint: RagdollJoint) -> RagdollSegmentId{
@@ -280,6 +317,7 @@ game_hot_reloaded :: proc(mem: rawptr) {
 
 	g.ragdoll.segments_count = 0
 	g.ragdoll.joints_count = 0
+	g.ragdoll.selected_joint_id = 0
 
 	ragdoll_base_segment_create:: proc(size: rl.Vector2, color: rl.Color = rl.GRAY, rotation :f32 = 0) -> RagdollSegmentId{
 		g.ragdoll.segments[g.ragdoll.segments_count] = RagdollSegment{
