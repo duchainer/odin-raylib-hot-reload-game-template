@@ -28,7 +28,7 @@ created.
 package game
 
 import "core:fmt"
-import "core:math/linalg"
+// import "core:math/linalg"
 import rl "vendor:raylib"
 
 PIXEL_WINDOW_HEIGHT :: 180
@@ -59,24 +59,9 @@ ui_camera :: proc() -> rl.Camera2D {
 }
 
 update :: proc() {
-	input: rl.Vector2
-
-	if rl.IsKeyDown(.UP) || rl.IsKeyDown(.W) {
-		input.y -= 1
-	}
-	if rl.IsKeyDown(.DOWN) || rl.IsKeyDown(.S) {
-		input.y += 1
-	}
-	if rl.IsKeyDown(.LEFT) || rl.IsKeyDown(.A) {
-		input.x -= 1
-	}
-	if rl.IsKeyDown(.RIGHT) || rl.IsKeyDown(.D) {
-		input.x += 1
-	}
-
-	input = linalg.normalize0(input)
-	g.player_pos += input * rl.GetFrameTime() * 100
 	g.total_frame_count += 1
+
+
 
 	if rl.IsKeyPressed(.LEFT_CONTROL) && rl.IsKeyPressed(.LEFT_SHIFT) && rl.IsKeyPressed(.ESCAPE) {
 		g.run = false
