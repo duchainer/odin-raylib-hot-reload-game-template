@@ -28,10 +28,32 @@ created.
 package game
 
 import "core:fmt"
+import "core:math"
 // import "core:math/linalg"
 import rl "vendor:raylib"
 
 PIXEL_WINDOW_HEIGHT :: 180
+
+RagdollSegmentId :: int
+
+RagdollSegment :: struct {
+	using rect: rl.Rectangle,
+	origin: rl.Vector2,
+	rotation: f32,
+	color: rl.Color,
+}
+
+Circle :: struct {
+	using center: rl.Vector2,
+	radius: f32,
+	color: rl.Color,
+}
+
+RagdollJoint :: struct {
+	using circle: Circle,
+	parent_id: RagdollSegmentId,
+	child_id: RagdollSegmentId,
+}
 
 Game_Memory :: struct {
 	player_pos: rl.Vector2,
@@ -72,22 +94,90 @@ draw :: proc() {
 	rl.BeginDrawing()
 	rl.ClearBackground(rl.BLACK)
 
-	rl.BeginMode2D(game_camera())
-	rl.DrawRectangleV({20, 20}, {10, 10}, rl.RED)
-	rl.DrawRectangleV({-30, -20}, {10, 10}, rl.GREEN)
+	{
+		rl.BeginMode2D(game_camera())
 
-	draw_point({0,0}, rl.GOLD)
+		BODY_SIZE :: rl.Vector2{40, 50}
+		ARM_SIZE1 :: rl.Vector2{25, 10}
+		segments :[3]RagdollSegment
+		joints : [1]RagdollJoint
+		segments[0] = RagdollSegment{
+			rl.Rectangle{0, 0, BODY_SIZE.x, BODY_SIZE.y},
+			{BODY_SIZE.x/2, BODY_SIZE.y/2},
+			f32(g.total_frame_count%360),
+			rl.DARKGRAY,
+		}
+		// Adapted from rl.DrawRectanglePro
+		// https://github.com/raysan5/raylib/blob/71037033137e692f1a39003e06f570fa2744dce3/src/rshapes.c#L714
+		body_top_right :: proc(body: RagdollSegment, offset := rl.Vector2{0,0}) -> rl.Vector2{
+			sinRotation := math.sin(body.rotation*rl.DEG2RAD)
+			cosRotation := math.cos(body.rotation*rl.DEG2RAD)
+			dx := -body.origin.x
+			dy := -body.origin.y
 
-	rl.EndMode2D()
+			top_right := rl.Vector2{
+				body.x + (dx + body.width + offset.x)*cosRotation - (dy + offset.y)*sinRotation,
+				body.y + (dx + body.width + offset.y)*sinRotation + (dy + offset.y)*cosRotation,
+			}
+			return top_right
+		}
 
-	rl.BeginMode2D(ui_camera())
+		// Adapted from rl.DrawRectanglePro
+		// https://github.com/raysan5/raylib/blob/71037033137e692f1a39003e06f570fa2744dce3/src/rshapes.c#L714
+		body_percent_offset :: proc(body: RagdollSegment, percent_offset := rl.Vector2{0,0}) -> rl.Vector2{
+			sinRotation := math.sin(body.rotation*rl.DEG2RAD)
+			cosRotation := math.cos(body.rotation*rl.DEG2RAD)
+			dx := -body.origin.x
+			dy := -body.origin.y
 
-	// NOTE: `fmt.ctprintf` uses the temp allocator. The temp allocator is
-	// cleared at the end of the frame by the main application, meaning inside
-	// `main_hot_reload.odin`, `main_release.odin` or `main_web_entry.odin`.
-	rl.DrawText(fmt.ctprintf("total_frame_count: %v\nplayer_pos: %v", g.total_frame_count, g.player_pos), 5, 5, 8, rl.WHITE)
+			body_percent_offset := rl.Vector2{
+				body.x + (dx + body.width*percent_offset.x)*cosRotation - (dy + body.height*percent_offset.y)*sinRotation,
+				body.y + (dx + body.width*percent_offset.x)*sinRotation + (dy + body.height*percent_offset.y)*cosRotation,
+			}
+			return body_percent_offset
+		}
+		assert(body_percent_offset(segments[0], {1.0, 0.0}) == body_top_right(segments[0], {0.0, 0.0}))
 
-	rl.EndMode2D()
+
+		joints[0] = {
+			circle = Circle{
+				body_percent_offset(segments[0], {1.0, 0.3}),
+				5,
+				rl.GREEN,
+			},
+			parent_id= 0,
+			child_id= 1,
+		}
+
+		segments[1] = RagdollSegment{
+			rl.Rectangle{joints[0].x, joints[0].y, ARM_SIZE1.x, ARM_SIZE1.y},
+			{0, ARM_SIZE1.y/2},
+			// {},
+			segments[0].rotation,
+			rl.GRAY,
+		}
+
+
+		// for segment in g.ragdoll.segments{
+		for segment in segments{
+			//rec: Rectangle, origin: Vector2, rotation: f32, color: Color
+			offset_down_rect := segment.rect
+			offset_down_rect.y += 40
+			rl.DrawRectangleRec(offset_down_rect, segment.color)
+			rl.DrawRectanglePro(segment.rect, segment.origin, segment.rotation, segment.color)
+		}
+		rl.DrawCircleV(joints[0].circle.center, 1, rl.GREEN)
+		// for i in -10..=10{
+		// 	for j in -10..=i{
+		// 		draw_point({f32(i*10),f32(j*10)}, rl.SKYBLUE)
+		// 	}
+		// }
+		draw_point({0,0}, rl.GOLD)
+
+
+
+		rl.EndMode2D()
+	}
 
 	rl.EndDrawing()
 }
