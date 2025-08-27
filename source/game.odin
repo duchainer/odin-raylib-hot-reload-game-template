@@ -105,23 +105,23 @@ update :: proc() {
 
 	// Adapted from rl.DrawRectanglePro
 	// https://github.com/raysan5/raylib/blob/71037033137e692f1a39003e06f570fa2744dce3/src/rshapes.c#L714
-	body_percent_offset :: proc(body: RagdollSegment, percent_offset := rl.Vector2{0,0}) -> rl.Vector2{
+	segment_percent_offset_point :: proc(body: RagdollSegment, percent_offset := rl.Vector2{0,0}) -> rl.Vector2{
 		sinRotation := math.sin(body.rotation*rl.DEG2RAD)
 		cosRotation := math.cos(body.rotation*rl.DEG2RAD)
 		dx := -body.origin.x
 		dy := -body.origin.y
 
-		body_percent_offset := rl.Vector2{
+		segment_percent_offset_point := rl.Vector2{
 			body.x + (dx + body.width*percent_offset.x)*cosRotation - (dy + body.height*percent_offset.y)*sinRotation,
 			body.y + (dx + body.width*percent_offset.x)*sinRotation + (dy + body.height*percent_offset.y)*cosRotation,
 		}
-		return body_percent_offset
+		return segment_percent_offset_point
 	}
 
 
 	g.ragdoll.joints[g.ragdoll.joints_count] = {
 		circle = Circle{
-			body_percent_offset(g.ragdoll.segments[0], {1.0, 0.3}),
+			segment_percent_offset_point(g.ragdoll.segments[0], {1.0, 0.3}),
 			5,
 			rl.GREEN,
 		},
@@ -144,7 +144,7 @@ update :: proc() {
 
 	g.ragdoll.joints[g.ragdoll.joints_count] = {
 		circle = Circle{
-			body_percent_offset(g.ragdoll.segments[1], {1.0, 0.5}),
+			segment_percent_offset_point(g.ragdoll.segments[1], {1.0, 0.5}),
 			5,
 			rl.GREEN,
 		},
