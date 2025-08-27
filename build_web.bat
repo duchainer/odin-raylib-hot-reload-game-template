@@ -33,7 +33,7 @@ set flags=-sUSE_GLFW=3 -sWASM_BIGINT -sWARN_ON_UNDEFINED_SYMBOLS=0 -sASSERTIONS 
 ::
 :: This uses `cmd /c` to avoid emcc stealing the whole command prompt. Otherwise
 :: it does not run the lines that follow it.
-cmd /c emcc -o %OUT_DIR%\index.html %files% %flags%
+cmd /c emcc -g -o %OUT_DIR%\index.html %files% %flags%
 
 del %OUT_DIR%\game.wasm.o 
 
