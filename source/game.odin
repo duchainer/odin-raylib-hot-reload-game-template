@@ -57,6 +57,7 @@ RagdollJoint :: struct {
 	parent_id: RagdollSegmentId,
 	child_id: RagdollSegmentId,
 	rel_rotation: f32,
+	percent_offset: rl.Vector2,
 }
 
 Game_Memory :: struct {
@@ -93,89 +94,24 @@ ui_camera :: proc() -> rl.Camera2D {
 update :: proc() {
 	g.total_frame_count += 1
 
-	g.ragdoll.segments_count = 0
-	g.ragdoll.joints_count = 0
-	BODY_SIZE :: rl.Vector2{40, 50}
-	ARM_SIZE1 :: rl.Vector2{25, 10}
+	// g.ragdoll.segments[0].rotation = f32(g.total_frame_count%360)
 
-	ragdoll_base_segment_create:: proc(size: rl.Vector2, color: rl.Color = rl.GRAY, rotation :f32 = 0) -> RagdollSegmentId{
-		g.ragdoll.segments[g.ragdoll.segments_count] = RagdollSegment{
-			rl.Rectangle{0, 0, size.x, size.y},
-			{size.x/2, size.y/2},
-			rotation,
-			color,
-		}
-		g.ragdoll.segments_count += 1
-		return g.ragdoll.segments_count
+	if rl.IsKeyDown(.W){
+		g.ragdoll.segments[0].rotation += 1
 	}
-	ragdoll_base_segment_create(BODY_SIZE, rl.DARKGRAY, f32(g.total_frame_count%360))
-
-
-
-	// Adapted from rl.DrawRectanglePro
-	// https://github.com/raysan5/raylib/blob/71037033137e692f1a39003e06f570fa2744dce3/src/rshapes.c#L714
-	segment_percent_offset_point :: proc(body: RagdollSegment, percent_offset := rl.Vector2{0,0}) -> rl.Vector2{
-		sinRotation := math.sin(body.rotation*rl.DEG2RAD)
-		cosRotation := math.cos(body.rotation*rl.DEG2RAD)
-		dx := -body.origin.x
-		dy := -body.origin.y
-
-		segment_percent_offset_point := rl.Vector2{
-			body.x + (dx + body.width*percent_offset.x)*cosRotation - (dy + body.height*percent_offset.y)*sinRotation,
-			body.y + (dx + body.width*percent_offset.x)*sinRotation + (dy + body.height*percent_offset.y)*cosRotation,
-		}
-		return segment_percent_offset_point
+	if rl.IsKeyDown(.S){
+		g.ragdoll.segments[0].rotation -= 1
 	}
 
-	ragdoll_joint_create:: proc(parent_id, child_id: RagdollSegmentId, percent_offset: rl.Vector2, rel_rotation: f32) -> RagdollJoint{
-		g.ragdoll.joints[g.ragdoll.joints_count] = {
-			circle = Circle{
-				segment_percent_offset_point(g.ragdoll.segments[parent_id], percent_offset),
-				5,
-				rl.GREEN,
-			},
-			parent_id = parent_id,
-			child_id = child_id,
-			rel_rotation = rel_rotation,
+	g.ragdoll.segments_count = 1
+	for &joint, i in g.ragdoll.joints{
+		if i >= g.ragdoll.joints_count{
+			// We have gone through all the created joints
+			break
 		}
-		g.ragdoll.joints_count += 1
-		return g.ragdoll.joints[g.ragdoll.joints_count-1]
+		joint.center = segment_percent_offset_point(g.ragdoll.segments[joint.parent_id], joint.percent_offset)
+		_ = ragdoll_segment_create(ARM_SIZE1, rl.GRAY, joint)
 	}
-
-	ragdoll_segment_create:: proc(size: rl.Vector2, color: rl.Color = rl.GRAY, joint: RagdollJoint) -> RagdollSegmentId{
-		g.ragdoll.segments[g.ragdoll.segments_count] = RagdollSegment{
-			rl.Rectangle{joint.x, joint.y, size.x, size.y},
-			{0, size.y/2},
-			g.ragdoll.segments[joint.parent_id].rotation+joint.rel_rotation,
-			color,
-		}
-		g.ragdoll.segments_count += 1
-		return g.ragdoll.segments_count - 1
-	}
-
-	segment_id : RagdollSegmentId
-	joint : RagdollJoint
-
-	joint = ragdoll_joint_create(RagdollSegmentId(0), segment_id+1, {1.0, 0.3}, 45)
-
-	segment_id = ragdoll_segment_create(ARM_SIZE1, rl.GRAY, joint)
-
-	joint = ragdoll_joint_create(segment_id, segment_id+1, {1.0, 0.5}, 15)
-
-	segment_id = ragdoll_segment_create(ARM_SIZE1, rl.GRAY, joint)
-
-	joint = ragdoll_joint_create(segment_id, segment_id+1, {1.0, 0.5}, 15)
-
-	segment_id = ragdoll_segment_create(ARM_SIZE1, rl.GRAY, joint)
-
-
-	joint = ragdoll_joint_create(RagdollSegmentId(0), segment_id+1, {0.0, 0.3}, 180)
-
-	segment_id = ragdoll_segment_create(ARM_SIZE1, rl.GRAY, joint)
-
-	joint = ragdoll_joint_create(segment_id, segment_id+1, {1.0, 0.5}, -15)
-
-	segment_id = ragdoll_segment_create(ARM_SIZE1, rl.GRAY, joint)
 
 
 	if rl.IsKeyPressed(.LEFT_CONTROL) && rl.IsKeyPressed(.LEFT_SHIFT) && rl.IsKeyPressed(.ESCAPE) {
@@ -292,9 +228,90 @@ game_memory_size :: proc() -> int {
 	return size_of(Game_Memory)
 }
 
+BODY_SIZE :: rl.Vector2{40, 50}
+ARM_SIZE1 :: rl.Vector2{25, 10}
+
+// Adapted from rl.DrawRectanglePro
+// https://github.com/raysan5/raylib/blob/71037033137e692f1a39003e06f570fa2744dce3/src/rshapes.c#L714
+segment_percent_offset_point :: proc(body: RagdollSegment, percent_offset := rl.Vector2{0,0}) -> rl.Vector2{
+	sinRotation := math.sin(body.rotation*rl.DEG2RAD)
+	cosRotation := math.cos(body.rotation*rl.DEG2RAD)
+	dx := -body.origin.x
+	dy := -body.origin.y
+
+	segment_percent_offset_point := rl.Vector2{
+		body.x + (dx + body.width*percent_offset.x)*cosRotation - (dy + body.height*percent_offset.y)*sinRotation,
+		body.y + (dx + body.width*percent_offset.x)*sinRotation + (dy + body.height*percent_offset.y)*cosRotation,
+	}
+	return segment_percent_offset_point
+}
+
+ragdoll_joint_create:: proc(parent_id, child_id: RagdollSegmentId, percent_offset: rl.Vector2, rel_rotation: f32) -> RagdollJoint{
+	g.ragdoll.joints[g.ragdoll.joints_count] = {
+		circle = Circle{
+			segment_percent_offset_point(g.ragdoll.segments[parent_id], percent_offset),
+			5,
+			rl.GREEN,
+		},
+		parent_id = parent_id,
+		child_id = child_id,
+		rel_rotation = rel_rotation,
+		percent_offset = percent_offset,
+	}
+	g.ragdoll.joints_count += 1
+	return g.ragdoll.joints[g.ragdoll.joints_count-1]
+}
+
+ragdoll_segment_create:: proc(size: rl.Vector2, color: rl.Color = rl.GRAY, joint: RagdollJoint) -> RagdollSegmentId{
+	g.ragdoll.segments[g.ragdoll.segments_count] = RagdollSegment{
+		rl.Rectangle{joint.x, joint.y, size.x, size.y},
+		{0, size.y/2},
+		g.ragdoll.segments[joint.parent_id].rotation+joint.rel_rotation,
+		color,
+	}
+	g.ragdoll.segments_count += 1
+	return g.ragdoll.segments_count - 1
+}
+
 @(export)
 game_hot_reloaded :: proc(mem: rawptr) {
 	g = (^Game_Memory)(mem)
+
+
+	g.ragdoll.segments_count = 0
+	g.ragdoll.joints_count = 0
+
+	ragdoll_base_segment_create:: proc(size: rl.Vector2, color: rl.Color = rl.GRAY, rotation :f32 = 0) -> RagdollSegmentId{
+		g.ragdoll.segments[g.ragdoll.segments_count] = RagdollSegment{
+			rl.Rectangle{0, 0, size.x, size.y},
+			{size.x/2, size.y/2},
+			rotation,
+			color,
+		}
+		g.ragdoll.segments_count += 1
+		return g.ragdoll.segments_count
+	}
+	ragdoll_base_segment_create(BODY_SIZE, rl.DARKGRAY, f32(g.total_frame_count%360))
+
+	segment_id : RagdollSegmentId
+	joint : RagdollJoint
+
+	joint = ragdoll_joint_create(RagdollSegmentId(0), segment_id+1, {1.0, 0.3}, 45)
+	segment_id = ragdoll_segment_create(ARM_SIZE1, rl.GRAY, joint)
+
+	joint = ragdoll_joint_create(segment_id, segment_id+1, {1.0, 0.5}, 15)
+	segment_id = ragdoll_segment_create(ARM_SIZE1, rl.GRAY, joint)
+
+	joint = ragdoll_joint_create(segment_id, segment_id+1, {1.0, 0.5}, 15)
+	segment_id = ragdoll_segment_create(ARM_SIZE1, rl.GRAY, joint)
+
+
+	joint = ragdoll_joint_create(RagdollSegmentId(0), segment_id+1, {0.0, 0.3}, 180)
+	segment_id = ragdoll_segment_create(ARM_SIZE1, rl.GRAY, joint)
+
+	joint = ragdoll_joint_create(segment_id, segment_id+1, {1.0, 0.5}, -15)
+	segment_id = ragdoll_segment_create(ARM_SIZE1, rl.GRAY, joint)
+
 
 	// Here you can also set your own global variables. A good idea is to make
 	// your global variables into pointers that point to something inside `g`.
