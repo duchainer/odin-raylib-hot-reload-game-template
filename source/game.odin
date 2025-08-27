@@ -84,11 +84,6 @@ ui_camera :: proc() -> rl.Camera2D {
 update :: proc() {
 	g.total_frame_count += 1
 
-	if rl.IsMouseButtonPressed(.RIGHT){
-		g.last_right_clicked_pos = rl.GetMousePosition()
-	}
-
-
 	if rl.IsKeyPressed(.LEFT_CONTROL) && rl.IsKeyPressed(.LEFT_SHIFT) && rl.IsKeyPressed(.ESCAPE) {
 		g.run = false
 	}
@@ -189,8 +184,7 @@ draw :: proc() {
 		// NOTE: `fmt.ctprintf` uses the temp allocator. The temp allocator is
 		// cleared at the end of the frame by the main application, meaning inside
 		// `main_hot_reload.odin`, `main_release.odin` or `main_web_entry.odin`.
-		delta_mouse_pos := g.last_right_clicked_pos - rl.GetMousePosition()
-		rl.DrawText(fmt.ctprintf("total_frame_count: %v\nplayer_pos: %v\nmouse_pos: %v\nlast_right_clicked_pos: %v\ndelta_mouse_pos: %v", g.total_frame_count, g.player_pos, rl.GetMousePosition(), g.last_right_clicked_pos, delta_mouse_pos), 5, 5, 8, rl.WHITE)
+		rl.DrawText(fmt.ctprintf("total_frame_count: %v\nplayer_pos: %v", g.total_frame_count, g.player_pos), 5, 5, 8, rl.WHITE)
 
 		rl.EndMode2D()
 	}
