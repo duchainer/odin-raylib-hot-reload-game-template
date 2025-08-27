@@ -53,6 +53,7 @@ RagdollJoint :: struct {
 	using circle: Circle,
 	parent_id: RagdollSegmentId,
 	child_id: RagdollSegmentId,
+	rel_rotation: f32,
 }
 
 Game_Memory :: struct {
@@ -99,13 +100,17 @@ draw :: proc() {
 		BODY_SIZE :: rl.Vector2{40, 50}
 		ARM_SIZE1 :: rl.Vector2{25, 10}
 		segments :[3]RagdollSegment
-		joints : [1]RagdollJoint
-		segments[0] = RagdollSegment{
+		joints : [3]RagdollJoint
+		segments_count, joints_count: int
+
+		segments[segments_count] = RagdollSegment{
 			rl.Rectangle{0, 0, BODY_SIZE.x, BODY_SIZE.y},
 			{BODY_SIZE.x/2, BODY_SIZE.y/2},
 			f32(g.total_frame_count%360),
 			rl.DARKGRAY,
 		}
+		segments_count += 1
+
 		// Adapted from rl.DrawRectanglePro
 		// https://github.com/raysan5/raylib/blob/71037033137e692f1a39003e06f570fa2744dce3/src/rshapes.c#L714
 		body_top_right :: proc(body: RagdollSegment, offset := rl.Vector2{0,0}) -> rl.Vector2{
@@ -138,7 +143,7 @@ draw :: proc() {
 		assert(body_percent_offset(segments[0], {1.0, 0.0}) == body_top_right(segments[0], {0.0, 0.0}))
 
 
-		joints[0] = {
+		joints[joints_count] = {
 			circle = Circle{
 				body_percent_offset(segments[0], {1.0, 0.3}),
 				5,
@@ -146,15 +151,40 @@ draw :: proc() {
 			},
 			parent_id= 0,
 			child_id= 1,
+			rel_rotation = 45,
 		}
+		joints_count += 1
 
-		segments[1] = RagdollSegment{
-			rl.Rectangle{joints[0].x, joints[0].y, ARM_SIZE1.x, ARM_SIZE1.y},
+
+		joint : RagdollJoint = joints[0]
+		segments[segments_count] = RagdollSegment{
+			rl.Rectangle{joint.x, joint.y, ARM_SIZE1.x, ARM_SIZE1.y},
 			{0, ARM_SIZE1.y/2},
 			// {},
-			segments[0].rotation,
+			segments[joint.parent_id].rotation+joint.rel_rotation,
 			rl.GRAY,
 		}
+		segments_count += 1
+
+		joints[joints_count] = {
+			circle = Circle{
+				body_percent_offset(segments[1], {1.0, 0.5}),
+				5,
+				rl.GREEN,
+			},
+			parent_id= 1,
+			child_id= 2,
+			rel_rotation= 15,
+		}
+
+		joint = joints[joints_count]
+		segments[segments_count] = RagdollSegment{
+			rl.Rectangle{joint.x, joint.y, ARM_SIZE1.x, ARM_SIZE1.y},
+			{0, ARM_SIZE1.y/2},
+			segments[joint.parent_id].rotation+joint.rel_rotation,
+			rl.GRAY,
+		}
+		segments_count += 1
 
 
 		// for segment in g.ragdoll.segments{
@@ -162,7 +192,9 @@ draw :: proc() {
 			//rec: Rectangle, origin: Vector2, rotation: f32, color: Color
 			rl.DrawRectanglePro(segment.rect, segment.origin, segment.rotation, segment.color)
 		}
-		rl.DrawCircleV(joints[0].circle.center, 1, rl.GREEN)
+		for some_joint in joints{
+			rl.DrawCircleV(some_joint.circle.center, 1, rl.GREEN)
+		}
 		// for i in -10..=10{
 		// 	for j in -10..=i{
 		// 		draw_point({f32(i*10),f32(j*10)}, rl.SKYBLUE)
