@@ -60,6 +60,11 @@ Game_Memory :: struct {
 	player_pos: rl.Vector2,
 	total_frame_count: int,
 	run: bool,
+	ragdoll : struct {
+		segments: [3]RagdollSegment,
+		joints : [2]RagdollJoint,
+		segments_count, joints_count: int,
+	},
 	last_right_clicked_pos: rl.Vector2,
 }
 
@@ -85,6 +90,79 @@ ui_camera :: proc() -> rl.Camera2D {
 update :: proc() {
 	g.total_frame_count += 1
 
+	g.ragdoll.segments_count = 0
+	g.ragdoll.joints_count = 0
+	BODY_SIZE :: rl.Vector2{40, 50}
+	ARM_SIZE1 :: rl.Vector2{25, 10}
+
+	g.ragdoll.segments[g.ragdoll.segments_count] = RagdollSegment{
+		rl.Rectangle{0, 0, BODY_SIZE.x, BODY_SIZE.y},
+		{BODY_SIZE.x/2, BODY_SIZE.y/2},
+		f32(g.total_frame_count%360),
+		rl.DARKGRAY,
+	}
+	g.ragdoll.segments_count += 1
+
+	// Adapted from rl.DrawRectanglePro
+	// https://github.com/raysan5/raylib/blob/71037033137e692f1a39003e06f570fa2744dce3/src/rshapes.c#L714
+	body_percent_offset :: proc(body: RagdollSegment, percent_offset := rl.Vector2{0,0}) -> rl.Vector2{
+		sinRotation := math.sin(body.rotation*rl.DEG2RAD)
+		cosRotation := math.cos(body.rotation*rl.DEG2RAD)
+		dx := -body.origin.x
+		dy := -body.origin.y
+
+		body_percent_offset := rl.Vector2{
+			body.x + (dx + body.width*percent_offset.x)*cosRotation - (dy + body.height*percent_offset.y)*sinRotation,
+			body.y + (dx + body.width*percent_offset.x)*sinRotation + (dy + body.height*percent_offset.y)*cosRotation,
+		}
+		return body_percent_offset
+	}
+
+
+	g.ragdoll.joints[g.ragdoll.joints_count] = {
+		circle = Circle{
+			body_percent_offset(g.ragdoll.segments[0], {1.0, 0.3}),
+			5,
+			rl.GREEN,
+		},
+		parent_id= 0,
+		child_id= 1,
+		rel_rotation = 45,
+	}
+	g.ragdoll.joints_count += 1
+
+
+	joint : RagdollJoint = g.ragdoll.joints[0]
+	g.ragdoll.segments[g.ragdoll.segments_count] = RagdollSegment{
+		rl.Rectangle{joint.x, joint.y, ARM_SIZE1.x, ARM_SIZE1.y},
+		{0, ARM_SIZE1.y/2},
+		// {},
+		g.ragdoll.segments[joint.parent_id].rotation+joint.rel_rotation,
+		rl.GRAY,
+	}
+	g.ragdoll.segments_count += 1
+
+	g.ragdoll.joints[g.ragdoll.joints_count] = {
+		circle = Circle{
+			body_percent_offset(g.ragdoll.segments[1], {1.0, 0.5}),
+			5,
+			rl.GREEN,
+		},
+		parent_id= 1,
+		child_id= 2,
+		rel_rotation= 15,
+	}
+
+	joint = g.ragdoll.joints[g.ragdoll.joints_count]
+	g.ragdoll.segments[g.ragdoll.segments_count] = RagdollSegment{
+		rl.Rectangle{joint.x, joint.y, ARM_SIZE1.x, ARM_SIZE1.y},
+		{0, ARM_SIZE1.y/2},
+		g.ragdoll.segments[joint.parent_id].rotation+joint.rel_rotation,
+		rl.GRAY,
+	}
+	g.ragdoll.segments_count += 1
+
+
 	if rl.IsKeyPressed(.LEFT_CONTROL) && rl.IsKeyPressed(.LEFT_SHIFT) && rl.IsKeyPressed(.ESCAPE) {
 		g.run = false
 	}
@@ -97,103 +175,15 @@ draw :: proc() {
 	{
 		rl.BeginMode2D(game_camera())
 
-		BODY_SIZE :: rl.Vector2{40, 50}
-		ARM_SIZE1 :: rl.Vector2{25, 10}
-		segments :[3]RagdollSegment
-		joints : [3]RagdollJoint
-		segments_count, joints_count: int
-
-		segments[segments_count] = RagdollSegment{
-			rl.Rectangle{0, 0, BODY_SIZE.x, BODY_SIZE.y},
-			{BODY_SIZE.x/2, BODY_SIZE.y/2},
-			f32(g.total_frame_count%360),
-			rl.DARKGRAY,
-		}
-		segments_count += 1
-
-		// Adapted from rl.DrawRectanglePro
-		// https://github.com/raysan5/raylib/blob/71037033137e692f1a39003e06f570fa2744dce3/src/rshapes.c#L714
-		body_top_right :: proc(body: RagdollSegment, offset := rl.Vector2{0,0}) -> rl.Vector2{
-			sinRotation := math.sin(body.rotation*rl.DEG2RAD)
-			cosRotation := math.cos(body.rotation*rl.DEG2RAD)
-			dx := -body.origin.x
-			dy := -body.origin.y
-
-			top_right := rl.Vector2{
-				body.x + (dx + body.width + offset.x)*cosRotation - (dy + offset.y)*sinRotation,
-				body.y + (dx + body.width + offset.y)*sinRotation + (dy + offset.y)*cosRotation,
-			}
-			return top_right
-		}
-
-		// Adapted from rl.DrawRectanglePro
-		// https://github.com/raysan5/raylib/blob/71037033137e692f1a39003e06f570fa2744dce3/src/rshapes.c#L714
-		body_percent_offset :: proc(body: RagdollSegment, percent_offset := rl.Vector2{0,0}) -> rl.Vector2{
-			sinRotation := math.sin(body.rotation*rl.DEG2RAD)
-			cosRotation := math.cos(body.rotation*rl.DEG2RAD)
-			dx := -body.origin.x
-			dy := -body.origin.y
-
-			body_percent_offset := rl.Vector2{
-				body.x + (dx + body.width*percent_offset.x)*cosRotation - (dy + body.height*percent_offset.y)*sinRotation,
-				body.y + (dx + body.width*percent_offset.x)*sinRotation + (dy + body.height*percent_offset.y)*cosRotation,
-			}
-			return body_percent_offset
-		}
-		assert(body_percent_offset(segments[0], {1.0, 0.0}) == body_top_right(segments[0], {0.0, 0.0}))
-
-
-		joints[joints_count] = {
-			circle = Circle{
-				body_percent_offset(segments[0], {1.0, 0.3}),
-				5,
-				rl.GREEN,
-			},
-			parent_id= 0,
-			child_id= 1,
-			rel_rotation = 45,
-		}
-		joints_count += 1
-
-
-		joint : RagdollJoint = joints[0]
-		segments[segments_count] = RagdollSegment{
-			rl.Rectangle{joint.x, joint.y, ARM_SIZE1.x, ARM_SIZE1.y},
-			{0, ARM_SIZE1.y/2},
-			// {},
-			segments[joint.parent_id].rotation+joint.rel_rotation,
-			rl.GRAY,
-		}
-		segments_count += 1
-
-		joints[joints_count] = {
-			circle = Circle{
-				body_percent_offset(segments[1], {1.0, 0.5}),
-				5,
-				rl.GREEN,
-			},
-			parent_id= 1,
-			child_id= 2,
-			rel_rotation= 15,
-		}
-
-		joint = joints[joints_count]
-		segments[segments_count] = RagdollSegment{
-			rl.Rectangle{joint.x, joint.y, ARM_SIZE1.x, ARM_SIZE1.y},
-			{0, ARM_SIZE1.y/2},
-			segments[joint.parent_id].rotation+joint.rel_rotation,
-			rl.GRAY,
-		}
-		segments_count += 1
 
 
 		// for segment in g.ragdoll.segments{
-		for segment in segments{
+		for segment in g.ragdoll.segments{
 			//rec: Rectangle, origin: Vector2, rotation: f32, color: Color
 			rl.DrawRectanglePro(segment.rect, segment.origin, segment.rotation, segment.color)
 		}
-		for some_joint in joints{
-			rl.DrawCircleV(some_joint.circle.center, 1, rl.GREEN)
+		for joint in g.ragdoll.joints{
+			rl.DrawCircleV(joint.circle.center, 1, rl.GREEN)
 		}
 		// for i in -10..=10{
 		// 	for j in -10..=i{
