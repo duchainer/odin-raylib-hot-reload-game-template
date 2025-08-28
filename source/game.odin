@@ -65,8 +65,8 @@ Game_Memory :: struct {
 	total_frame_count: int,
 	run: bool,
 	ragdoll : struct {
-		segments: [6]RagdollSegment,
-		joints : [6]RagdollJoint,
+		segments: [16]RagdollSegment,
+		joints : [16]RagdollJoint,
 		segments_count, joints_count: int,
 		selected_joint_id: int,
 	},
@@ -106,10 +106,10 @@ update :: proc() {
 		g.ragdoll.segments[0].rotation -= ROTATION_SPEED
 	}
 
-	if rl.IsKeyDown(.A){
+	if rl.IsKeyDown(.R){
 		g.ragdoll.joints[g.ragdoll.selected_joint_id].rel_rotation += ROTATION_SPEED
 	}
-	if rl.IsKeyDown(.D){
+	if rl.IsKeyDown(.E){
 		g.ragdoll.joints[g.ragdoll.selected_joint_id].rel_rotation -= ROTATION_SPEED
 	}
 
@@ -160,12 +160,22 @@ draw :: proc() {
 
 
 		// for segment in g.ragdoll.segments{
-		for segment in g.ragdoll.segments{
+		for segment, i in g.ragdoll.segments{
+			if i >= g.ragdoll.segments_count{
+				// We have gone through all the created segments
+				break
+			}
+
 			//rec: Rectangle, origin: Vector2, rotation: f32, color: Color
 			rl.DrawRectanglePro(segment.rect, segment.origin, segment.rotation, segment.color)
 		}
 		for joint, i in g.ragdoll.joints{
 			if i == 0 do continue
+			if i > g.ragdoll.joints_count{
+				// We have gone through all the created joints
+				break
+			}
+
 			rl.DrawCircleV(joint.circle.center, joint.circle.radius, joint.circle.color)
 			rl.DrawText(fmt.ctprintf("%v", i), i32(joint.circle.center.x), i32(joint.circle.center.y-10), 5, rl.GOLD)
 		}
@@ -329,11 +339,12 @@ game_hot_reloaded :: proc(mem: rawptr) {
 		g.ragdoll.segments_count += 1
 		return g.ragdoll.segments_count
 	}
-	ragdoll_base_segment_create(BODY_SIZE, rl.DARKGRAY, f32(g.total_frame_count%360))
+	ragdoll_base_segment_create(BODY_SIZE, rl.DARKGRAY, 10)//f32(g.total_frame_count%360))
 
 	segment_id : RagdollSegmentId
 	joint : RagdollJoint
 
+	// Arm
 	joint = ragdoll_joint_create(RagdollSegmentId(0), segment_id+1, {1.0, 0.3}, 45)
 	segment_id = ragdoll_segment_create(ARM_SIZE1, rl.GRAY, joint)
 
@@ -344,10 +355,41 @@ game_hot_reloaded :: proc(mem: rawptr) {
 	segment_id = ragdoll_segment_create(ARM_SIZE1, rl.GRAY, joint)
 
 
+	// Arm
 	joint = ragdoll_joint_create(RagdollSegmentId(0), segment_id+1, {0.0, 0.3}, 180)
 	segment_id = ragdoll_segment_create(ARM_SIZE1, rl.GRAY, joint)
 
 	joint = ragdoll_joint_create(segment_id, segment_id+1, {1.0, 0.5}, -15)
+	segment_id = ragdoll_segment_create(ARM_SIZE1, rl.GRAY, joint)
+
+
+	// Leg
+	joint = ragdoll_joint_create(RagdollSegmentId(0), segment_id+1, {0.2, 1.0}, 90)
+	segment_id = ragdoll_segment_create(ARM_SIZE1, rl.GRAY, joint)
+
+	joint = ragdoll_joint_create(segment_id, segment_id+1, {1.0, 0.5}, 15)
+	segment_id = ragdoll_segment_create(ARM_SIZE1, rl.GRAY, joint)
+
+	joint = ragdoll_joint_create(segment_id, segment_id+1, {1.0, 0.5}, 90)
+	segment_id = ragdoll_segment_create(ARM_SIZE1, rl.GRAY, joint)
+
+
+	// Leg
+	joint = ragdoll_joint_create(RagdollSegmentId(0), segment_id+1, {0.8, 1.0}, 90)
+	segment_id = ragdoll_segment_create(ARM_SIZE1, rl.GRAY, joint)
+
+	joint = ragdoll_joint_create(segment_id, segment_id+1, {1.0, 0.5}, 15)
+	segment_id = ragdoll_segment_create(ARM_SIZE1, rl.GRAY, joint)
+
+	joint = ragdoll_joint_create(segment_id, segment_id+1, {1.0, 0.5}, -90)
+	segment_id = ragdoll_segment_create(ARM_SIZE1, rl.GRAY, joint)
+
+
+	// Head
+	joint = ragdoll_joint_create(RagdollSegmentId(0), segment_id+1, {0.5, 0.0}, -90)
+	segment_id = ragdoll_segment_create(ARM_SIZE1, rl.GRAY, joint)
+
+	joint = ragdoll_joint_create(segment_id, segment_id+1, {1.0, 0.5}, 90)
 	segment_id = ragdoll_segment_create(ARM_SIZE1, rl.GRAY, joint)
 
 
