@@ -145,8 +145,12 @@ update :: proc() {
 							}
 						}
 						if !commodino.assert(&g.commodino.break_only_game, g.grabbed_panel.window_index != 0, "Handles should always be inside windows, if they are on a panel, code loc: %v"){
+							rl.SetTargetFPS(1)
 							return
+						} else{
+							rl.SetTargetFPS(TARGET_FPS)
 						}
+
 
 
 						for handle, k in g.handles{
@@ -354,12 +358,14 @@ game_update :: proc() {
 	free_all(context.temp_allocator)
 }
 
+
+TARGET_FPS :: 30
 @(export)
 game_init_window :: proc() {
 	rl.SetConfigFlags({.WINDOW_RESIZABLE, .VSYNC_HINT})
 	rl.InitWindow(1920, 1080, "Odin + Raylib + Hot Reload template!")
 	rl.SetWindowPosition(200, 200)
-	rl.SetTargetFPS(30)
+	rl.SetTargetFPS(TARGET_FPS)
 	rl.SetExitKey(nil)
 }
 
