@@ -53,17 +53,23 @@ CloseWindow :: rl.CloseWindow
 // Mouse
 MouseButton :: rl.MouseButton
 
-IsMouseButtonPressed  :: proc(button: rl.MouseButton) -> bool {
-    input := (cast(^CachedInput)context.user_ptr)^
+IsMouseButtonPressed  :: proc(button: rl.MouseButton, input: CachedInput) -> bool {
+    // TODO find why I can't access the memory from here
+    // input := (cast(^CachedInput)context.user_ptr)^
+
     return input.mouse.buttons[button].pressed
 }
 
-IsMouseButtonDown  :: proc(button: rl.MouseButton) -> bool {
-    input := (^CachedInput)(context.user_ptr)
+IsMouseButtonDown  :: proc(button: rl.MouseButton, input: CachedInput) -> bool {
+    // TODO find why I can't access the memory from here
+    // input := (^CachedInput)(context.user_ptr)
+
     return input.mouse.buttons[button].down
 }
-GetMousePosition :: proc() -> Vector2{
-    input := (^CachedInput)(context.user_ptr)
+GetMousePosition :: proc(input: CachedInput) -> Vector2{
+    // TODO find why I can't access the memory from here
+    // input := (^CachedInput)(context.user_ptr)
+
     return input.mouse.pos
 }
 

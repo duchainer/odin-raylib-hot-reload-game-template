@@ -120,8 +120,8 @@ is_this_small_aligned_rect_inside_big_rect :: proc(small_rect, big_rect : rl.Rec
 }
 
 input :: proc(){
-	g.input.mouse.pos = rl.GetMousePosition()
-	g.input.mouse.buttons[.LEFT].pressed = rl.IsMouseButtonPressed(.LEFT)
+	g.input.mouse.pos = rl.GetMousePosition(g.input)
+	g.input.mouse.buttons[.LEFT].pressed = rl.IsMouseButtonPressed(.LEFT, g.input)
 }
 
 update :: proc() {
@@ -182,7 +182,7 @@ update :: proc() {
 				break
 			}
 		}
-	} else if rl.IsMouseButtonDown(.LEFT){
+	} else if rl.IsMouseButtonDown(.LEFT, g.input){
 		handle := &g.handles[g.grabbed_handle_index]
 		panel := &g.panels[g.grabbed_panel.index]
 		window := g.windows[g.grabbed_panel.window_index]
@@ -337,7 +337,7 @@ draw :: proc() {
 	// `main_hot_reload.odin`, `main_release.odin` or `main_web_entry.odin`.
 	when ODIN_DEBUG {
 		rl.DrawText(fmt.ctprintf("total_frame_count: %v\ng.grabbed_handle_index: %v\ng.wolves: %#v", g.total_frame_count, g.grabbed_handle_index, g.wolves,), 5, 5, 8, rl.WHITE)
-		rl.DrawText(fmt.ctprintf("mouse_pos: %v\ng.grabbed_panel.handle_indexes: %#v", rl.GetMousePosition(), g.grabbed_panel.handle_indexes[:g.grabbed_panel.handle_indexes_count]), 250, 5, 8, rl.WHITE)
+		rl.DrawText(fmt.ctprintf("mouse_pos: %v\ng.grabbed_panel.handle_indexes: %#v", rl.GetMousePosition(g.input), g.grabbed_panel.handle_indexes[:g.grabbed_panel.handle_indexes_count]), 250, 5, 8, rl.WHITE)
 	}
 
 	rl.EndMode2D()
@@ -352,7 +352,7 @@ game_update :: proc() {
 		// Instead, we want to keep running the update, with the last input state
 		input()
 	}
-	context.user_ptr = &g.input
+	// context.user_ptr = &g.input
 	update()
 	draw()
 
