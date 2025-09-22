@@ -30,10 +30,22 @@ package game
 import "core:fmt"
 _ :: fmt
 import "core:math/rand"
-import rl "vendor:raylib"
+// import raylib "vendor:raylib"
+import rl "./wrapped_raylib"
+
 
 PIXEL_WINDOW_HEIGHT :: 360
 
+
+commodino_assert :: proc(condition: bool, message:= "Failed on location: %v", loc := #caller_location) -> bool {
+	if condition {
+		g.commodino.break_only_game = false
+	} else {
+		fmt.println(message, loc)
+		g.commodino.break_only_game = true
+	}
+	return condition
+}
 
 game_camera :: proc() -> rl.Camera2D {
 	w := f32(rl.GetScreenWidth())
@@ -65,8 +77,14 @@ CountedHandlesArrayRect :: struct {
 
 WINDOW_COUNT :: 2
 Game_Memory :: struct {
+	commodino: struct {
+		break_only_game: bool,
+	},
+	input : rl.CachedInput,
+	// TODO remove player_pos and player_texture
 	player_pos: rl.Vector2,
 	player_texture: rl.Texture,
+
 	total_frame_count: int,
 	run: bool,
 	windows: [WINDOW_COUNT+1]rl.Rectangle,
@@ -101,10 +119,15 @@ is_this_small_aligned_rect_inside_big_rect :: proc(small_rect, big_rect : rl.Rec
 	)
 }
 
+input :: proc(){
+	g.input.mouse.pos = rl.GetMousePosition()
+	g.input.mouse.buttons[.LEFT].pressed = rl.IsMouseButtonPressed(.LEFT)
+}
+
 update :: proc() {
 
-	mouse_pos := rl.GetMousePosition()
-	if rl.IsMouseButtonPressed(.LEFT){
+	mouse_pos := g.input.mouse.pos
+	if rl.IsMouseButtonPressed(.LEFT, g.input){
 		// reverse for loop, starting with the last existing element, and skipping the last "zero/null" element
 		for i:=g.handle_count; i>0; i-=1{
 			handle_rect:= g.handles[i]
@@ -129,7 +152,9 @@ update :: proc() {
 								g.grabbed_panel.window_index = window_index
 							}
 						}
-						assert(g.grabbed_panel.window_index != 0, "Handles should always be inside windows, if they are on a panel")
+						if !commodino_assert(g.grabbed_panel.window_index != 0, "Handles should always be inside windows, if they are on a panel, code loc: %v"){
+							return
+						}
 
 
 						for handle, k in g.handles{
@@ -322,6 +347,12 @@ draw :: proc() {
 
 @(export)
 game_update :: proc() {
+	if ! g.commodino.break_only_game{
+		// We don't want to grab more input for the game, if we have hit a commodino_assert
+		// Instead, we want to keep running the update, with the last input state
+		input()
+	}
+	context.user_ptr = &g.input
 	update()
 	draw()
 
@@ -347,56 +378,14 @@ game_init :: proc() {
 
 		// You can put textures, sounds and music in the `assets` folder. Those
 		// files will be part any release or web build.
-		player_texture = rl.LoadTexture("assets/round_cat.png"),
+		// player_texture = rl.LoadTexture("assets/round_cat.png"),
 	}
 
-	game_hot_reloaded(g)
-}
 
-@(export)
-game_should_run :: proc() -> bool {
-	when ODIN_OS != .JS {
-		// Never run this proc in browser. It contains a 16 ms sleep on web!
-		if rl.WindowShouldClose() {
-			return false
-		}
-	}
-
-	return g.run
-}
-
-@(export)
-game_shutdown :: proc() {
-	free(g)
-}
-
-@(export)
-game_shutdown_window :: proc() {
-	rl.CloseWindow()
-}
-
-@(export)
-game_memory :: proc() -> rawptr {
-	return g
-}
-
-@(export)
-game_memory_size :: proc() -> int {
-	return size_of(Game_Memory)
-}
-
-WOLVES_SPAWNS : [WINDOW_COUNT*3][2]f32
-WINDOW_THICKNESS :: 3
-
-WOLF_SPRITE_COUNT :: 4
-wolf_texture : rl.Texture2D
-frameRec : rl.Rectangle
-@(export)
-game_hot_reloaded :: proc(mem: rawptr) {
+	// section previously in the hot_reloaded stuff
 	wolf_texture = rl.LoadTexture("assets/wolf/wolf-head.png")
 	frameRec = { 0, 0, f32(wolf_texture.width/WOLF_SPRITE_COUNT), f32(wolf_texture.height) }
 
-	g = (^Game_Memory)(mem)
 
 	g.windows = {}
 
@@ -461,6 +450,54 @@ game_hot_reloaded :: proc(mem: rawptr) {
 		1100+150, 250,
 		25, 50,
 	})
+
+	// endsection previously in the hot_reloaded stuff
+
+	game_hot_reloaded(g)
+}
+
+@(export)
+game_should_run :: proc() -> bool {
+	when ODIN_OS != .JS {
+		// Never run this proc in browser. It contains a 16 ms sleep on web!
+		if rl.WindowShouldClose() {
+			return false
+		}
+	}
+
+	return g.run
+}
+
+@(export)
+game_shutdown :: proc() {
+	free(g)
+}
+
+@(export)
+game_shutdown_window :: proc() {
+	rl.CloseWindow()
+}
+
+@(export)
+game_memory :: proc() -> rawptr {
+	return g
+}
+
+@(export)
+game_memory_size :: proc() -> int {
+	return size_of(Game_Memory)
+}
+
+WOLVES_SPAWNS : [WINDOW_COUNT*3][2]f32
+WINDOW_THICKNESS :: 3
+
+WOLF_SPRITE_COUNT :: 4
+wolf_texture : rl.Texture2D
+frameRec : rl.Rectangle
+@(export)
+game_hot_reloaded :: proc(mem: rawptr) {
+	g = (^Game_Memory)(mem)
+
 	// Here you can also set your own global variables. A good idea is to make
 	// your global variables into pointers that point to something inside `g`.
 }
