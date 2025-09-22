@@ -105,8 +105,8 @@ is_this_small_aligned_rect_inside_big_rect :: proc(small_rect, big_rect : rl.Rec
 	small_rect_x_max := small_rect.x + small_rect.width
 	big_rect_x_max := big_rect.x + big_rect.width
 	return (
-		small_rect.x > big_rect.x &&
-		small_rect_x_max < big_rect_x_max
+		small_rect.x >= big_rect.x &&
+		small_rect_x_max <= big_rect_x_max
 	)
 }
 
