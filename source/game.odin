@@ -330,6 +330,8 @@ draw :: proc() {
 	when ODIN_DEBUG {
 		rl.DrawText(fmt.ctprintf("total_frame_count: %v\ng.grabbed_handle_index: %v\ng.wolves: %#v", g.total_frame_count, g.grabbed_handle_index, g.wolves,), 5, 5, 8, rl.WHITE)
 		rl.DrawText(fmt.ctprintf("mouse_pos: %v\ng.grabbed_panel.handle_indexes: %#v", rl.GetMousePosition(g.input), g.grabbed_panel.handle_indexes[:g.grabbed_panel.handle_indexes_count]), 250, 5, 8, rl.WHITE)
+
+		rl.DrawText(fmt.ctprintf("g.commodino.break_only_game: %v", g.commodino.break_only_game), 250, 250, 8, rl.WHITE)
 	}
 
 	rl.EndMode2D()
