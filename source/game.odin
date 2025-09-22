@@ -92,6 +92,15 @@ Game_Memory :: struct {
 
 g: ^Game_Memory
 
+is_this_small_aligned_rect_inside_big_rect :: proc(small_rect, big_rect : rl.Rectangle) -> bool {
+	small_rect_x_max := small_rect.x + small_rect.width
+	big_rect_x_max := big_rect.x + big_rect.width
+	return (
+		small_rect.x > big_rect.x &&
+		small_rect_x_max < big_rect_x_max
+	)
+}
+
 update :: proc() {
 
 	mouse_pos := rl.GetMousePosition()
@@ -116,7 +125,7 @@ update :: proc() {
 
 						g.grabbed_panel.window_index = 0
 						for candidate, window_index in g.windows{
-								if is_this_small_aligned_rect_inside_big_rect(handle_rect, candidate){
+							if is_this_small_aligned_rect_inside_big_rect(handle_rect, candidate){
 								g.grabbed_panel.window_index = window_index
 							}
 						}
