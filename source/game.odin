@@ -32,20 +32,11 @@ _ :: fmt
 import "core:math/rand"
 import real_raylib "vendor:raylib"
 import rl "./wrapped_raylib"
+import commodino "./commodino/"
 
 
 PIXEL_WINDOW_HEIGHT :: 360
 
-
-commodino_assert :: proc(condition: bool, message:= "Failed on location: %v", loc := #caller_location) -> bool {
-	if condition {
-		g.commodino.break_only_game = false
-	} else {
-		fmt.println(message, loc)
-		g.commodino.break_only_game = true
-	}
-	return condition
-}
 
 game_camera :: proc() -> rl.Camera2D {
 	w := f32(rl.GetScreenWidth())
@@ -153,7 +144,7 @@ update :: proc() {
 								g.grabbed_panel.window_index = window_index
 							}
 						}
-						if !commodino_assert(g.grabbed_panel.window_index != 0, "Handles should always be inside windows, if they are on a panel, code loc: %v"){
+						if !commodino.assert(&g.commodino.break_only_game, g.grabbed_panel.window_index != 0, "Handles should always be inside windows, if they are on a panel, code loc: %v"){
 							return
 						}
 
@@ -349,7 +340,7 @@ draw :: proc() {
 @(export)
 game_update :: proc() {
 	if ! g.commodino.break_only_game{
-		// We don't want to grab more input for the game, if we have hit a commodino_assert
+		// We don't want to grab more input for the game, if we have hit a commodino.assert
 		// Instead, we want to keep running the update, with the last input state
 		input()
 	}
