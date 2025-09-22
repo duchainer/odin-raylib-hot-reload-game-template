@@ -30,7 +30,7 @@ package game
 import "core:fmt"
 _ :: fmt
 import "core:math/rand"
-// import raylib "vendor:raylib"
+import real_raylib "vendor:raylib"
 import rl "./wrapped_raylib"
 
 
@@ -120,8 +120,9 @@ is_this_small_aligned_rect_inside_big_rect :: proc(small_rect, big_rect : rl.Rec
 }
 
 input :: proc(){
-	g.input.mouse.pos = rl.GetMousePosition(g.input)
-	g.input.mouse.buttons[.LEFT].pressed = rl.IsMouseButtonPressed(.LEFT, g.input)
+	g.input.mouse.pos = real_raylib.GetMousePosition()
+	g.input.mouse.buttons[.LEFT].pressed = real_raylib.IsMouseButtonPressed(.LEFT)
+	g.input.mouse.buttons[.LEFT].down = real_raylib.IsMouseButtonDown(.LEFT)
 }
 
 update :: proc() {
