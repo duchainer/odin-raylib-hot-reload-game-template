@@ -66,12 +66,34 @@ CountedHandlesArrayRect :: struct {
 	handle_count: int,
 }
 
+CachedInput :: struct {
+    mouse: struct{
+        pos : real_raylib.Vector2,
+        buttons: [real_raylib.MouseButton]struct{
+            down: bool,
+            pressed: bool,
+        },
+    },
+    key: struct{
+		// enumerated array length: 349
+		// enum field count: 110
+		// Suggestion: prepend #sparse to the enumerated array to allow for non-contiguous elements
+		// Warning: the number of named elements is much smaller than the length of the array, are you sure this is what you want?
+		//          this warning will be removed if #sparse is applied
+        buttons: #sparse [real_raylib.KeyboardKey]struct{
+            down: bool,
+            pressed: bool,
+        },
+    },
+}
+
+
 WINDOW_COUNT :: 2
 Game_Memory :: struct {
 	commodino: struct {
 		break_only_game: bool,
 	},
-	input : rl.CachedInput,
+	input : CachedInput,
 	// TODO remove player_pos and player_texture
 	player_pos: rl.Vector2,
 	player_texture: rl.Texture,
@@ -114,12 +136,17 @@ input :: proc(){
 	g.input.mouse.pos = real_raylib.GetMousePosition()
 	g.input.mouse.buttons[.LEFT].pressed = real_raylib.IsMouseButtonPressed(.LEFT)
 	g.input.mouse.buttons[.LEFT].down = real_raylib.IsMouseButtonDown(.LEFT)
+
+
+	g.input.key.buttons[.LEFT_CONTROL].pressed = real_raylib.IsKeyPressed(.LEFT_CONTROL)
+	g.input.key.buttons[.LEFT_SHIFT].pressed   = real_raylib.IsKeyPressed(.LEFT_SHIFT)
+	g.input.key.buttons[.ESCAPE].pressed       = real_raylib.IsKeyPressed(.ESCAPE)
 }
 
 update :: proc() {
 
 	mouse_pos := g.input.mouse.pos
-	if rl.IsMouseButtonPressed(.LEFT, g.input){
+	if g.input.mouse.buttons[.LEFT].pressed{
 		// reverse for loop, starting with the last existing element, and skipping the last "zero/null" element
 		for i:=g.handle_count; i>0; i-=1{
 			handle_rect:= g.handles[i]
@@ -178,7 +205,7 @@ update :: proc() {
 				break
 			}
 		}
-	} else if rl.IsMouseButtonDown(.LEFT, g.input){
+	} else if g.input.mouse.buttons[.LEFT].down{
 		handle := &g.handles[g.grabbed_handle_index]
 		panel := &g.panels[g.grabbed_panel.index]
 		window := g.windows[g.grabbed_panel.window_index]
@@ -276,7 +303,11 @@ update :: proc() {
 		}
 	}
 
-	if rl.IsKeyPressed(.LEFT_CONTROL) && rl.IsKeyPressed(.LEFT_SHIFT) && rl.IsKeyPressed(.ESCAPE) {
+	if (
+		g.input.key.buttons[.LEFT_CONTROL].pressed &&
+		g.input.key.buttons[.LEFT_SHIFT].pressed &&
+		g.input.key.buttons[.ESCAPE].pressed
+	   ) {
 		g.run = false
 	}
 }
@@ -333,7 +364,7 @@ draw :: proc() {
 	// `main_hot_reload.odin`, `main_release.odin` or `main_web_entry.odin`.
 	when ODIN_DEBUG {
 		rl.DrawText(fmt.ctprintf("total_frame_count: %v\ng.grabbed_handle_index: %v\ng.wolves: %#v", g.total_frame_count, g.grabbed_handle_index, g.wolves,), 5, 5, 8, rl.WHITE)
-		rl.DrawText(fmt.ctprintf("mouse_pos: %v\ng.grabbed_panel.handle_indexes: %#v", rl.GetMousePosition(g.input), g.grabbed_panel.handle_indexes[:g.grabbed_panel.handle_indexes_count]), 250, 5, 8, rl.WHITE)
+		rl.DrawText(fmt.ctprintf("mouse_pos: %v\ng.grabbed_panel.handle_indexes: %#v", g.input.mouse.pos, g.grabbed_panel.handle_indexes[:g.grabbed_panel.handle_indexes_count]), 250, 5, 8, rl.WHITE)
 
 		rl.DrawText(fmt.ctprintf("g.commodino.break_only_game: %v", g.commodino.break_only_game), 250, 250, 8, rl.WHITE)
 	}
@@ -504,12 +535,12 @@ game_hot_reloaded :: proc(mem: rawptr) {
 
 @(export)
 game_force_reload :: proc() -> bool {
-	return rl.IsKeyPressed(.F5)
+	return real_raylib.IsKeyPressed(.F5)
 }
 
 @(export)
 game_force_restart :: proc() -> bool {
-	return rl.IsKeyPressed(.F6)
+	return real_raylib.IsKeyPressed(.F6)
 }
 
 // In a web build, this is called when browser changes size. Remove the

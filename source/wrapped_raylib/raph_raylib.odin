@@ -2,16 +2,6 @@ package raph_raylib
 
 import rl "vendor:raylib"
 
-CachedInput :: struct {
-    mouse: struct{
-        pos : rl.Vector2,
-        buttons: [rl.MouseButton]struct{
-            down: bool,
-            pressed: bool,
-        },
-    },
-}
-
 
 //
 // Types
@@ -50,33 +40,32 @@ CloseWindow :: rl.CloseWindow
 
 
 
-// Mouse
-MouseButton :: rl.MouseButton
+// Input: Mouse AND Keyboard
+// MouseButton :: rl.MouseButton
 
-IsMouseButtonPressed  :: proc(button: rl.MouseButton, input: CachedInput) -> bool {
-    // TODO find why I can't access the memory from here
-    // input := (cast(^CachedInput)context.user_ptr)^
+// NOTE We don't implement the input procedures of Raylib, you should instead use the CachedInput from g.input
 
-    return input.mouse.buttons[button].pressed
-}
+// IsMouseButtonPressed  :: proc(button: rl.MouseButton, input: CachedInput) -> bool {
+//     // TODO find why I can't access the memory from here
+//     // input := (cast(^CachedInput)context.user_ptr)^
 
-IsMouseButtonDown  :: proc(button: rl.MouseButton, input: CachedInput) -> bool {
-    // TODO find why I can't access the memory from here
-    // input := (^CachedInput)(context.user_ptr)
+//     return input.mouse.buttons[button].pressed
+// }
 
-    return input.mouse.buttons[button].down
-}
-GetMousePosition :: proc(input: CachedInput) -> Vector2{
-    // TODO find why I can't access the memory from here
-    // input := (^CachedInput)(context.user_ptr)
+// IsMouseButtonDown  :: proc(button: rl.MouseButton, input: CachedInput) -> bool {
+//     // TODO find why I can't access the memory from here
+//     // input := (^CachedInput)(context.user_ptr)
 
-    return input.mouse.pos
-}
+//     return input.mouse.buttons[button].down
+// }
+// GetMousePosition :: proc(input: CachedInput) -> Vector2{
+//     // TODO find why I can't access the memory from here
+//     // input := (^CachedInput)(context.user_ptr)
 
-// KEYBOARD
+//     return input.mouse.pos
+// }
 
-// TODO
-IsKeyPressed :: rl.IsKeyPressed
+// IsKeyPressed :: rl.IsKeyPressed
 
 // Collision
 
