@@ -48,9 +48,10 @@ Game_API :: struct {
 	shutdown_window: proc(),
 	memory: proc() -> rawptr,
 	memory_size: proc() -> int,
-	hot_reloaded: proc(mem: rawptr),
+	hot_reloaded: proc(mem: rawptr, is_replaying: bool),
 	force_reload: proc() -> bool,
 	force_restart: proc() -> bool,
+	force_replay: proc() -> bool,
 	modification_time: os.File_Time,
 	api_version: int,
 }
@@ -138,7 +139,8 @@ main :: proc() {
 		game_api.update()
 		force_reload := game_api.force_reload()
 		force_restart := game_api.force_restart()
-		reload := force_reload || force_restart
+		force_replay := game_api.force_replay()
+		reload := force_reload || force_restart || force_replay
 		game_dll_mod, game_dll_mod_err := os.last_write_time_by_name(GAME_DLL_PATH)
 
 		if game_dll_mod_err == os.ERROR_NONE && game_api.modification_time != game_dll_mod {
@@ -160,8 +162,10 @@ main :: proc() {
 					// on a full reset or on shutdown.
 					append(&old_game_apis, game_api)
 					game_memory := game_api.memory()
+
+
 					game_api = new_game_api
-					game_api.hot_reloaded(game_memory)
+					game_api.hot_reloaded(game_memory, force_replay)
 				} else {
 					// This does a full reset. That's basically like opening and
 					// closing the game, without having to restart the executable.

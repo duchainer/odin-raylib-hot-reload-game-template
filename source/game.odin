@@ -79,6 +79,9 @@ Carrot :: struct {
 }
 
 Game_Memory :: struct {
+	commodino : struct {
+		is_replaying: bool,
+	},
 	frame_time: int,
 	run: bool,
 	player_rect : rl.Rectangle,
@@ -339,10 +342,12 @@ draw :: proc() {
 	// NOTE: `fmt.ctprintf` uses the temp allocator. The temp allocator is
 	// cleared at the end of the frame by the main application, meaning inside
 	// `main_hot_reload.odin`, `main_release.odin` or `main_web_entry.odin`.
-	// rl.DrawText(fmt.ctprintf("%v", g.lava_height), 5, 5, 8, rl.WHITE)
-	// rl.DrawText(fmt.ctprintf("frame_time: %v\nplayer_rect: %v\nlast_carrot_index: %v\nplayer_texture.width, height: %v, %v", g.frame_time, g.player_rect, g.last_carrot_index, g.player_rect.width, g.player_rect.height), 5, 5, 8, rl.WHITE)
-	// if g.sheeps[1] != {} {
-	// 	rl.DrawText(fmt.ctprintf("g.sheeps[1]: %#v", g.sheeps[1]), 200, 5, 8, rl.WHITE)
+	// when ODIN_DEBUG {
+		rl.DrawText(fmt.ctprintf("g.commodino.is_replaying : %v", g.commodino.is_replaying), 5, 5, 8, rl.WHITE)
+		// rl.DrawText(fmt.ctprintf("frame_time: %v\nplayer_rect: %v\nlast_carrot_index: %v\nplayer_texture.width, height: %v, %v", g.frame_time, g.player_rect, g.last_carrot_index, g.player_rect.width, g.player_rect.height), 5, 5, 8, rl.WHITE)
+		// if g.sheeps[1] != {} {
+		// 	rl.DrawText(fmt.ctprintf("g.sheeps[1]: %#v", g.sheeps[1]), 200, 5, 8, rl.WHITE)
+		// }
 	// }
 
 	rl.EndMode2D()
@@ -415,8 +420,10 @@ game_memory_size :: proc() -> int {
 }
 
 @(export)
-game_hot_reloaded :: proc(mem: rawptr) {
+game_hot_reloaded :: proc(mem: rawptr, is_replaying: bool = false) {
 	g = (^Game_Memory)(mem)
+	g.commodino.is_replaying = is_replaying
+
 
 	g.sheeps[1] = {
 		rect = {200, -10, 10, 10,},
@@ -463,6 +470,11 @@ game_force_reload :: proc() -> bool {
 @(export)
 game_force_restart :: proc() -> bool {
 	return rl.IsKeyPressed(.F6)
+}
+
+@(export)
+game_force_replay :: proc() -> bool {
+	return rl.IsKeyPressed(.F10)
 }
 
 // In a web build, this is called when browser changes size. Remove the
