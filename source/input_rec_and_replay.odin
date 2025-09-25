@@ -36,61 +36,65 @@ INPUT_BUTTONS_TOTAL :: 32    // up to 32
 MAX_REC_LEN         :: 0x8000 // the buffer size for storing RLE compressed button input (x each button)
 
 /******************************************************************************/
-Button_Rec :: struct {
-    rledata:    [^]u8,
+ButtonRec :: struct {
+    // TODO check if it should be u8 or u16
+    rledata:    [^]u16,
     rlepos:     u16,
     datalen:    u16,
     currentrun: u16,
 }
 /******************************************************************************/
 
-// if INPUTREPLAY_CAN_RECORD, as soon as this struct is initialized, it will automatically record when created.
+// if INPUTREPLAY_CAN_RECORD, as soon as this class is instanced, it will automatically record when instanced/created.
 // statically creating this as a global will blanket the entire play session
 //
-// if INPUTREPLAY_CAN_PLAYBACK, playback will begin as soon as load_file() is used
+// if INPUTREPLAY_CAN_PLAYBACK, playback will begin as soon as LoadFile() is used
 //
-Simple_Input_Rec :: struct {
-    buttonstate: u32,
-    buttons:     [INPUT_BUTTONS_TOTAL]Button_Rec,
-    recording:   bool,
-    data:        []u8,
+SimpleInputRec :: struct {
+    // Only used in SimpleInputRec::Update()
+    m_buttonstate: u32,
+
+    m_buttons:    [INPUT_BUTTONS_TOTAL]ButtonRec,
+    m_bRecording: bool,
+
+    m_data: [^]u8,
 }
 
 /******************************************************************************/
 
-simple_input_rec_init :: proc(rec: ^Simple_Input_Rec) {
-    rec.buttonstate = 0
-    rec.recording = true
-    rec.data = nil
+SimpleInputRec_Init :: proc(this: ^SimpleInputRec) {
+    this.m_buttonstate = 0
+    this.m_data = nil
+    this.m_bRecording = true
 }
 
-simple_input_rec_destroy :: proc(rec: ^Simple_Input_Rec) {
-    if rec.data != nil {
+SimpleInputRec_Destroy :: proc(this: ^SimpleInputRec) {
+    if this.m_data != nil {
         when INPUTREPLAY_CAN_RECORD {
-            write_to_file(rec)
+            WriteToFile(this)
         }
-        delete(rec.data)
+        free(this.m_data)
     }
 }
 
 // run each frame before the game uses the live button input.
 // when recording, it saves the live input
 // during playback, it overwrites the live input
-simple_input_rec_update :: proc(rec: ^Simple_Input_Rec, force: bool = false) {
+Update :: proc(this: ^SimpleInputRec, bForce: bool = false) {
     when INPUTREPLAY_CAN_RECORD {
-        if rec.recording {
-            // Replace with your actual input system
-            newbuttons: u32 = get_input_buttons() // You'll need to implement this
+        if this.m_bRecording {
+            // Use the actual live input
+            newbuttons := get_input_buttons() // You'll need to implement this
 
             // allocate and initialize
-            if rec.data == nil {
-                rec.data = make([]u8, INPUT_BUTTONS_TOTAL * MAX_REC_LEN * 2)
-                dataptr := raw_data(rec.data)
+            if this.m_data == nil {
+                this.m_data = cast([^]u8)mem.alloc(INPUT_BUTTONS_TOTAL * MAX_REC_LEN * 2)
+                dataptr := cast([^]u16)this.m_data
 
                 for i in 0..<INPUT_BUTTONS_TOTAL {
-                    btn := &rec.buttons[i]
+                    btn := &this.m_buttons[i]
 
-                    btn.rledata = cast([^]u8)(uintptr(dataptr) + uintptr(i * MAX_REC_LEN))
+                    btn.rledata = mem.ptr_offset(dataptr, i * MAX_REC_LEN)
                     btn.rlepos = 0
                     btn.currentrun = 0
                     btn.datalen = MAX_REC_LEN
@@ -99,60 +103,137 @@ simple_input_rec_update :: proc(rec: ^Simple_Input_Rec, force: bool = false) {
 
             // write RLE button bit streams
             for i in 0..<INPUT_BUTTONS_TOTAL {
-                btn := &rec.buttons[i]
+                btn := &this.m_buttons[i]
 
-                button_changed := (newbuttons & (1 << uint(i))) != (rec.buttonstate & (1 << uint(i)))
-
-                if force || button_changed || btn.currentrun == 0x7FFF {
+                // if that button state isn't the same as the previous frame, then append next rledata
+                // So if I press the button for 4 frames, the pressed part of it will be save as a 4 instead of 1111
+                // Space savings is about sqrt of 2, as if I want to encode 8 frames of single value, I only need the value and the length, more-or-less
+                if bForce || (newbuttons & (1 << u32(i))) != (this.m_buttonstate & (1 << u32(i))) || btn.currentrun == 0x7FFF {
                     if btn.currentrun > 0 {
-                        bit := (rec.buttonstate >> uint(i)) & 1
-                        // Store as 16-bit value: bit in high bit, run length in lower 15 bits
-                        value := u16((bit << 15) | btn.currentrun)
-
-                        // Write 16-bit value (little endian)
-                        btn.rledata[btn.rlepos * 2] = u8(value & 0xFF)
-                        btn.rledata[btn.rlepos * 2 + 1] = u8(value >> 8)
+                        bit := (this.m_buttonstate >> u32(i)) & 1
+                        btn.rledata[btn.rlepos] = u16((bit << 15) | btn.currentrun)
                         btn.rlepos += 1
                     }
-                    btn.currentrun = 1 if !force else 0
+                    btn.currentrun = 1 if !bForce else 0
                 } else {
                     btn.currentrun += 1
                 }
             }
 
-            rec.buttonstate = newbuttons
+            this.m_buttonstate = newbuttons
         }
+    }
+
+    when INPUTREPLAY_CAN_PLAYBACK {
+        if !this.m_bRecording {
+            bIsRunning := false
+            for i in 0..<INPUT_BUTTONS_TOTAL {
+                btn := &this.m_buttons[i]
+                if btn.rledata != nil {
+                    bIsRunning = true
+                    if btn.currentrun == 0 && btn.rlepos < btn.datalen {
+                        value := btn.rledata[btn.rlepos]
+                        btn.rlepos += 1
+                        btn.currentrun = value & 0x7FFF
+                        this.m_buttonstate &= ~(1 << u32(i))
+                        this.m_buttonstate |= ((value >> 15) & 1) << u32(i)
+                        btn.currentrun -= 1
+                    } else {
+                        if btn.currentrun > 0 {
+                            btn.currentrun -= 1
+                        } else if btn.rlepos == btn.datalen {
+                            btn.rledata = nil
+                        }
+                    }
+                }
+            }
+
+            if bIsRunning {
+                // TODO: this is where you can overwrite the live button state to the prerecorded one
+                systeminput.buttons = this.m_buttonstate
+            }
+        }
+    }
+}
+
+/******************************************************************************/
+
+when INPUTREPLAY_CAN_PLAYBACK {
+    LoadFile :: proc(this: ^SimpleInputRec, szfilename: string) -> bool {
+        for i in 0..<INPUT_BUTTONS_TOTAL {
+            btn := &this.m_buttons[i]
+
+            btn.datalen = 0
+            btn.rledata = nil
+            btn.rlepos = 0
+            btn.currentrun = 0
+        }
+
+        if this.m_data != nil {
+            free(this.m_data)
+        }
+        this.m_bRecording = false
+
+        if os.exists(szfilename) {
+            data, ok := os.read_entire_file(szfilename)
+            if ok {
+                this.m_data = raw_data(data)
+
+                bufptr := this.m_data
+                numbuttons := int(bufptr[0]) | (int(bufptr[1]) << 8)
+                bufptr = mem.ptr_offset(bufptr, 2)
+
+                if numbuttons <= INPUT_BUTTONS_TOTAL {
+                    for i in 0..<numbuttons {
+                        btn := &this.m_buttons[i]
+
+                        btn.datalen = u16(bufptr[0]) | (u16(bufptr[1]) << 8)
+                        bufptr = mem.ptr_offset(bufptr, 2)
+                    }
+
+                    for i in 0..<numbuttons {
+                        btn := &this.m_buttons[i]
+                        if btn.datalen > 0 {
+                            // WARNING: Endian dependent for simplicity
+                            btn.rledata = cast([^]u16)bufptr
+                            bufptr = mem.ptr_offset(bufptr, int(btn.datalen) * 2)
+                        }
+                    }
+                }
+                return true
+            }
+        }
+        return false
     }
 }
 
 /******************************************************************************/
 
 when INPUTREPLAY_CAN_RECORD {
-    write_to_file :: proc(rec: ^Simple_Input_Rec) {
-        if rec.data != nil && rec.recording {
-            simple_input_rec_update(rec, true)
+    WriteToFile :: proc(this: ^SimpleInputRec) {
+        if this.m_data != nil && this.m_bRecording {
+            Update(this, true)
 
-            file, err := os.open("_autorec.rec", os.O_CREATE | os.O_WRONLY | os.O_TRUNC, 0o644)
+            f, err := os.open("_autorec.rec", os.O_CREATE | os.O_WRONLY | os.O_TRUNC, 0o644)
             if err == os.ERROR_NONE {
-                defer os.close(file)
+                defer os.close(f)
 
-                // Write header
-                os.write_byte(file, INPUT_BUTTONS_TOTAL)
-                os.write_byte(file, 0)
+                os.write_byte(f, INPUT_BUTTONS_TOTAL)
+                os.write_byte(f, 0)
 
-                // Write button data lengths
                 for i in 0..<INPUT_BUTTONS_TOTAL {
-                    btn := &rec.buttons[i]
-                    os.write_byte(file, u8(btn.rlepos & 0xFF))
-                    os.write_byte(file, u8(btn.rlepos >> 8))
+                    btn := &this.m_buttons[i]
+
+                    os.write_byte(f, u8(btn.rlepos))
+                    os.write_byte(f, u8(btn.rlepos >> 8))
                 }
 
-                // Write button data
                 for i in 0..<INPUT_BUTTONS_TOTAL {
-                    btn := &rec.buttons[i]
-                    // Write the RLE data (16-bit values)
-                    data_slice := ([^]u8)(btn.rledata)[:btn.rlepos * 2]
-                    os.write(file, data_slice)
+                    btn := &this.m_buttons[i]
+
+                    // WARNING: Endian dependent for simplicity
+                    data_slice := mem.slice_ptr(cast([^]u8)btn.rledata, int(btn.rlepos) * 2)
+                    os.write(f, data_slice)
                 }
             }
         }
@@ -161,7 +242,15 @@ when INPUTREPLAY_CAN_RECORD {
 
 /******************************************************************************/
 
+// You'll need to define these input structures somewhere in your code
+systeminput: struct {
+    buttons: u32,
+}
+
+/******************************************************************************/
+
 // Helper function - you'll need to implement this based on your input system
+// TODO
 get_input_buttons :: proc() -> u32 {
     // Replace this with your actual input reading code
     // For example, if you have an input system that tracks button states:
