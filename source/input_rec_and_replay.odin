@@ -1,3 +1,4 @@
+#+ build ignore
 package game
 
 import "core:os"
@@ -57,7 +58,7 @@ SimpleInputRec :: struct {
     m_buttons:    [INPUT_BUTTONS_TOTAL]ButtonRec,
     m_bRecording: bool,
 
-    m_data: [^]u8,
+    m_data: [INPUT_BUTTONS_TOTAL * MAX_REC_LEN * 2]u8,
 }
 
 /******************************************************************************/
@@ -88,7 +89,7 @@ Update :: proc(this: ^SimpleInputRec, bForce: bool = false) {
 
             // allocate and initialize
             if this.m_data == nil {
-                this.m_data = cast([^]u8)mem.alloc(INPUT_BUTTONS_TOTAL * MAX_REC_LEN * 2)
+                this.m_data = {}
                 dataptr := cast([^]u16)this.m_data
 
                 for i in 0..<INPUT_BUTTONS_TOTAL {
