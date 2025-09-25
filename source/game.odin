@@ -172,6 +172,10 @@ update :: proc() {
 							}
 						}
 						if !commodino.assert(&g.commodino.break_only_game, g.grabbed_panel.window_index != 0, "Handles should always be inside windows, if they are on a panel, code loc: %v"){
+						// FIXME We need to better take care of the non-input stuff
+						//  g should not be constantly updated in-place,
+						//  but we should rather have a double buffer of Game_Memory
+						//  swapping only when no commodino_assert failed
 							rl.SetTargetFPS(1)
 							return
 						} else{
