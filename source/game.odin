@@ -78,12 +78,35 @@ Carrot :: struct {
 	using rect: rl.Rectangle,
 }
 
+MAX_FRAME_COUNT :: TARGET_FPS * 60 /*secs in minute*/ * 10 /* minutes */ // 60 /*minutes in hour*/ * 1
+
+
+UsedKeysEnum :: enum{
+	LEFT,
+	RIGHT,
+	ENTER,
+}
+
+KeyState :: struct{
+	pressed : bool,
+}
+CachedInput :: struct {
+	keys : [UsedKeysEnum]KeyState,
+}
+
 Game_Memory :: struct {
+	run: bool,
 	commodino : struct {
 		is_replaying: bool,
+		replaying_prev_frame_index: int,
 	},
+	using current_session : Session_Memory,
+	// recording_session: Session_Memory,
+	// +1, because we don't do anything to the 0th element, it is a null element
+	recorded_input_events : [MAX_FRAME_COUNT+1]CachedInput,
+}
+Session_Memory :: struct {
 	frame_time: int,
-	run: bool,
 	player_rect : rl.Rectangle,
 	sheeps : [1024]Sheep,
 	last_sheep_index: u32,
@@ -114,10 +137,49 @@ ui_camera :: proc() -> rl.Camera2D {
 		zoom = f32(rl.GetScreenHeight())/PIXEL_WINDOW_HEIGHT,
 	}
 }
+
+// TODO unify the player_input_*_down, giving the UsedKeysEnum.* instead, cuts down on plain repetition.
+player_input_left_down :: proc() -> bool {
+	if g.commodino.is_replaying{
+		return g.recorded_input_events[g.commodino.replaying_prev_frame_index+1].keys[UsedKeysEnum.LEFT].pressed
+	} else {
+		return rl.IsKeyDown(.LEFT) || rl.IsKeyDown(.A)
+	}
+}
+
+player_input_right_down:: proc() -> bool{
+	if g.commodino.is_replaying{
+		return g.recorded_input_events[g.commodino.replaying_prev_frame_index+1].keys[UsedKeysEnum.RIGHT].pressed
+	} else {
+		return rl.IsKeyDown(.RIGHT) || rl.IsKeyDown(.D)
+	}
+}
+
+// TODO unify the player_input_*_just_pressed, giving the UsedKeysEnum.* instead, cuts down on plain repetition.
+player_input_enter_just_pressed:: proc() -> bool {
+	if g.commodino.is_replaying{
+		if g.recorded_input_events[g.commodino.replaying_prev_frame_index+1].keys[UsedKeysEnum.ENTER].pressed{
+			// just_pressed means : previous frame was not pressed
+			return !g.recorded_input_events[g.commodino.replaying_prev_frame_index].keys[UsedKeysEnum.ENTER].pressed
+		}
+		return false
+	} else {
+		return rl.IsKeyPressed(.ENTER)
+	}
+}
+
 SHEEP_LAVA_WORTH :: 75
 CARROT_WIDTH :: 5.0
 update :: proc() {
-	if rl.IsKeyPressed(.ENTER){
+	g.commodino.replaying_prev_frame_index += 1
+	g.recorded_input_events[g.commodino.replaying_prev_frame_index].keys = {
+		.LEFT =  { pressed = rl.IsKeyDown(.LEFT) || rl.IsKeyDown(.A) },
+		.RIGHT = { pressed = rl.IsKeyDown(.RIGHT) || rl.IsKeyDown(.D) },
+		.ENTER = { pressed = rl.IsKeyPressed(.ENTER) },
+	}
+
+
+	if player_input_enter_just_pressed(){
 		game_init()
 	}
 
@@ -134,10 +196,11 @@ update :: proc() {
 	// if rl.IsKeyDown(.DOWN) || rl.IsKeyDown(.S) {
 	// 	input.y += 1
 	// }
-	if rl.IsKeyDown(.LEFT) || rl.IsKeyDown(.A) {
+
+	if player_input_left_down() {
 		input.x -= 1
 	}
-	if rl.IsKeyDown(.RIGHT) || rl.IsKeyDown(.D) {
+	if player_input_right_down() {
 		input.x += 1
 	}
 	// if rl.IsKeyPressed(.SPACE){
@@ -343,7 +406,7 @@ draw :: proc() {
 	// cleared at the end of the frame by the main application, meaning inside
 	// `main_hot_reload.odin`, `main_release.odin` or `main_web_entry.odin`.
 	// when ODIN_DEBUG {
-		rl.DrawText(fmt.ctprintf("g.commodino.is_replaying : %v", g.commodino.is_replaying), 5, 5, 8, rl.WHITE)
+	rl.DrawText(fmt.ctprintf("replaying_prev_frame_index: %v,\ng.commodino: %#v",g.commodino.replaying_prev_frame_index, g.commodino), 5, 5, 8, rl.WHITE)
 		// rl.DrawText(fmt.ctprintf("frame_time: %v\nplayer_rect: %v\nlast_carrot_index: %v\nplayer_texture.width, height: %v, %v", g.frame_time, g.player_rect, g.last_carrot_index, g.player_rect.width, g.player_rect.height), 5, 5, 8, rl.WHITE)
 		// if g.sheeps[1] != {} {
 		// 	rl.DrawText(fmt.ctprintf("g.sheeps[1]: %#v", g.sheeps[1]), 200, 5, 8, rl.WHITE)
@@ -364,12 +427,13 @@ game_update :: proc() {
 	free_all(context.temp_allocator)
 }
 
+TARGET_FPS :: 30
 @(export)
 game_init_window :: proc() {
 	rl.SetConfigFlags({.WINDOW_RESIZABLE, .VSYNC_HINT})
 	rl.InitWindow(1500, 900, "Odin + Raylib + Hot Reload template!")
 	rl.SetWindowPosition(200, 200)
-	rl.SetTargetFPS(30)
+	rl.SetTargetFPS(TARGET_FPS)
 	rl.SetExitKey(nil)
 }
 
@@ -384,7 +448,45 @@ game_init :: proc() {
 		// files will be part any release or web build.
 	}
 
+	restart_current_session_memory()
 	game_hot_reloaded(g)
+}
+
+restart_current_session_memory :: proc(){
+	g.current_session = {}
+	g.sheeps[1] = {
+		rect = {200, -10, 10, 10,},
+		input = 1,
+		speed = {0, 0},
+		last_dir_decision = 0,
+	}
+	g.last_sheep_index += 1
+
+	g.sheeps[2] = {
+		rect = {-200, -10, 10, 10,},
+		input = -1,
+		speed = {0, 0},
+		last_dir_decision = 0,
+	}
+	g.last_sheep_index += 1
+
+	g.sheeps[3] = {
+		rect = {-150, -10, 10, 10,},
+		input = -1,
+		speed = {0, 0},
+		last_dir_decision = 0,
+	}
+	g.last_sheep_index += 1
+
+	g.last_carrot_index = 0
+	g.carrots = {}
+
+	g.player_rect = {230, 0, 10, 15}
+	g.player_rect.y = -f32(g.player_rect.height)
+
+	g.lava_height = VOLCANO_HEIGHT/3.5
+	g.lava_speed = 0.25
+
 }
 
 @(export)
@@ -423,40 +525,15 @@ game_memory_size :: proc() -> int {
 game_hot_reloaded :: proc(mem: rawptr, is_replaying: bool = false) {
 	g = (^Game_Memory)(mem)
 	g.commodino.is_replaying = is_replaying
+	if g.commodino.is_replaying{
+		// Restart the game
+		restart_current_session_memory()
 
-
-	g.sheeps[1] = {
-		rect = {200, -10, 10, 10,},
-		input = 1,
-		speed = {0, 0},
-		last_dir_decision = 0,
+		// We start counting from 0, check always this and next frame_index
+		g.commodino.replaying_prev_frame_index = 0
 	}
-	g.last_sheep_index += 1
 
-	g.sheeps[2] = {
-		rect = {-200, -10, 10, 10,},
-		input = -1,
-		speed = {0, 0},
-		last_dir_decision = 0,
-	}
-	g.last_sheep_index += 1
 
-	g.sheeps[3] = {
-		rect = {-150, -10, 10, 10,},
-		input = -1,
-		speed = {0, 0},
-		last_dir_decision = 0,
-	}
-	g.last_sheep_index += 1
-
-	g.last_carrot_index = 0
-	g.carrots = {}
-
-	g.player_rect = {230, 0, 10, 15}
-	g.player_rect.y = -f32(g.player_rect.height)
-
-	g.lava_height = VOLCANO_HEIGHT/3.5
-	g.lava_speed = 0.25
 
 	// Here you can also set your own global variables. A good idea is to make
 	// your global variables into pointers that point to something inside `g`.
