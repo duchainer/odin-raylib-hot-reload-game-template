@@ -74,14 +74,36 @@ Poly :: struct {
 	pointCount: c.int,
 }
 
-rect_to_poly :: proc(rect: rl.Rectangle, origin := rl.Vector2{0,0}, allocator := context.temp_allocator) -> Poly{
+// TODO obb_to_poly instead, as we want that in our duchlib for other game jams
+boat_to_poly :: proc(boat: Boat, origin := rl.Vector2{0,0}, allocator := context.temp_allocator) -> Poly{
 	// We put it on the heap, because we use a pointer to it in C
 	points := make([]rl.Vector2, 4, allocator)
-	// TODO use the DrawRectanglePro formula for getting the 4 corners global pos, with the rotation around the origin
-	points[0] = {rect.x, rect.y}
-	points[1] = {rect.x + rect.width, rect.y}
-	points[2] = {rect.x, rect.y + rect.height}
-	points[3] = {rect.x + rect.width, rect.y + rect.height}
+
+	// Use the DrawRectanglePro formula for getting the 4 corners global pos, with the rotation around the origin
+	{
+		sin_rotation := linalg.sin(boat.rotation * rl.DEG2RAD)
+		cos_rotation := linalg.cos(boat.rotation * rl.DEG2RAD)
+		x := boat.x
+		y := boat.y
+		dx := -origin.x
+		dy := -origin.y
+
+		// Top-left
+		points[0].x = x + dx*cos_rotation - dy*sin_rotation
+		points[0].y = y + dx*sin_rotation + dy*cos_rotation
+
+		// Top-right
+		points[1].x = x + (dx + boat.width)*cos_rotation - dy*sin_rotation
+		points[1].y = y + (dx + boat.width)*sin_rotation + dy*cos_rotation
+
+		// Bottom-right
+		points[2].x = x + (dx + boat.width)*cos_rotation - (dy + boat.height)*sin_rotation
+		points[2].y = y + (dx + boat.width)*sin_rotation + (dy + boat.height)*cos_rotation
+
+		// Bottom-left
+		points[3].x = x + dx*cos_rotation - (dy + boat.height)*sin_rotation
+		points[3].y = y + dx*sin_rotation + (dy + boat.height)*cos_rotation
+	}
 
 	return Poly{
 		points = raw_data(points),
@@ -102,7 +124,7 @@ update :: proc() {
 
 	// Mouse-only game
 	#reverse for &boat, _ in g.boats[1:g.boats_count+1]{
-		poly := rect_to_poly(boat.rect)
+		poly := boat_to_poly(boat)
 		if rl.CheckCollisionPointPoly(mouse_pos, poly.points, poly.pointCount){
 			boat.color = rl.BLUE
 		} else {
