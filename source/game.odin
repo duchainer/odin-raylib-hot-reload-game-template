@@ -75,7 +75,9 @@ Poly :: struct {
 }
 
 // TODO obb_to_poly instead, as we want that in our duchlib for other game jams
-boat_to_poly :: proc(boat: Boat, origin := rl.Vector2{0,0}, allocator := context.temp_allocator) -> Poly{
+boat_to_poly :: proc(boat: Boat, allocator := context.temp_allocator) -> Poly{
+	// TODO handle if the origin is not the center of boat / obb
+	origin := rl.Vector2{boat.width/2, boat.height/2}
 	// We put it on the heap, because we use a pointer to it in C
 	points := make([]rl.Vector2, 4, allocator)
 
@@ -147,7 +149,9 @@ draw :: proc() {
 	rl.DrawTextureEx(g.player_texture, g.lighthouse_pos, 0, 1, rl.WHITE)
 	// NOTE, remember that [low:high] syntax always exclude the `high`, so [1:1] is an empty slice
 	#reverse for boat, _ in g.boats[1:g.boats_count+1]{
-		rl.DrawRectanglePro(boat.rect, {0,0}, boat.rotation, boat.color)
+		rect := boat.rect
+		origin := rl.Vector2{rect.width/2, rect.height/2}
+		rl.DrawRectanglePro(rect, origin, boat.rotation, boat.color)
 	}
 	when ODIN_DEBUG {
 		rl.DrawPixelV(mouse_pos, rl.BROWN)
