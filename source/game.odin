@@ -28,7 +28,8 @@ created.
 package game
 
 import "core:fmt"
-import "core:math/linalg"
+import linalg "core:math/linalg"
+_ :: linalg
 import rl "vendor:raylib"
 
 PIXEL_WINDOW_HEIGHT :: 180
