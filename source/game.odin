@@ -89,8 +89,16 @@ rect_to_poly :: proc(rect: rl.Rectangle, origin := rl.Vector2{0,0}, allocator :=
 	}
 }
 
+mouse_pos : rl.Vector2
 update :: proc() {
-	mouse_pos := rl.GetMousePosition()
+	window_mouse_pos := rl.GetMousePosition()
+	{
+		camera := game_camera()
+
+		// Convert screen coordinates to world coordinates
+		// Formula: world_pos = (screen_pos - offset) / zoom + target
+		mouse_pos = (window_mouse_pos - camera.offset) / camera.zoom + camera.target
+	}
 
 	// Mouse-only game
 	#reverse for &boat, _ in g.boats[1:g.boats_count+1]{
@@ -118,6 +126,9 @@ draw :: proc() {
 	// NOTE, remember that [low:high] syntax always exclude the `high`, so [1:1] is an empty slice
 	#reverse for boat, _ in g.boats[1:g.boats_count+1]{
 		rl.DrawRectanglePro(boat.rect, {0,0}, boat.rotation, boat.color)
+	}
+	when ODIN_DEBUG {
+		rl.DrawPixelV(mouse_pos, rl.BROWN)
 	}
 	rl.EndMode2D()
 
