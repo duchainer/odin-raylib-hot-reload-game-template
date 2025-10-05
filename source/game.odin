@@ -27,6 +27,7 @@ created.
 
 package game
 
+import "core:c"
 import "core:fmt"
 import linalg "core:math/linalg"
 _ :: linalg
@@ -34,11 +35,19 @@ import rl "vendor:raylib"
 
 PIXEL_WINDOW_HEIGHT :: 180
 
+Boat :: struct {
+	using rect : rl.Rectangle,
+	color : rl.Color,
+	rotation: f32,
+}
+
 Game_Memory :: struct {
 	lighthouse_pos: rl.Vector2,
 	player_texture: rl.Texture,
 	frame_time: int,
 	run: bool,
+	boats : [64]Boat,
+	boats_count : int,
 }
 
 g: ^Game_Memory
@@ -60,12 +69,39 @@ ui_camera :: proc() -> rl.Camera2D {
 	}
 }
 
+Poly :: struct {
+	points: [^]rl.Vector2,
+	pointCount: c.int,
+}
+
+rect_to_poly :: proc(rect: rl.Rectangle, origin := rl.Vector2{0,0}, allocator := context.temp_allocator) -> Poly{
+	// We put it on the heap, because we use a pointer to it in C
+	points := make([]rl.Vector2, 4, allocator)
+	// TODO use the DrawRectanglePro formula for getting the 4 corners global pos, with the rotation around the origin
+	points[0] = {rect.x, rect.y}
+	points[1] = {rect.x + rect.width, rect.y}
+	points[2] = {rect.x, rect.y + rect.height}
+	points[3] = {rect.x + rect.width, rect.y + rect.height}
+
+	return Poly{
+		points = raw_data(points),
+		pointCount = (c.int)(len(points)),
+	}
+}
+
 update :: proc() {
-	input: rl.Vector2
+	mouse_pos := rl.GetMousePosition()
 
 	// Mouse-only game
+	#reverse for &boat, _ in g.boats[1:g.boats_count+1]{
+		poly := rect_to_poly(boat.rect)
+		if rl.CheckCollisionPointPoly(mouse_pos, poly.points, poly.pointCount){
+			boat.color = rl.BLUE
+		} else {
+			boat.color = rl.WHITE
+		}
+	}
 
-	g.lighthouse_pos += input * rl.GetFrameTime() * 100
 	g.frame_time += 1
 
 	if rl.IsKeyPressed(.LEFT_CONTROL) && rl.IsKeyPressed(.LEFT_SHIFT) && rl.IsKeyPressed(.ESCAPE) {
@@ -79,8 +115,10 @@ draw :: proc() {
 
 	rl.BeginMode2D(game_camera())
 	rl.DrawTextureEx(g.player_texture, g.lighthouse_pos, 0, 1, rl.WHITE)
-	rl.DrawRectangleV({20, 20}, {10, 10}, rl.RED)
-	rl.DrawRectangleV({-30, -20}, {10, 10}, rl.GREEN)
+	// NOTE, remember that [low:high] syntax always exclude the `high`, so [1:1] is an empty slice
+	#reverse for boat, _ in g.boats[1:g.boats_count+1]{
+		rl.DrawRectanglePro(boat.rect, {0,0}, boat.rotation, boat.color)
+	}
 	rl.EndMode2D()
 
 	rl.BeginMode2D(ui_camera())
@@ -165,6 +203,23 @@ game_memory_size :: proc() -> int {
 @(export)
 game_hot_reloaded :: proc(mem: rawptr) {
 	g = (^Game_Memory)(mem)
+
+	g.boats_count = 0
+
+	g.boats[1] = {
+		rect = {5, 5, 25, 25},
+		color = rl.GREEN,
+		rotation = 45,
+	}
+	g.boats_count += 1
+
+	g.boats[2] = {
+		rect = {25, 25, 10, 10},
+		color = rl.RED,
+		rotation = 15,
+	}
+	g.boats_count += 1
+
 
 	// Here you can also set your own global variables. A good idea is to make
 	// your global variables into pointers that point to something inside `g`.
