@@ -291,19 +291,19 @@ game_hot_reloaded :: proc(mem: rawptr) {
 
 	g.brooms_count = 0
 
-	g.brooms[1] = {
+	g.brooms_count += 1
+	g.brooms[g.brooms_count] = {
 		rect = {5, 5, 5, 10},
 		color = rl.GREEN,
 		rotation = 45,
 	}
-	g.brooms_count += 1
 
-	g.brooms[2] = {
+	g.brooms_count += 1
+	g.brooms[g.brooms_count] = {
 		rect = {25, 25, 5, 10},
 		color = rl.RED,
 		rotation = 15,
 	}
-	g.brooms_count += 1
 
 
 	// Here you can also set your own global variables. A good idea is to make
