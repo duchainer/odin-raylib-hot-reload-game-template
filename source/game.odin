@@ -292,14 +292,14 @@ game_hot_reloaded :: proc(mem: rawptr) {
 	g.brooms_count = 0
 
 	g.brooms[1] = {
-		rect = {5, 5, 25, 25},
+		rect = {5, 5, 5, 10},
 		color = rl.GREEN,
 		rotation = 45,
 	}
 	g.brooms_count += 1
 
 	g.brooms[2] = {
-		rect = {25, 25, 10, 10},
+		rect = {25, 25, 5, 10},
 		color = rl.RED,
 		rotation = 15,
 	}
