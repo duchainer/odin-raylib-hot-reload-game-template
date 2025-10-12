@@ -285,25 +285,31 @@ game_memory_size :: proc() -> int {
 	return size_of(Game_Memory)
 }
 
+broom_create :: proc(rect := rl.Rectangle{}, color := rl.BROWN, rotation : f32=0){
+	g.brooms_count += 1
+	g.brooms[g.brooms_count] = {
+		rect = rect,
+		color = color,
+		rotation = rotation,
+	}
+}
+
 @(export)
 game_hot_reloaded :: proc(mem: rawptr) {
 	g = (^Game_Memory)(mem)
 
 	g.brooms_count = 0
-
-	g.brooms_count += 1
-	g.brooms[g.brooms_count] = {
+	broom_create(
 		rect = {5, 5, 5, 10},
 		color = rl.GREEN,
 		rotation = 45,
-	}
+	)
 
-	g.brooms_count += 1
-	g.brooms[g.brooms_count] = {
+	broom_create(
 		rect = {25, 25, 5, 10},
 		color = rl.RED,
 		rotation = 15,
-	}
+	)
 
 
 	// Here you can also set your own global variables. A good idea is to make
