@@ -148,7 +148,7 @@ update :: proc() {
 			if rl.IsMouseButtonPressed(.LEFT){
 				// reset path
 				broom.path_points = {}
-				broom.path_points_count = 1
+				broom.path_points_count = 0
 				broom.path_points[broom.path_points_count] = mouse_pos
 				g.hovered_broom = &broom
 			}
@@ -192,10 +192,10 @@ draw :: proc() {
 		rect := broom.rect
 		origin := rl.Vector2{rect.width/2, rect.height/2}
 		rl.DrawRectanglePro(rect, origin, broom.rotation, broom.color)
-		if broom.path_points_count >= 2{
-			thick : f32 = 3
+		if broom.path_points_count >= 4{
+			thick : f32 = 1.5
 			path_color := rl.RED
-			rl.DrawSplineLinear(&broom.path_points[0], c.int(broom.path_points_count), thick, path_color)
+			rl.DrawSplineCatmullRom(&broom.path_points[0], c.int(broom.path_points_count), thick, path_color)
 		}
 	}
 	when ODIN_DEBUG {
