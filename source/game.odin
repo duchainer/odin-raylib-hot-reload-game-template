@@ -128,6 +128,7 @@ broom_to_poly :: proc(broom: Broom, allocator := context.temp_allocator) -> Poly
 	}
 }
 
+POINTS_COUNT_MIN_FOR_CURVE_DRAWING :: 4
 POINTS_MIN_DISTANCE :: 0.2
 mouse_pos : rl.Vector2
 update :: proc() {
@@ -165,7 +166,7 @@ update :: proc() {
 
 		// Only put points if we have a minimum distance between them.
 		if broom != nil &&
-		broom.path_points_count	 < 4 ||
+		broom.path_points_count	 < POINTS_COUNT_MIN_FOR_CURVE_DRAWING ||
 		diff > POINTS_MIN_DISTANCE {
 			broom.path_points_count += 1
 			broom.path_points[broom.path_points_count] = mouse_pos
@@ -194,7 +195,7 @@ draw :: proc() {
 		rect := broom.rect
 		origin := rl.Vector2{rect.width/2, rect.height/2}
 		rl.DrawRectanglePro(rect, origin, broom.rotation, broom.color)
-		if broom.path_points_count >= 4{
+		if broom.path_points_count >= POINTS_COUNT_MIN_FOR_CURVE_DRAWING{
 			thick : f32 = 1.5
 			path_color := rl.RED
 			rl.DrawSplineCatmullRom(&broom.path_points[0], c.int(broom.path_points_count), thick, path_color)
