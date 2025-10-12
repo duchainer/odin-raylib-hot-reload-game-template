@@ -35,10 +35,14 @@ import rl "vendor:raylib"
 
 PIXEL_WINDOW_HEIGHT :: 180
 
+MAX_PATH_POINTS_COUNT :: 64
 Boat :: struct {
 	using rect : rl.Rectangle,
 	color : rl.Color,
 	rotation: f32,
+	// For now, DrawSplineLinear, TODO later will be a bit smoother spline
+	path_points: [MAX_PATH_POINTS_COUNT]rl.Vector2,
+	path_points_count: int,
 }
 
 Game_Memory :: struct {
@@ -72,6 +76,7 @@ ui_camera :: proc() -> rl.Camera2D {
 Poly :: struct {
 	points: [^]rl.Vector2,
 	pointCount: c.int,
+	center: rl.Vector2,
 }
 
 // TODO obb_to_poly instead, as we want that in our duchlib for other game jams
@@ -80,6 +85,8 @@ boat_to_poly :: proc(boat: Boat, allocator := context.temp_allocator) -> Poly{
 	origin := rl.Vector2{boat.width/2, boat.height/2}
 	// We put it on the heap, because we use a pointer to it in C
 	points := make([]rl.Vector2, 4, allocator)
+
+	center : rl.Vector2
 
 	// Use the DrawRectanglePro formula for getting the 4 corners global pos, with the rotation around the origin
 	{
@@ -105,11 +112,19 @@ boat_to_poly :: proc(boat: Boat, allocator := context.temp_allocator) -> Poly{
 		// Bottom-left
 		points[3].x = x + dx*cos_rotation - (dy + boat.height)*sin_rotation
 		points[3].y = y + dx*sin_rotation + (dy + boat.height)*cos_rotation
+
+
+		// Bottom-right
+		center = {
+			x + (dx + boat.width/2)*cos_rotation - (dy + boat.height/2)*sin_rotation,
+			y + (dx + boat.width/2)*sin_rotation + (dy + boat.height/2)*cos_rotation,
+		}
 	}
 
 	return Poly{
 		points = raw_data(points),
 		pointCount = (c.int)(len(points)),
+		center = center,
 	}
 }
 
@@ -127,12 +142,30 @@ update :: proc() {
 	// Mouse-only game
 	#reverse for &boat, _ in g.boats[1:g.boats_count+1]{
 		poly := boat_to_poly(boat)
+		// boat.center = poly.center
 		if rl.CheckCollisionPointPoly(mouse_pos, poly.points, poly.pointCount){
+			if rl.IsMouseButtonPressed(.LEFT){
+				// reset path
+				boat.path_points = {}
+				boat.path_points_count = 0
+				g.hovered_boat = &boat
+			}
 			boat.color = rl.BLUE
 		} else {
 			boat.color = rl.WHITE
 		}
 	}
+	if rl.IsMouseButtonPressed(.LEFT) {
+	if g.hovered_boat != nil && && g.frame_time % 10 == 0{
+		boat := &g.hovered_boat
+		boat.path_points[boat.path_points_count] = mouse_pos
+		boat.path_points_count += 1
+	}
+
+	} else {
+		g.hovered_boat = nil
+	}
+
 
 	g.frame_time += 1
 
@@ -148,10 +181,15 @@ draw :: proc() {
 	rl.BeginMode2D(game_camera())
 	rl.DrawTextureEx(g.player_texture, g.lighthouse_pos, 0, 1, rl.WHITE)
 	// NOTE, remember that [low:high] syntax always exclude the `high`, so [1:1] is an empty slice
-	#reverse for boat, _ in g.boats[1:g.boats_count+1]{
+	#reverse for &boat, _ in g.boats[1:g.boats_count+1]{
 		rect := boat.rect
 		origin := rl.Vector2{rect.width/2, rect.height/2}
 		rl.DrawRectanglePro(rect, origin, boat.rotation, boat.color)
+		if boat.path_points_count >= 2{
+			thick : f32 = 3
+			path_color := rl.RED
+			rl.DrawSplineLinear(&boat.path_points[0], c.int(boat.path_points_count), thick, path_color)
+		}
 	}
 	when ODIN_DEBUG {
 		rl.DrawPixelV(mouse_pos, rl.BROWN)
