@@ -50,8 +50,8 @@ Game_Memory :: struct {
 	player_texture: rl.Texture,
 	frame_time: int,
 	run: bool,
-	boats : [64]Boat,
-	boats_count : int,
+	brooms : [64]Broom,
+	brooms_count : int,
 }
 
 g: ^Game_Memory
@@ -80,9 +80,9 @@ Poly :: struct {
 }
 
 // TODO obb_to_poly instead, as we want that in our duchlib for other game jams
-boat_to_poly :: proc(boat: Boat, allocator := context.temp_allocator) -> Poly{
-	// TODO handle if the origin is not the center of boat / obb
-	origin := rl.Vector2{boat.width/2, boat.height/2}
+broom_to_poly :: proc(broom: Broom, allocator := context.temp_allocator) -> Poly{
+	// TODO handle if the origin is not the center of broom / obb
+	origin := rl.Vector2{broom.width/2, broom.height/2}
 	// We put it on the heap, because we use a pointer to it in C
 	points := make([]rl.Vector2, 4, allocator)
 
@@ -90,10 +90,10 @@ boat_to_poly :: proc(boat: Boat, allocator := context.temp_allocator) -> Poly{
 
 	// Use the DrawRectanglePro formula for getting the 4 corners global pos, with the rotation around the origin
 	{
-		sin_rotation := linalg.sin(boat.rotation * rl.DEG2RAD)
-		cos_rotation := linalg.cos(boat.rotation * rl.DEG2RAD)
-		x := boat.x
-		y := boat.y
+		sin_rotation := linalg.sin(broom.rotation * rl.DEG2RAD)
+		cos_rotation := linalg.cos(broom.rotation * rl.DEG2RAD)
+		x := broom.x
+		y := broom.y
 		dx := -origin.x
 		dy := -origin.y
 
@@ -102,22 +102,22 @@ boat_to_poly :: proc(boat: Boat, allocator := context.temp_allocator) -> Poly{
 		points[0].y = y + dx*sin_rotation + dy*cos_rotation
 
 		// Top-right
-		points[1].x = x + (dx + boat.width)*cos_rotation - dy*sin_rotation
-		points[1].y = y + (dx + boat.width)*sin_rotation + dy*cos_rotation
+		points[1].x = x + (dx + broom.width)*cos_rotation - dy*sin_rotation
+		points[1].y = y + (dx + broom.width)*sin_rotation + dy*cos_rotation
 
 		// Bottom-right
-		points[2].x = x + (dx + boat.width)*cos_rotation - (dy + boat.height)*sin_rotation
-		points[2].y = y + (dx + boat.width)*sin_rotation + (dy + boat.height)*cos_rotation
+		points[2].x = x + (dx + broom.width)*cos_rotation - (dy + broom.height)*sin_rotation
+		points[2].y = y + (dx + broom.width)*sin_rotation + (dy + broom.height)*cos_rotation
 
 		// Bottom-left
-		points[3].x = x + dx*cos_rotation - (dy + boat.height)*sin_rotation
-		points[3].y = y + dx*sin_rotation + (dy + boat.height)*cos_rotation
+		points[3].x = x + dx*cos_rotation - (dy + broom.height)*sin_rotation
+		points[3].y = y + dx*sin_rotation + (dy + broom.height)*cos_rotation
 
 
 		// Bottom-right
 		center = {
-			x + (dx + boat.width/2)*cos_rotation - (dy + boat.height/2)*sin_rotation,
-			y + (dx + boat.width/2)*sin_rotation + (dy + boat.height/2)*cos_rotation,
+			x + (dx + broom.width/2)*cos_rotation - (dy + broom.height/2)*sin_rotation,
+			y + (dx + broom.width/2)*sin_rotation + (dy + broom.height/2)*cos_rotation,
 		}
 	}
 
@@ -140,25 +140,25 @@ update :: proc() {
 	}
 
 	// Mouse-only game
-	#reverse for &boat, _ in g.boats[1:g.boats_count+1]{
-		poly := boat_to_poly(boat)
-		// boat.center = poly.center
+	#reverse for &broom, _ in g.brooms[1:g.brooms_count+1]{
+		poly := broom_to_poly(broom)
+		// broom.center = poly.center
 		if rl.CheckCollisionPointPoly(mouse_pos, poly.points, poly.pointCount){
 			if rl.IsMouseButtonPressed(.LEFT){
 				// reset path
-				boat.path_points = {}
-				boat.path_points_count = 0
-				g.hovered_boat = &boat
+				broom.path_points = {}
+				broom.path_points_count = 0
+				g.hovered_broom = &broom
 			}
-			boat.color = rl.BLUE
+			broom.color = rl.BLUE
 		} else {
-			boat.color = rl.WHITE
+			broom.color = rl.WHITE
 		}
 	}
 	if rl.IsMouseButtonPressed(.LEFT) {
-	if g.hovered_boat != nil && && g.frame_time % 10 == 0{
-		boat := &g.hovered_boat
-		boat.path_points[boat.path_points_count] = mouse_pos
+	if g.hovered_broom != nil && && g.frame_time % 10 == 0{
+		broom := &g.hovered_broom
+		broom.path_points[broom.path_points_count] = mouse_pos
 		boat.path_points_count += 1
 	}
 
