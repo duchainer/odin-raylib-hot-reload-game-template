@@ -158,13 +158,15 @@ update :: proc() {
 		}
 	}
 	if rl.IsMouseButtonDown(.LEFT) {
-		// last_point := g.hovered_broom.path_points[g.hovered_broom.path_points_count]
-		// diff_points := mouse_pos - last_point
-		//diff := linalg.vector_length(diff_points)
+		broom := g.hovered_broom
+		last_point := broom.path_points[broom.path_points_count]
+		diff_points := mouse_pos - last_point
+		diff := linalg.vector_length(diff_points)
 
 		// Only put points if we have a minimum distance between them.
-		if g.hovered_broom != nil && true { //diff > POINTS_MIN_DISTANCE{
-			broom := g.hovered_broom
+		if broom != nil &&
+		broom.path_points_count	 < 4 ||
+		diff > POINTS_MIN_DISTANCE {
 			broom.path_points_count += 1
 			broom.path_points[broom.path_points_count] = mouse_pos
 		}
