@@ -30,13 +30,12 @@ package game
 import "core:c"
 import "core:fmt"
 import linalg "core:math/linalg"
-_ :: linalg
 import rl "vendor:raylib"
 
 PIXEL_WINDOW_HEIGHT :: 180
 
-MAX_PATH_POINTS_COUNT :: 64
-Boat :: struct {
+MAX_PATH_POINTS_COUNT :: 4096 // 64*64, arbitrary
+Broom :: struct {
 	using rect : rl.Rectangle,
 	color : rl.Color,
 	rotation: f32,
@@ -52,6 +51,7 @@ Game_Memory :: struct {
 	run: bool,
 	brooms : [64]Broom,
 	brooms_count : int,
+	hovered_broom: ^Broom,
 }
 
 g: ^Game_Memory
@@ -128,6 +128,7 @@ broom_to_poly :: proc(broom: Broom, allocator := context.temp_allocator) -> Poly
 	}
 }
 
+POINTS_MIN_DISTANCE :: 0.2
 mouse_pos : rl.Vector2
 update :: proc() {
 	window_mouse_pos := rl.GetMousePosition()
@@ -147,7 +148,8 @@ update :: proc() {
 			if rl.IsMouseButtonPressed(.LEFT){
 				// reset path
 				broom.path_points = {}
-				broom.path_points_count = 0
+				broom.path_points_count = 1
+				broom.path_points[broom.path_points_count] = mouse_pos
 				g.hovered_broom = &broom
 			}
 			broom.color = rl.BLUE
@@ -155,15 +157,20 @@ update :: proc() {
 			broom.color = rl.WHITE
 		}
 	}
-	if rl.IsMouseButtonPressed(.LEFT) {
-	if g.hovered_broom != nil && && g.frame_time % 10 == 0{
-		broom := &g.hovered_broom
-		broom.path_points[broom.path_points_count] = mouse_pos
-		boat.path_points_count += 1
-	}
+	if rl.IsMouseButtonDown(.LEFT) {
+		// last_point := g.hovered_broom.path_points[g.hovered_broom.path_points_count]
+		// diff_points := mouse_pos - last_point
+		//diff := linalg.vector_length(diff_points)
+
+		// Only put points if we have a minimum distance between them.
+		if g.hovered_broom != nil && true { //diff > POINTS_MIN_DISTANCE{
+			broom := g.hovered_broom
+			broom.path_points_count += 1
+			broom.path_points[broom.path_points_count] = mouse_pos
+		}
 
 	} else {
-		g.hovered_boat = nil
+		g.hovered_broom = nil
 	}
 
 
@@ -181,14 +188,14 @@ draw :: proc() {
 	rl.BeginMode2D(game_camera())
 	rl.DrawTextureEx(g.player_texture, g.lighthouse_pos, 0, 1, rl.WHITE)
 	// NOTE, remember that [low:high] syntax always exclude the `high`, so [1:1] is an empty slice
-	#reverse for &boat, _ in g.boats[1:g.boats_count+1]{
-		rect := boat.rect
+	#reverse for &broom, _ in g.brooms[1:g.brooms_count+1]{
+		rect := broom.rect
 		origin := rl.Vector2{rect.width/2, rect.height/2}
-		rl.DrawRectanglePro(rect, origin, boat.rotation, boat.color)
-		if boat.path_points_count >= 2{
+		rl.DrawRectanglePro(rect, origin, broom.rotation, broom.color)
+		if broom.path_points_count >= 2{
 			thick : f32 = 3
 			path_color := rl.RED
-			rl.DrawSplineLinear(&boat.path_points[0], c.int(boat.path_points_count), thick, path_color)
+			rl.DrawSplineLinear(&broom.path_points[0], c.int(broom.path_points_count), thick, path_color)
 		}
 	}
 	when ODIN_DEBUG {
@@ -201,7 +208,7 @@ draw :: proc() {
 	// NOTE: `fmt.ctprintf` uses the temp allocator. The temp allocator is
 	// cleared at the end of the frame by the main application, meaning inside
 	// `main_hot_reload.odin`, `main_release.odin` or `main_web_entry.odin`.
-	rl.DrawText(fmt.ctprintf("frame_time: %v\nplayer_pos: %v", g.frame_time, g.lighthouse_pos), 5, 5, 8, rl.WHITE)
+	rl.DrawText(fmt.ctprintf("frame_time: %v\nplayer_pos: %v\ng.hovered_broom:%#v", g.frame_time, g.lighthouse_pos, g.hovered_broom^), 5, 5, 8, rl.WHITE)
 
 	rl.EndMode2D()
 
@@ -279,21 +286,21 @@ game_memory_size :: proc() -> int {
 game_hot_reloaded :: proc(mem: rawptr) {
 	g = (^Game_Memory)(mem)
 
-	g.boats_count = 0
+	g.brooms_count = 0
 
-	g.boats[1] = {
+	g.brooms[1] = {
 		rect = {5, 5, 25, 25},
 		color = rl.GREEN,
 		rotation = 45,
 	}
-	g.boats_count += 1
+	g.brooms_count += 1
 
-	g.boats[2] = {
+	g.brooms[2] = {
 		rect = {25, 25, 10, 10},
 		color = rl.RED,
 		rotation = 15,
 	}
-	g.boats_count += 1
+	g.brooms_count += 1
 
 
 	// Here you can also set your own global variables. A good idea is to make
