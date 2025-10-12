@@ -143,6 +143,18 @@ update :: proc() {
 
 	// Mouse-only game
 	#reverse for &broom, _ in g.brooms[1:g.brooms_count+1]{
+		sin_rotation := linalg.sin(broom.rotation * rl.DEG2RAD)
+		cos_rotation := linalg.cos(broom.rotation * rl.DEG2RAD)
+		forward_x := rl.Vector2{
+			sin_rotation,
+			-cos_rotation,
+		}
+		fmt.println(forward_x)
+
+		broom.x += forward_x.x / f32(TARGET_FPS)
+		broom.y += forward_x.y / f32(TARGET_FPS)
+		broom.rotation += 0.2
+
 		poly := broom_to_poly(broom)
 		// broom.center = poly.center
 		if rl.CheckCollisionPointPoly(mouse_pos, poly.points, poly.pointCount){
@@ -158,20 +170,22 @@ update :: proc() {
 			broom.color = rl.WHITE
 		}
 	}
-	if rl.IsMouseButtonDown(.LEFT) {
-		broom := g.hovered_broom
-		last_point := broom.path_points[broom.path_points_count]
-		diff_points := mouse_pos - last_point
-		diff := linalg.vector_length(diff_points)
+	broom := g.hovered_broom
+	poly := broom_to_poly(broom^) if broom != nil else {}
 
-		// Only put points if we have a minimum distance between them.
-		if broom != nil &&
-		broom.path_points_count	 < POINTS_COUNT_MIN_FOR_CURVE_DRAWING ||
-		diff > POINTS_MIN_DISTANCE {
-			broom.path_points_count += 1
-			broom.path_points[broom.path_points_count] = mouse_pos
-		}
+	if rl.CheckCollisionPointPoly(mouse_pos, poly.points, poly.pointCount) &&
+		rl.IsMouseButtonDown(.LEFT) {
+			last_point := broom.path_points[broom.path_points_count]
+			diff_points := mouse_pos - last_point
+			diff := linalg.vector_length(diff_points)
 
+			// Only put points if we have a minimum distance between them.
+			if broom != nil &&
+			broom.path_points_count	 < POINTS_COUNT_MIN_FOR_CURVE_DRAWING ||
+			diff > POINTS_MIN_DISTANCE {
+				broom.path_points_count += 1
+				broom.path_points[broom.path_points_count] = mouse_pos
+			}
 	} else {
 		g.hovered_broom = nil
 	}
@@ -189,12 +203,23 @@ draw :: proc() {
 	rl.ClearBackground(rl.BLACK)
 
 	rl.BeginMode2D(game_camera())
-	rl.DrawTextureEx(g.player_texture, g.lighthouse_pos, 0, 1, rl.WHITE)
+	// rl.DrawTextureEx(g.player_texture, g.lighthouse_pos, 0, 1, rl.WHITE)
 	// NOTE, remember that [low:high] syntax always exclude the `high`, so [1:1] is an empty slice
 	#reverse for &broom, _ in g.brooms[1:g.brooms_count+1]{
 		rect := broom.rect
 		origin := rl.Vector2{rect.width/2, rect.height/2}
 		rl.DrawRectanglePro(rect, origin, broom.rotation, broom.color)
+		global_rect_center := rl.Vector2{broom.rect.x, broom.rect.y}
+
+		sin_rotation := linalg.sin(broom.rotation * rl.DEG2RAD)
+		cos_rotation := linalg.cos(broom.rotation * rl.DEG2RAD)
+		forward_x := rl.Vector2{
+			sin_rotation,
+			-cos_rotation,
+		} *10
+
+		rl.DrawLineV(global_rect_center, global_rect_center+forward_x, rl.RED)
+
 		if broom.path_points_count >= POINTS_COUNT_MIN_FOR_CURVE_DRAWING{
 			thick : f32 = 1.5
 			path_color := rl.RED
@@ -302,7 +327,7 @@ game_hot_reloaded :: proc(mem: rawptr) {
 	broom_create(
 		rect = {5, 5, 5, 10},
 		color = rl.GREEN,
-		rotation = 45,
+		rotation = 0,
 	)
 
 	broom_create(
