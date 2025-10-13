@@ -32,7 +32,7 @@ import "core:fmt"
 import linalg "core:math/linalg"
 import rl "vendor:raylib"
 
-PIXEL_WINDOW_HEIGHT :: 180
+PIXEL_WINDOW_HEIGHT :: 360
 
 MAX_PATH_POINTS_COUNT :: 4096 // 64*64, arbitrary
 Broom :: struct {
