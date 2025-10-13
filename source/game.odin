@@ -249,7 +249,7 @@ draw :: proc() {
 
 		if broom.path_points_count >= POINTS_COUNT_MIN_FOR_CURVE_DRAWING{
 			thick : f32 = 1.5
-			path_color := rl.RED
+			path_color := rl.PURPLE
 			rl.DrawSplineCatmullRom(&broom.path_points[0], c.int(broom.path_points_count), thick, path_color)
 		}
 	}
