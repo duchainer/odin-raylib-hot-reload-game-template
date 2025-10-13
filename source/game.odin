@@ -144,7 +144,8 @@ lerp_angle :: proc(from, to: f32, t : f32) -> f32{
 }
 
 POINTS_COUNT_MIN_FOR_CURVE_DRAWING :: 4
-POINTS_MIN_DISTANCE :: 0.2
+POINTS_MIN_DISTANCE :: 1.0
+GOOD_ENOUGH_DISTANCE_TO_TARGET_PATH_POINT :: 2.0*4
 mouse_pos : rl.Vector2
 update :: proc() {
 	delta_time := 1.0 / f32(TARGET_FPS)
@@ -174,12 +175,12 @@ update :: proc() {
 			target_point := broom.path_points[broom.target_path_index]
 			target_angle := angle_to_target(broom_poly.center, target_point)
 
-			BROOM_SPEED :: 180  // degrees per seconds
+			BROOM_SPEED :: 360.0  // degrees per seconds
 			rotation_lerp_speed := BROOM_SPEED * delta_time / 360.0
 			broom.rotation = lerp_angle(broom.rotation, target_angle, rotation_lerp_speed)
 
-			if distance_to_target < 2.0 {
 			distance_to_target := linalg.vector_length(target_point - broom_poly.center)
+			if distance_to_target < GOOD_ENOUGH_DISTANCE_TO_TARGET_PATH_POINT {
 				broom.target_path_index += 1
 			}
 		}
