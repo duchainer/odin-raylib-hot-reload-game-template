@@ -43,6 +43,7 @@ Broom :: struct {
 	// For now, DrawSplineLinear, TODO later will be a bit smoother spline
 	path_points: [MAX_PATH_POINTS_COUNT]rl.Vector2,
 	path_points_count: int,
+	target_path_index: int,
 }
 
 Game_Memory :: struct {
@@ -129,10 +130,23 @@ broom_to_poly :: proc(broom: Broom, allocator := context.temp_allocator) -> Poly
 	}
 }
 
+angle_to_target :: proc(from, to: rl.Vector2) -> f32{
+	diff := to - from
+	return linalg.atan2(diff.x, -diff.y) * rl.RAD2DEG
+}
+
+lerp_angle :: proc(from, to: f32, t : f32) -> f32{
+	diff := to - from
+	// TODO: Normalize to avoid the angles outside of -360 and +360
+	// diff = math.remap()
+	return from + diff * t
+}
+
 POINTS_COUNT_MIN_FOR_CURVE_DRAWING :: 4
 POINTS_MIN_DISTANCE :: 0.2
 mouse_pos : rl.Vector2
 update :: proc() {
+	delta_time := 1.0 / f32(TARGET_FPS)
 	window_mouse_pos := rl.GetMousePosition()
 	{
 		camera := game_camera()
@@ -144,6 +158,8 @@ update :: proc() {
 
 	// Mouse-only game
 	#reverse for &broom, _ in g.brooms[1:g.brooms_count+1]{
+		poly := broom_to_poly(broom)
+
 		sin_rotation := linalg.sin(broom.rotation * rl.DEG2RAD)
 		cos_rotation := linalg.cos(broom.rotation * rl.DEG2RAD)
 		forward_x := rl.Vector2{
@@ -151,11 +167,23 @@ update :: proc() {
 			-cos_rotation,
 		}
 
-		broom.x += forward_x.x * broom.speed / f32(TARGET_FPS)
-		broom.y += forward_x.y * broom.speed / f32(TARGET_FPS)
-		broom.rotation += 0.2
+		broom.x += forward_x.x * broom.speed * delta_time
+		broom.y += forward_x.y * broom.speed * delta_time
+		if broom.target_path_index > broom.path_points_count {
 
-		poly := broom_to_poly(broom)
+		}
+		target_point := broom.path_points[broom.target_path_index]
+		target_angle := angle_to_target(poly.center, target_point)
+
+		BROOM_SPEED :: 180  // degrees per seconds
+		rotation_lerp_speed := BROOM_SPEED * delta_time / 360.0
+		broom.rotation = lerp_angle(broom.rotation, target_angle, rotation_lerp_speed)
+
+		distance_to_target := linalg.vector_length(target_point - poly.center)
+		if distance_to_target < 2.0 {
+			broom.target_path_index += 1
+		}
+
 		// broom.center = poly.center
 		if rl.CheckCollisionPointPoly(mouse_pos, poly.points, poly.pointCount){
 			if rl.IsMouseButtonPressed(.LEFT){
@@ -312,7 +340,7 @@ broom_create :: proc(
 	rect := rl.Rectangle{},
 	color := rl.BROWN,
 	rotation : f32 = 0,
-	speed : f32 = 0
+	speed : f32 = 0,
 ){
 	g.brooms_count += 1
 	g.brooms[g.brooms_count] = {
@@ -335,14 +363,12 @@ game_hot_reloaded :: proc(mem: rawptr) {
 		speed = 5,
 	)
 
-
 	broom_create(
 		rect = {25, 25, 5, 10},
 		color = rl.RED,
 		rotation = 15,
 		speed = 5,
 	)
-
 
 	// Here you can also set your own global variables. A good idea is to make
 	// your global variables into pointers that point to something inside `g`.
