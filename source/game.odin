@@ -262,7 +262,7 @@ draw :: proc() {
 	// NOTE: `fmt.ctprintf` uses the temp allocator. The temp allocator is
 	// cleared at the end of the frame by the main application, meaning inside
 	// `main_hot_reload.odin`, `main_release.odin` or `main_web_entry.odin`.
-	rl.DrawText(fmt.ctprintf("frame_time: %v\nplayer_pos: %v\ng.hovered_broom:%#v", g.frame_time, g.lighthouse_pos, g.hovered_broom^), 5, 5, 8, rl.WHITE)
+	rl.DrawText(fmt.ctprintf("frame_time: %v\nplayer_pos: %v\ng.hovered_broom:%#v", g.frame_time, g.lighthouse_pos, g.hovered_broom), 5, 5, 10, rl.WHITE)
 
 	rl.EndMode2D()
 
