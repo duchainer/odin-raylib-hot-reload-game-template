@@ -29,6 +29,7 @@ package game
 
 import "core:c"
 import "core:fmt"
+import "core:math"
 import linalg "core:math/linalg"
 import rl "vendor:raylib"
 
