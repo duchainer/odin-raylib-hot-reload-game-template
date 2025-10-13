@@ -159,7 +159,7 @@ update :: proc() {
 
 	// Mouse-only game
 	#reverse for &broom, _ in g.brooms[1:g.brooms_count+1]{
-		poly := broom_to_poly(broom)
+		broom_poly := broom_to_poly(broom)
 
 		sin_rotation := linalg.sin(broom.rotation * rl.DEG2RAD)
 		cos_rotation := linalg.cos(broom.rotation * rl.DEG2RAD)
@@ -172,20 +172,19 @@ update :: proc() {
 		broom.y += forward_x.y * broom.speed * delta_time
 		if broom.target_path_index <= broom.path_points_count {
 			target_point := broom.path_points[broom.target_path_index]
-			target_angle := angle_to_target(poly.center, target_point)
+			target_angle := angle_to_target(broom_poly.center, target_point)
 
 			BROOM_SPEED :: 180  // degrees per seconds
 			rotation_lerp_speed := BROOM_SPEED * delta_time / 360.0
 			broom.rotation = lerp_angle(broom.rotation, target_angle, rotation_lerp_speed)
 
-			distance_to_target := linalg.vector_length(target_point - poly.center)
 			if distance_to_target < 2.0 {
+			distance_to_target := linalg.vector_length(target_point - broom_poly.center)
 				broom.target_path_index += 1
 			}
 		}
 
-		// broom.center = poly.center
-		if rl.CheckCollisionPointPoly(mouse_pos, poly.points, poly.pointCount){
+		if rl.CheckCollisionPointPoly(mouse_pos, broom_poly.points, broom_poly.pointCount){
 			if rl.IsMouseButtonPressed(.LEFT){
 				// reset path
 				broom.path_points = {}
