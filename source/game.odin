@@ -190,7 +190,7 @@ update :: proc() {
 				broom.path_points = {}
 				broom.path_points_count = 0
 				broom.target_path_index = 0
-				broom.path_points[broom.path_points_count] = mouse_pos
+				broom.path_points[broom.path_points_count] = broom_poly.center
 				g.hovered_broom = &broom
 			}
 			broom.color = rl.BLUE
