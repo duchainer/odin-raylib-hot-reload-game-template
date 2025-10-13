@@ -238,25 +238,33 @@ draw :: proc() {
 	// rl.DrawTextureEx(g.player_texture, g.lighthouse_pos, 0, 1, rl.WHITE)
 	// NOTE, remember that [low:high] syntax always exclude the `high`, so [1:1] is an empty slice
 	#reverse for &broom, _ in g.brooms[1:g.brooms_count+1]{
-		rect := broom.rect
-		origin := rl.Vector2{rect.width/2, rect.height/2}
-		rl.DrawRectanglePro(rect, origin, broom.rotation, broom.color)
-		global_rect_center := rl.Vector2{broom.rect.x, broom.rect.y}
-
-		sin_rotation := linalg.sin(broom.rotation * rl.DEG2RAD)
-		cos_rotation := linalg.cos(broom.rotation * rl.DEG2RAD)
-		forward_x := rl.Vector2{
-			sin_rotation,
-			-cos_rotation,
-		} *10
-
-		rl.DrawLineV(global_rect_center, global_rect_center+forward_x, rl.RED)
 
 		if broom.path_points_count >= POINTS_COUNT_MIN_FOR_CURVE_DRAWING{
-			thick : f32 = 1.5
+			thick : f32 = 1
 			path_color := rl.PURPLE
 			rl.DrawSplineCatmullRom(&broom.path_points[0], c.int(broom.path_points_count), thick, path_color)
 		}
+	}
+
+	#reverse for &broom, _ in g.brooms[1:g.brooms_count+1]{
+		{
+			// Draw broom stick
+			sin_rotation := linalg.sin(broom.rotation * rl.DEG2RAD)
+			cos_rotation := linalg.cos(broom.rotation * rl.DEG2RAD)
+			forward_x := rl.Vector2{
+				sin_rotation,
+				-cos_rotation,
+			} *25
+
+			// I wish I could just do broom.pos, instead of that, but maybe later I'll do pos(broom)
+			global_rect_center := rl.Vector2{broom.x, broom.y}
+			rl.DrawLineEx(global_rect_center, global_rect_center+forward_x, 1, rl.BEIGE)
+		}
+
+		origin := rl.Vector2{broom.width/2, broom.height/2}
+		rect := broom.rect
+		// rect.height *= 2
+		rl.DrawRectanglePro(rect, origin, broom.rotation, broom.color)
 	}
 	when ODIN_DEBUG {
 		rl.DrawPixelV(mouse_pos, rl.BROWN)
