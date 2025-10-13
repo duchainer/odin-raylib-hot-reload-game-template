@@ -171,10 +171,8 @@ update :: proc() {
 		}
 	}
 	broom := g.hovered_broom
-	poly := broom_to_poly(broom^) if broom != nil else {}
 
-	if rl.CheckCollisionPointPoly(mouse_pos, poly.points, poly.pointCount) &&
-		rl.IsMouseButtonDown(.LEFT) {
+	if broom != nil && rl.IsMouseButtonDown(.LEFT) {
 			last_point := broom.path_points[broom.path_points_count]
 			diff_points := mouse_pos - last_point
 			diff := linalg.vector_length(diff_points)
