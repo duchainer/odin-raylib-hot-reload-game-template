@@ -34,6 +34,7 @@ import linalg "core:math/linalg"
 import rl "vendor:raylib"
 
 PIXEL_WINDOW_HEIGHT :: 360
+UI_PIXEL_WINDOW_HEIGHT :: 500
 
 MAX_PATH_POINTS_COUNT :: 4096 // 64*64, arbitrary
 Broom :: struct {
@@ -72,7 +73,7 @@ game_camera :: proc() -> rl.Camera2D {
 
 ui_camera :: proc() -> rl.Camera2D {
 	return {
-		zoom = f32(rl.GetScreenHeight())/PIXEL_WINDOW_HEIGHT,
+		zoom = f32(rl.GetScreenHeight())/UI_PIXEL_WINDOW_HEIGHT,
 	}
 }
 
