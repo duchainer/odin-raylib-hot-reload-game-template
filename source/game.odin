@@ -146,6 +146,9 @@ lerp_angle :: proc(from, to: f32, t : f32) -> f32{
 POINTS_COUNT_MIN_FOR_CURVE_DRAWING :: 4
 POINTS_MIN_DISTANCE :: 1.0
 GOOD_ENOUGH_DISTANCE_TO_TARGET_PATH_POINT :: 2.0*4
+
+DARKBEIGE := rl.BEIGE/2 + rl.BROWN/2
+
 mouse_pos : rl.Vector2
 update :: proc() {
 	delta_time := 1.0 / f32(TARGET_FPS)
@@ -194,10 +197,11 @@ update :: proc() {
 				broom.path_points[broom.path_points_count] = broom_poly.center
 				g.hovered_broom = &broom
 			}
-			broom.color = rl.GRAY
+			broom.color = DARKBEIGE
 		} else {
 			broom.color = rl.BROWN
 		}
+
 	}
 	broom := g.hovered_broom
 
