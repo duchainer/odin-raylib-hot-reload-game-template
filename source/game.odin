@@ -39,6 +39,7 @@ Broom :: struct {
 	using rect : rl.Rectangle,
 	color : rl.Color,
 	rotation: f32,
+	speed: f32,
 	// For now, DrawSplineLinear, TODO later will be a bit smoother spline
 	path_points: [MAX_PATH_POINTS_COUNT]rl.Vector2,
 	path_points_count: int,
@@ -149,10 +150,9 @@ update :: proc() {
 			sin_rotation,
 			-cos_rotation,
 		}
-		fmt.println(forward_x)
 
-		broom.x += forward_x.x / f32(TARGET_FPS)
-		broom.y += forward_x.y / f32(TARGET_FPS)
+		broom.x += forward_x.x * broom.speed / f32(TARGET_FPS)
+		broom.y += forward_x.y * broom.speed / f32(TARGET_FPS)
 		broom.rotation += 0.2
 
 		poly := broom_to_poly(broom)
@@ -308,12 +308,18 @@ game_memory_size :: proc() -> int {
 	return size_of(Game_Memory)
 }
 
-broom_create :: proc(rect := rl.Rectangle{}, color := rl.BROWN, rotation : f32=0){
+broom_create :: proc(
+	rect := rl.Rectangle{},
+	color := rl.BROWN,
+	rotation : f32 = 0,
+	speed : f32 = 0
+){
 	g.brooms_count += 1
 	g.brooms[g.brooms_count] = {
 		rect = rect,
 		color = color,
 		rotation = rotation,
+		speed = speed,
 	}
 }
 
@@ -326,12 +332,15 @@ game_hot_reloaded :: proc(mem: rawptr) {
 		rect = {5, 5, 5, 10},
 		color = rl.GREEN,
 		rotation = 0,
+		speed = 5,
 	)
+
 
 	broom_create(
 		rect = {25, 25, 5, 10},
 		color = rl.RED,
 		rotation = 15,
+		speed = 5,
 	)
 
 
