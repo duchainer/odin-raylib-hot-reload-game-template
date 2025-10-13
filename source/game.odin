@@ -28,7 +28,8 @@ created.
 package game
 
 import "core:c"
-import "core:fmt"
+// import "core:fmt"
+// _ :: fmt
 import "core:math"
 import linalg "core:math/linalg"
 import rl "vendor:raylib"
@@ -36,7 +37,7 @@ import rl "vendor:raylib"
 PIXEL_WINDOW_HEIGHT :: 360
 UI_PIXEL_WINDOW_HEIGHT :: 500
 
-MAX_PATH_POINTS_COUNT :: 4096 // 64*64, arbitrary
+MAX_PATH_POINTS_COUNT :: 1024 // arbitrary
 Broom :: struct {
 	using rect : rl.Rectangle,
 	color : rl.Color,
@@ -148,7 +149,10 @@ POINTS_COUNT_MIN_FOR_CURVE_DRAWING :: 4
 POINTS_MIN_DISTANCE :: 1.0
 GOOD_ENOUGH_DISTANCE_TO_TARGET_PATH_POINT :: 2.0*4
 
-DARKBEIGE := rl.BEIGE/2 + rl.BROWN/2
+// DARKBEIGE := rl.BEIGE/2 + rl.BROWN/2
+darkbeige :: proc() -> rl.Color {
+	return rl.BEIGE/2 + rl.BROWN/2
+}
 
 mouse_pos : rl.Vector2
 update :: proc() {
@@ -198,7 +202,7 @@ update :: proc() {
 				broom.path_points[broom.path_points_count] = broom_poly.center
 				g.hovered_broom = &broom
 			}
-			broom.color = DARKBEIGE
+			broom.color = darkbeige()
 		} else {
 			broom.color = rl.BROWN
 		}
@@ -276,7 +280,9 @@ draw :: proc() {
 	// NOTE: `fmt.ctprintf` uses the temp allocator. The temp allocator is
 	// cleared at the end of the frame by the main application, meaning inside
 	// `main_hot_reload.odin`, `main_release.odin` or `main_web_entry.odin`.
-	rl.DrawText(fmt.ctprintf("frame_time: %v\nplayer_pos: %v\ng.hovered_broom:%#v", g.frame_time, g.lighthouse_pos, g.hovered_broom), 5, 5, 10, rl.WHITE)
+	// when ODIN_DEBUG {
+	// 	rl.DrawText(fmt.ctprintf("frame_time: %v\nplayer_pos: %v\ng.hovered_broom:%#v", g.frame_time, g.lighthouse_pos, g.hovered_broom), 5, 5, 10, rl.WHITE)
+	// }
 
 	rl.EndMode2D()
 
