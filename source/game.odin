@@ -138,8 +138,8 @@ angle_to_target :: proc(from, to: rl.Vector2) -> f32{
 
 lerp_angle :: proc(from, to: f32, t : f32) -> f32{
 	diff := to - from
-	// TODO: Normalize to avoid the angles outside of -360 and +360
-	// diff = math.remap()
+	// Normalize angles to -180 to 180
+	diff = diff - math.floor((diff + 180) / 360) * 360
 	return from + diff * t
 }
 
@@ -191,6 +191,7 @@ update :: proc() {
 				// reset path
 				broom.path_points = {}
 				broom.path_points_count = 0
+				broom.target_path_index = 0
 				broom.path_points[broom.path_points_count] = mouse_pos
 				g.hovered_broom = &broom
 			}
