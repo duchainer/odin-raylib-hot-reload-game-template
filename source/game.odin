@@ -42,9 +42,9 @@ Broom :: struct {
 	rotation: f32,
 	speed: f32,
 	// For now, DrawSplineLinear, TODO later will be a bit smoother spline
-	path_points: [MAX_PATH_POINTS_COUNT]rl.Vector2,
-	path_points_count: int,
 	target_path_index: int,
+	path_points_count: int,
+	path_points: [MAX_PATH_POINTS_COUNT]rl.Vector2,
 }
 
 Game_Memory :: struct {
