@@ -170,19 +170,18 @@ update :: proc() {
 
 		broom.x += forward_x.x * broom.speed * delta_time
 		broom.y += forward_x.y * broom.speed * delta_time
-		if broom.target_path_index > broom.path_points_count {
+		if broom.target_path_index <= broom.path_points_count {
+			target_point := broom.path_points[broom.target_path_index]
+			target_angle := angle_to_target(poly.center, target_point)
 
-		}
-		target_point := broom.path_points[broom.target_path_index]
-		target_angle := angle_to_target(poly.center, target_point)
+			BROOM_SPEED :: 180  // degrees per seconds
+			rotation_lerp_speed := BROOM_SPEED * delta_time / 360.0
+			broom.rotation = lerp_angle(broom.rotation, target_angle, rotation_lerp_speed)
 
-		BROOM_SPEED :: 180  // degrees per seconds
-		rotation_lerp_speed := BROOM_SPEED * delta_time / 360.0
-		broom.rotation = lerp_angle(broom.rotation, target_angle, rotation_lerp_speed)
-
-		distance_to_target := linalg.vector_length(target_point - poly.center)
-		if distance_to_target < 2.0 {
-			broom.target_path_index += 1
+			distance_to_target := linalg.vector_length(target_point - poly.center)
+			if distance_to_target < 2.0 {
+				broom.target_path_index += 1
+			}
 		}
 
 		// broom.center = poly.center
