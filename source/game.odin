@@ -194,9 +194,9 @@ update :: proc() {
 				broom.path_points[broom.path_points_count] = broom_poly.center
 				g.hovered_broom = &broom
 			}
-			broom.color = rl.BLUE
+			broom.color = rl.GRAY
 		} else {
-			broom.color = rl.WHITE
+			broom.color = rl.BROWN
 		}
 	}
 	broom := g.hovered_broom
