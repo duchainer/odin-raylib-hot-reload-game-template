@@ -1,3 +1,4 @@
+// -*- compile-command: "EMSDK_QUIET=1 source ~/Documents/repos/emsdk/emsdk_env.sh; ../build_zip_web.sh" -*-
 /*
 This file is the starting point of your game.
 
