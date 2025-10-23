@@ -1,4 +1,8 @@
 // -*- compile-command: "EMSDK_QUIET=1 source ~/Documents/repos/emsdk/emsdk_env.sh; ../build_zip_web.sh" -*-
+// -*- compile-command: "../build_hot_reload.sh" -*-
+//  The first definition seems to win, so just swap them, save and kill the buffer, than reopen it to set the variable
+//  Makes it quicker to run the wanted compile command as needed, in emacs
+
 /*
 This file is the starting point of your game.
 

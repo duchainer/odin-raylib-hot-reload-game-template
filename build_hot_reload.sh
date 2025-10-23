@@ -1,6 +1,14 @@
 #!/usr/bin/env bash
 set -eu
 
+# Make the script be callable from elsewhere than its own folder
+    SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+
+    pushd "$SCRIPT_DIR" > /dev/null || exit 1
+
+    # Ensure popd runs on exit (success or failure)
+    trap 'popd > /dev/null' EXIT
+
 # OUT_DIR is for everything except the exe. The exe needs to stay in root
 # folder so it sees the assets folder, without having to copy it.
 OUT_DIR=build/hot_reload
@@ -39,7 +47,7 @@ esac
 # Build the game. Note that the game goes into $OUT_DIR while the exe stays in
 # the root folder.
 echo "Building game$DLL_EXT"
-odin build source -extra-linker-flags:"$EXTRA_LINKER_FLAGS" -define:RAYLIB_SHARED=true -build-mode:dll -out:$OUT_DIR/game_tmp$DLL_EXT -strict-style -vet -debug -o:none
+odin build source/ -extra-linker-flags:"$EXTRA_LINKER_FLAGS" -define:RAYLIB_SHARED=true -build-mode:dll -out:$OUT_DIR/game_tmp$DLL_EXT -strict-style -vet -debug -o:none
 
 # Need to use a temp file on Linux because it first writes an empty `game.so`,
 # which the game will load before it is actually fully written.
