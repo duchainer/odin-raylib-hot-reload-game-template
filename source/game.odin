@@ -1,5 +1,5 @@
-// -*- compile-command: "EMSDK_QUIET=1 source ~/Documents/repos/emsdk/emsdk_env.sh; ../build_zip_web.sh" -*-
 // -*- compile-command: "../build_hot_reload.sh" -*-
+// -*- compile-command: "EMSDK_QUIET=1 source ~/Documents/repos/emsdk/emsdk_env.sh; ../build_zip_web.sh" -*-
 //  The first definition seems to win, so just swap them, save and kill the buffer, than reopen it to set the variable
 //  Makes it quicker to run the wanted compile command as needed, in emacs
 
@@ -87,13 +87,14 @@ draw :: proc() {
 	rl.ClearBackground(rl.RAYWHITE)
 
 	rl.BeginMode3D(game_camera)
-		rl.DrawModel(debug_cube_model, {0, 0, 0}, 1.0, rl.WHITE) // Draw animated model
-		rl.DrawModel(debug_wide_cube_y_pos_up_model, {0, 5, 0}, 1.0, rl.WHITE) // Draw animated model
-		rl.DrawModel(debug_tall_cube_z_pos_up_model, {0, 10, 0}, 1.0, rl.WHITE) // Draw animated model
-		rl.DrawModelEx(debug_cube_model, {0, -5, 0}, {1, 0, 0}, 90, 1.0, rl.WHITE) // Draw animated model
-		rl.DrawCube({2, 0, 0}, 1, 1, 1, rl.RED)
-		rl.DrawCube({0, 2, 0}, 1, 1, 1, rl.GREEN) // Blender
-		rl.DrawCube({0, 0, 2}, 1, 1, 1, rl.BLUE)
+		rl.DrawModel(warrior_model, {0, 0, 0}, 1.0, rl.WHITE) // Draw animated model
+		// rl.DrawModel(debug_cube_model, {0, 0, 0}, 1.0, rl.WHITE) // Draw animated model
+		// rl.DrawModel(debug_wide_cube_y_pos_up_model, {0, 5, 0}, 1.0, rl.WHITE) // Draw animated model
+		// rl.DrawModel(debug_tall_cube_z_pos_up_model, {0, 10, 0}, 1.0, rl.WHITE) // Draw animated model
+		// rl.DrawModelEx(debug_cube_model, {0, -5, 0}, {1, 0, 0}, 90, 1.0, rl.WHITE) // Draw animated model
+		// rl.DrawCube({2, 0, 0}, 1, 1, 1, rl.RED)
+		// rl.DrawCube({0, 2, 0}, 1, 1, 1, rl.GREEN) // Blender
+		// rl.DrawCube({0, 0, 2}, 1, 1, 1, rl.BLUE)
 		rl.DrawGrid(10, 1.0)
 	rl.EndMode3D()
 
@@ -162,6 +163,7 @@ game_should_run :: proc() -> bool {
 game_shutdown :: proc() {
 	free(g)
     rl.UnloadModel(debug_cube_model)
+	rl.UnloadModel(warrior_model)
 }
 
 @(export)
@@ -180,9 +182,11 @@ game_memory_size :: proc() -> int {
 }
 
 debug_tall_cube_z_pos_up_model, debug_tall_cube_y_pos_up_model, debug_wide_cube_y_pos_up_model, debug_cube_model : rl.Model
+warrior_model: rl.Model
 @(export)
 game_hot_reloaded :: proc(mem: rawptr) {
 
+	warrior_model = rl.LoadModel("assets/royalty_free_roman_warrior_animated.glb")
 	debug_cube_model = rl.LoadModel("assets/debug/debug_cube.glb")
 	debug_wide_cube_y_pos_up_model = rl.LoadModel("assets/debug/debug_wide_cube_y_pos_up.glb")
 	debug_tall_cube_y_pos_up_model = rl.LoadModel("assets/debug/debug_tall_cube_y_pos_up.glb")
