@@ -47,16 +47,7 @@ Game_Memory :: struct {
 
 g: ^Game_Memory
 
-game_camera :: proc() -> rl.Camera2D {
-	w := f32(rl.GetScreenWidth())
-	h := f32(rl.GetScreenHeight())
-
-	return {
-		zoom = h/PIXEL_WINDOW_HEIGHT,
-		target = g.player_pos,
-		offset = { w/2, h/2 },
-	}
-}
+game_camera : rl.Camera
 
 ui_camera :: proc() -> rl.Camera2D {
 	return {
@@ -65,6 +56,8 @@ ui_camera :: proc() -> rl.Camera2D {
 }
 
 update :: proc() {
+	rl.UpdateCamera(&game_camera, .ORBITAL)
+
 	input: rl.Vector2
 
 	if rl.IsKeyDown(.UP) || rl.IsKeyDown(.W) {
@@ -91,13 +84,17 @@ update :: proc() {
 
 draw :: proc() {
 	rl.BeginDrawing()
-	rl.ClearBackground(rl.BLACK)
+	rl.ClearBackground(rl.RAYWHITE)
 
-	rl.BeginMode2D(game_camera())
-	rl.DrawTextureEx(g.player_texture, g.player_pos, 0, 1, rl.WHITE)
-	rl.DrawRectangleV({20, 20}, {10, 10}, rl.RED)
-	rl.DrawRectangleV({-30, -20}, {10, 10}, rl.GREEN)
-	rl.EndMode2D()
+	rl.BeginMode3D(game_camera)
+		rl.DrawModel(debug_cube_model, {0, 0, 0}, 1.0, rl.WHITE) // Draw animated model
+		rl.DrawModelWires(debug_cube_model, {0, 5, 0}, 1.0, rl.WHITE) // Draw animated model
+		rl.DrawModelEx(debug_cube_model, {0, -5, 0}, {1, 0, 0}, 90, 1.0, rl.WHITE) // Draw animated model
+		rl.DrawCube({2, 0, 0}, 1, 1, 1, rl.RED)
+		rl.DrawCube({0, 2, 0}, 1, 1, 1, rl.GREEN) // Blender
+		rl.DrawCube({0, 0, 2}, 1, 1, 1, rl.BLUE)
+		rl.DrawGrid(10, 1.0)
+	rl.EndMode3D()
 
 	rl.BeginMode2D(ui_camera())
 
@@ -130,9 +127,11 @@ game_init_window :: proc() {
 	rl.SetExitKey(nil)
 }
 
+
 @(export)
 game_init :: proc() {
 	g = new(Game_Memory)
+
 
 	g^ = Game_Memory {
 		run = true,
@@ -161,6 +160,7 @@ game_should_run :: proc() -> bool {
 @(export)
 game_shutdown :: proc() {
 	free(g)
+    rl.UnloadModel(debug_cube_model)
 }
 
 @(export)
@@ -178,9 +178,26 @@ game_memory_size :: proc() -> int {
 	return size_of(Game_Memory)
 }
 
+debug_cube_model : rl.Model
 @(export)
 game_hot_reloaded :: proc(mem: rawptr) {
+
+	debug_cube_model = rl.LoadModel("assets/debug/debug_cube.glb")
+
+	game_camera = {
+			position   = {60.0, 60.0, 60.0}, // Camera position
+			target     = {0.0, 2.0, 0.0},    // Camera looking at point
+			up         = {0.0, 1.0, 0.0},    // Camera up vector (rotation towards target)
+			fovy       = 45.0,               // Camera field-of-view Y
+			projection = .PERSPECTIVE,       // Camera projection type
+			// zoom = h/PIXEL_WINDOW_HEIGHT,
+			// target = g.player_pos,
+			// offset = { w/2, h/2 },
+	}
+
 	g = (^Game_Memory)(mem)
+
+	model_position = rl.Vector3{0.0, 0.0, 0.0} // Set model position
 
 	// Here you can also set your own global variables. A good idea is to make
 	// your global variables into pointers that point to something inside `g`.
