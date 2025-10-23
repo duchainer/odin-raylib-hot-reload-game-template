@@ -88,7 +88,8 @@ draw :: proc() {
 
 	rl.BeginMode3D(game_camera)
 		rl.DrawModel(debug_cube_model, {0, 0, 0}, 1.0, rl.WHITE) // Draw animated model
-		rl.DrawModelWires(debug_cube_model, {0, 5, 0}, 1.0, rl.WHITE) // Draw animated model
+		rl.DrawModel(debug_wide_cube_y_pos_up_model, {0, 5, 0}, 1.0, rl.WHITE) // Draw animated model
+		rl.DrawModel(debug_tall_cube_z_pos_up_model, {0, 10, 0}, 1.0, rl.WHITE) // Draw animated model
 		rl.DrawModelEx(debug_cube_model, {0, -5, 0}, {1, 0, 0}, 90, 1.0, rl.WHITE) // Draw animated model
 		rl.DrawCube({2, 0, 0}, 1, 1, 1, rl.RED)
 		rl.DrawCube({0, 2, 0}, 1, 1, 1, rl.GREEN) // Blender
@@ -178,11 +179,15 @@ game_memory_size :: proc() -> int {
 	return size_of(Game_Memory)
 }
 
-debug_cube_model : rl.Model
+debug_tall_cube_z_pos_up_model, debug_tall_cube_y_pos_up_model, debug_wide_cube_y_pos_up_model, debug_cube_model : rl.Model
 @(export)
 game_hot_reloaded :: proc(mem: rawptr) {
 
 	debug_cube_model = rl.LoadModel("assets/debug/debug_cube.glb")
+	debug_wide_cube_y_pos_up_model = rl.LoadModel("assets/debug/debug_wide_cube_y_pos_up.glb")
+	debug_tall_cube_y_pos_up_model = rl.LoadModel("assets/debug/debug_tall_cube_y_pos_up.glb")
+	debug_tall_cube_z_pos_up_model = rl.LoadModel("assets/debug/debug_tall_cube_z_pos_up.glb")
+
 
 	game_camera = {
 			position   = {60.0, 60.0, 60.0}, // Camera position
