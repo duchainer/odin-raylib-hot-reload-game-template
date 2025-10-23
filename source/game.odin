@@ -90,6 +90,7 @@ draw :: proc() {
 		rl.DrawModel(debug_cube_model, {0, 0, 0}, 1.0, rl.WHITE) // Draw animated model
 		rl.DrawModelWires(debug_cube_model, {0, 5, 0}, 1.0, rl.WHITE) // Draw animated model
 		rl.DrawModelEx(debug_cube_model, {0, -5, 0}, {1, 0, 0}, 90, 1.0, rl.WHITE) // Draw animated model
+		rl.DrawModel(model, model_position, 1.0, rl.WHITE) // Draw animated model
 		rl.DrawCube({2, 0, 0}, 1, 1, 1, rl.RED)
 		rl.DrawCube({0, 2, 0}, 1, 1, 1, rl.GREEN) // Blender
 		rl.DrawCube({0, 0, 2}, 1, 1, 1, rl.BLUE)
@@ -127,9 +128,16 @@ game_init_window :: proc() {
 	rl.SetExitKey(nil)
 }
 
+MODEL_PATH :: "assets/trees/douglas_fir_tree_tall.glb"
 
+model : rl.Model
+model_position : rl.Vector3
 @(export)
 game_init :: proc() {
+
+	model = rl.LoadModel(MODEL_PATH)
+	model_position = rl.Vector3{0.0, 0.0, 0.0} // Set model position
+
 	g = new(Game_Memory)
 
 
@@ -160,6 +168,7 @@ game_should_run :: proc() -> bool {
 @(export)
 game_shutdown :: proc() {
 	free(g)
+    rl.UnloadModel(model) // Unload model and meshes/material
     rl.UnloadModel(debug_cube_model)
 }
 
