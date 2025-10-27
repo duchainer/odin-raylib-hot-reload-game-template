@@ -3,7 +3,9 @@ package tps_camera
 // import "core:math"
 import rl "vendor:raylib"
 import rlgl "vendor:raylib/rlgl"
+import "core:math"
 import "core:math/linalg"
+
 TPS_Camera :: struct {
     view_camera : rl.Camera3D,
 
@@ -34,13 +36,11 @@ TPS_Camera :: struct {
     focused: bool,
 
     // Control keys
-    controls_keys: [TP_Camera_Controls]rl.KeyboardKey,
+    controls_keys: [Camera_Controls]rl.KeyboardKey,
 }
 
-TP_Camera :: TPS_Camera
-
 // Camera control enums
-TP_Camera_Controls :: enum {
+Camera_Controls :: enum {
     MOVE_FORWARD,
     MOVE_BACKWARD,
     MOVE_LEFT,
@@ -54,7 +54,7 @@ TP_Camera_Controls :: enum {
     SPRINT,
 }
 
-resize_tp_orbit_camera_view :: proc(camera: ^TP_Camera) {
+resize_tp_orbit_camera_view :: proc(camera: ^TPS_Camera) {
     width := f32(rl.GetScreenWidth())
     height := f32(rl.GetScreenHeight())
 
@@ -107,52 +107,52 @@ init :: proc(camera: ^TPS_Camera, fov_y: f32, position: rl.Vector3){
     camera.view_camera.projection = .PERSPECTIVE
 
     resize_tp_orbit_camera_view(camera)
-    use_mouse(camera, true)
+    // use_mouse(camera, true)
 
 }
 
 
 TPS_CAMERA_USE_MOUSE_BUTTON :: rl.MouseButton.RIGHT
-use_mouse :: proc(camera: ^TP_Camera, use_mouse: bool) {
+use_mouse :: proc(camera: ^TPS_Camera, use_mouse: bool) {
     camera.use_mouse = use_mouse
 
-    if rl.IsWindowFocused(){
-        if use_mouse{
-            rl.DisableCursor()
-        } else {
-            rl.EnableCursor()
-        }
-    }
+    // if rl.IsWindowFocused(){
+    //     if use_mouse{
+    //         rl.DisableCursor()
+    //     } else {
+    //         rl.EnableCursor()
+    //     }
+    // }
 }
 
 
 // camera.target_position
 
-get_view_ray :: proc(camera: ^TP_Camera) -> rl.Ray {
+get_view_ray :: proc(camera: ^TPS_Camera) -> rl.Ray {
     return {
         position = camera.view_camera.position,
         direction = camera.view_camera.target - camera.view_camera.position,
     }
 }
 
-update :: proc(camera: ^TP_Camera) {
+update :: proc(camera: ^TPS_Camera) {
     if rl.IsWindowResized(){
         resize_tp_orbit_camera_view(camera)
     }
 
-    show_cursor := !camera.use_mouse
+    // show_cursor := !camera.use_mouse
 
-    camera.focused = rl.IsWindowFocused()
-    if !show_cursor && camera.focused {
-        rl.DisableCursor()
-    } else {
-        rl.EnableCursor()
-    }
+    // camera.focused = rl.IsWindowFocused()
+    // if !show_cursor && camera.focused {
+    //     rl.DisableCursor()
+    // } else {
+    //     rl.EnableCursor()
+    // }
 
     mouse_position_delta := rl.GetMouseDelta()
     // mouse_wheel_move := rl.GetMouseWheelMove()
 
-    get_speed_for_axis :: proc(camera: ^TP_Camera, axis: TP_Camera_Controls, speed: f32) -> f32 {
+    get_speed_for_axis :: proc(camera: ^TPS_Camera, axis: Camera_Controls, speed: f32) -> f32 {
         key := camera.controls_keys[axis]
 
         factor: f32 = 1.0
@@ -185,30 +185,34 @@ update :: proc(camera: ^TP_Camera) {
 
     if turn_rotation != 0 {
         camera.view_angles.x -= turn_rotation * linalg.RAD_PER_DEG
-    } else if use_mouse && camera.focused {
+    } else if use_mouse // && camera.focused
+    {
         camera.view_angles.x -= (mouse_position_delta.x / camera.mouse_sensitivity)
     }
 
     if tilt_rotation != 0 {
         camera.view_angles.y += tilt_rotation * linalg.RAD_PER_DEG
-    } else if use_mouse && camera.focused {
+    } else if use_mouse // && camera.focused
+    {
         camera.view_angles.y += (mouse_position_delta.y / -camera.mouse_sensitivity)
     }
 
+
     // Angle clamp
-    if camera.view_angles.y < camera.minimum_view_angle_y * linalg.RAD_PER_DEG {
-        camera.view_angles.y = camera.minimum_view_angle_y * linalg.RAD_PER_DEG
-    } else if camera.view_angles.y > camera.minimum_view_angle_y * linalg.RAD_PER_DEG {
-        camera.view_angles.y = camera.minimum_view_angle_y * linalg.RAD_PER_DEG
-    }
+    camera.view_angles.y = math.clamp(camera.view_angles.y, camera.minimum_view_angle_y, camera.maximum_view_angle_y)
+    // if camera.view_angles.y < camera.minimum_view_angle_y * linalg.RAD_PER_DEG {
+    //     camera.view_angles.y = camera.minimum_view_angle_y * linalg.RAD_PER_DEG
+    // } else if camera.view_angles.y > camera.minimum_view_angle_y * linalg.RAD_PER_DEG {
+    //     camera.view_angles.y = camera.minimum_view_angle_y * linalg.RAD_PER_DEG
+    // }
 
     // Movement in plane rotation space
     move_vec := rl.Vector3{0, 0, 0}
-    move_vec.z = direction[TP_Camera_Controls.MOVE_FORWARD] - direction[TP_Camera_Controls.MOVE_BACKWARD]
-    move_vec.x = direction[TP_Camera_Controls.MOVE_RIGHT] - direction[TP_Camera_Controls.MOVE_LEFT]
+    move_vec.z = direction[Camera_Controls.MOVE_FORWARD] - direction[Camera_Controls.MOVE_BACKWARD]
+    move_vec.x = direction[Camera_Controls.MOVE_RIGHT] - direction[Camera_Controls.MOVE_LEFT]
 
     // Update zoom
-    camera.pullback_distance += rl.GetMouseWheelMove()
+    camera.pullback_distance -= rl.GetMouseWheelMove()
     if camera.pullback_distance < 1 {
         camera.pullback_distance = 1
     }
@@ -231,8 +235,8 @@ update :: proc(camera: ^TP_Camera) {
 }
 
 
-begin_mode_3d :: proc(camera: ^TP_Camera){
-    setup_camera :: proc(camera: ^TP_Camera, aspect: f64) {
+begin_mode_3d :: proc(camera: ^TPS_Camera){
+    setup_camera :: proc(camera: ^TPS_Camera, aspect: f64) {
         rlgl.DrawRenderBatchActive()
         rlgl.MatrixMode(rlgl.PROJECTION)
         rlgl.PushMatrix()
@@ -269,4 +273,26 @@ begin_mode_3d :: proc(camera: ^TP_Camera){
 
 end_mode_3d :: proc() {
     rl.EndMode3D()
+}
+
+main :: proc() {
+    rl.InitWindow(800, 600, "TP Camera")
+    defer rl.CloseWindow()
+
+    camera: TPS_Camera
+    init(&camera, 45.0, {0, 1, 0})
+
+    for !rl.WindowShouldClose() {
+        update(&camera)
+
+        rl.BeginDrawing()
+        rl.ClearBackground(rl.RAYWHITE)
+
+        begin_mode_3d(&camera)
+        rl.DrawGrid(10, 1.0)
+        rl.DrawCube({0, 0.5, 0}, 1, 1, 1, rl.RED)
+        end_mode_3d()
+
+        rl.EndDrawing()
+    }
 }
