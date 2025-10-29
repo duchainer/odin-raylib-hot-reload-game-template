@@ -191,7 +191,6 @@ input :: proc() -> (input: rl.Vector2){
 	if g.lava_height >= VOLCANO_HEIGHT{
 		return
 	}
-	delta_time := rl.GetFrameTime()
 
 
 	// if rl.IsKeyDown(.UP) || rl.IsKeyDown(.W) {
@@ -225,6 +224,8 @@ SHEEP_LAVA_WORTH :: 75
 CARROT_WIDTH :: 5.0
 update :: proc(input: rl.Vector2) -> (ok:bool) {
 	commodino_assert_message = "" // reset assert_message
+
+	delta_time := rl.GetFrameTime()
 
 	player_speed :: 60.0
 	g.player_rect.x += input.x * delta_time * player_speed
@@ -438,12 +439,19 @@ draw :: proc() {
 	rl.EndDrawing()
 }
 
+
+update_ok : bool
+input_vec : rl.Vector2
+
 @(export)
 game_update :: proc() {
-	input()
-	for err := update(); err{
-		draw(err)
+
+	if update_ok {
+		input_vec = input()
 	}
+	update_ok = update(input_vec)
+	// fmt.println(commodino_assert_message)
+	draw()
 
 	// Everything on tracking allocator is valid until end-of-frame.
 	free_all(context.temp_allocator)
@@ -461,6 +469,7 @@ game_init_window :: proc() {
 
 @(export)
 game_init :: proc() {
+	update_ok = true // Allow getting the input right after init, as we can't have errors yet
 	g = new(Game_Memory)
 
 	g^ = Game_Memory {
