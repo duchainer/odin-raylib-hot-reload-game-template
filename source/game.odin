@@ -108,17 +108,8 @@ Game_Memory :: struct {
 		is_replaying: bool,
 		replaying_prev_frame_index: int,
 	},
-	// We use double-buffer of Session_Memory, to allow looping frame again on asserts and errors
-	// This allows to return early from update and still have draw and re-run the same faulty code until fixed
-
-	// current frame memory
-	// What we WRITE from in update
-	// What we READ from in draw
-	s : Session_Memory,
-	// previous frame memory
-	// What we READ from in update
-	old_s : Session_Memory,
-
+	using current_session : Session_Memory,
+	// recording_session: Session_Memory,
 	// +1, because we don't do anything to the 0th element, it is a null element
 	recorded_input_events : [MAX_FRAME_COUNT+1]CachedInput,
 
@@ -139,6 +130,7 @@ Session_Memory :: struct {
 }
 
 g: ^Game_Memory
+// previous_g: ^Game_Memory
 
 game_camera :: proc() -> rl.Camera2D {
 	w := f32(rl.GetScreenWidth())
@@ -146,7 +138,7 @@ game_camera :: proc() -> rl.Camera2D {
 
 	return {
 		zoom = h/PIXEL_WINDOW_HEIGHT/2.5,
-		// target = pos_from_rect(g.s.player_rect),
+		// target = pos_from_rect(g.player_rect),
 		offset = { w/2 , h/2 +200 },
 	}
 }
@@ -200,7 +192,7 @@ input :: proc() -> (input: rl.Vector2){
 		game_init()
 	}
 
-	if g.old_s.lava_height >= VOLCANO_HEIGHT{
+	if g.lava_height >= VOLCANO_HEIGHT{
 		return
 	}
 
@@ -219,13 +211,13 @@ input :: proc() -> (input: rl.Vector2){
 		input.x += 1
 	}
 	// if rl.IsKeyPressed(.SPACE){
-	// 	g.s.carrots[g.old_s.last_carrot_index+1] = Carrot{
-	// 		x = g.old_s.player_rect.x + f32( g.old_s.player_rect.width ) /2 - CARROT_WIDTH/2,
+	// 	g.carrots[g.last_carrot_index+1] = Carrot{
+	// 		x = g.player_rect.x + f32( g.player_rect.width ) /2 - CARROT_WIDTH/2,
 	// 		y = 0 - CARROT_WIDTH,
 	// 		width = CARROT_WIDTH,
 	// 		height = CARROT_WIDTH,
 	// 	}
-	// 	g.s.last_carrot_index  = g.old_s.old_s.last_carrot_index  + 1
+	// 	g.last_carrot_index += 1
 	// }
 
 	input = linalg.normalize0(input)
@@ -237,44 +229,35 @@ CARROT_WIDTH :: 5.0
 update :: proc(input: rl.Vector2) -> (ok:bool) {
 	commodino_assert_message = "" // reset assert_message
 
-	// What we write and read from in the non-old Session_Memory
-	g.s.last_sheep_index = g.old_s.last_sheep_index
-	last_sheep_index := &g.s.last_sheep_index
-	g.s.last_sheep_spawn = g.old_s.last_sheep_spawn
-	last_sheep_spawn := &g.s.last_sheep_spawn
-
 	delta_time := rl.GetFrameTime()
 
 	player_speed :: 60.0
-	g.s.player_rect.x  = clamp(
-		g.old_s.player_rect.x  + input.x * delta_time * player_speed,
-		// Don't move player over the holes, we prevent falling ourselves
-		LEFT_HOLE_START_X,
-		RIGHT_HOLE_START_X-g.old_s.player_rect.width,
-	)
-	g.s.frame_time  = g.old_s.frame_time  + 1
+	g.player_rect.x += input.x * delta_time * player_speed
+	g.player_rect.y += input.y * delta_time * player_speed
+	g.player_rect.x = max(g.player_rect.x, LEFT_HOLE_START_X)
+	g.player_rect.x = min(g.player_rect.x, RIGHT_HOLE_START_X-g.player_rect.width)
+	g.frame_time += 1
 
 
-	percent_lava_on_max := g.old_s.lava_height / VOLCANO_HEIGHT
-	g.s.lava_height  = g.old_s.lava_height  + g.old_s.lava_speed * (1.1 - percent_lava_on_max)
-	g.s.lava_speed = g.old_s.lava_speed * 1.001
+	percent_lava_on_max := g.lava_height / VOLCANO_HEIGHT
+	g.lava_height += g.lava_speed * (1.1 - percent_lava_on_max)
+	g.lava_speed *= 1.001
 
-
-	if g.old_s.last_sheep_spawn > 120 {
-		g.s.sheeps[last_sheep_index^+1] = Sheep{
+	if g.last_sheep_spawn > 120 {
+		g.sheeps[g.last_sheep_index+1] = Sheep{
 			rect= rl.Rectangle{
 				-5, -20, 10, 10,
 			},
 			state=.JUMPING,
 		}
-		last_sheep_index^  = last_sheep_index^  + 1
-		last_sheep_spawn^ = 0
+		g.last_sheep_index += 1
+		g.last_sheep_spawn = 0
 	}
-	last_sheep_spawn^  = last_sheep_spawn^  + 1
-	// if last_sheep_spawn^ > 10{
-	// 	commodino_assert_message = fmt.tprintf("Too much sheeps, expected less than 10, instead got %v", last_sheep_spawn)
-	// 	return false // assert failed in update
-	// }
+	g.last_sheep_spawn += 1
+	if g.last_sheep_spawn > 10{
+		commodino_assert_message = fmt.tprintf("Too much sheeps, expected less than 10, instead got %v", g.last_sheep_spawn)
+		return false // assert failed in update
+	}
 
 	SHEEP_SPEED :: 35.0
 	SHEEP_INITIAL_JUMP_SPEED :: -60.0
@@ -283,9 +266,8 @@ update :: proc(input: rl.Vector2) -> (ok:bool) {
 	NEAR_HOLE_DISTANCE :: SHEEP_DETECTION * 1.5
 
 	// Reverse loop, to allow for unordered remove of sheeps that fell in the hole
-	sheep_loop: for i := last_sheep_index^;  i>0; i-=1 {
-		g.s.sheeps[i] = g.old_s.sheeps[i]
-		sheep := &g.s.sheeps[i]
+	sheep_loop: for i := g.last_sheep_index;  i>0; i-=1 {
+		sheep := &g.sheeps[i]
 		if sheep != {}{
 			is_sheep_over_ground := sheep.x + sheep.width > LEFT_HOLE_START_X && sheep.x < RIGHT_HOLE_START_X
 			is_sheep_near_left_hole := sheep.x < LEFT_HOLE_START_X + NEAR_HOLE_DISTANCE
@@ -296,7 +278,7 @@ update :: proc(input: rl.Vector2) -> (ok:bool) {
 					sheep.state = .FALLING
 					continue
 				}
-				player_center_pos := player_center_pos(pos_from_rect(g.old_s.player_rect))
+				player_center_pos := player_center_pos(pos_from_rect(g.player_rect))
 				sheep_center_pos := center_pos(sheep.rect)
 
 				delta_x_player_sheep := player_center_pos.x - sheep_center_pos.x
@@ -340,20 +322,18 @@ update :: proc(input: rl.Vector2) -> (ok:bool) {
 				sheep.speed.y += GRAVITY_ON_SHEEP * delta_time
 				is_sheep_deep_in_hole := sheep.y + sheep.height >= 100
 				if is_sheep_deep_in_hole {
-					g.s.lava_height  = max(
-						// Reduce lava by a sheeps worth
-						g.old_s.lava_height  - SHEEP_LAVA_WORTH,
-						// But stay above or equal to one lava_height
-						1,
-					)
+					g.lava_height -= SHEEP_LAVA_WORTH
+					if g.lava_height < 0{
+						g.lava_height = 1
+					}
 
 					// Unordered remove of sheep, by replacing by last sheep of g.sheeps
 					// Yes, if it is already the last sheep, this line does nothing, but that's alright
-					g.s.sheeps[i] = g.s.sheeps[last_sheep_index^]
+					g.sheeps[i] = g.sheeps[g.last_sheep_index]
 					// No need to clear the previous last sheep, because we will write over it when we use that slot
-					// g.sheeps[last_sheep_index] = {}
-					last_sheep_index^  = last_sheep_index^  - 1
-					g.s.count_sheep_sacrificed  = g.old_s.count_sheep_sacrificed  + 1
+					// g.sheeps[g.last_sheep_index] = {}
+					g.last_sheep_index -= 1
+					g.count_sheep_sacrificed += 1
 					continue
 				}
 			}
@@ -365,7 +345,7 @@ update :: proc(input: rl.Vector2) -> (ok:bool) {
 		}
 	}
 
-	carrot_loop: for carrot, i in g.old_s.carrots{
+	carrot_loop: for &carrot, i in g.carrots{
 		if carrot != {}{
 
 		} else if i != 0 {
@@ -402,18 +382,18 @@ draw :: proc() {
 	// rl.DrawTriangle({volcano_center_x,0},{volcano_center_x-30, VOLCANO_BASE_Y},{volcano_center_x+30, VOLCANO_BASE_Y}, rl.BROWN)
 	rl.DrawTriangle({volcano_center_x-VOLCANO_INNER_WIDTH,VOLCANO_TOP_Y},{volcano_center_x-VOLCANO_INNER_WIDTH-VOLCANO_SIDE_WIDTH, VOLCANO_BASE_Y},{volcano_center_x-VOLCANO_INNER_WIDTH, VOLCANO_BASE_Y}, rl.BROWN)
 	rl.DrawTriangle({volcano_center_x+VOLCANO_INNER_WIDTH,VOLCANO_TOP_Y},{volcano_center_x+VOLCANO_INNER_WIDTH, VOLCANO_BASE_Y},{volcano_center_x+VOLCANO_INNER_WIDTH+VOLCANO_SIDE_WIDTH, VOLCANO_BASE_Y}, rl.BROWN)
-	rl.DrawRectangleRec({volcano_center_x-VOLCANO_INNER_WIDTH, VOLCANO_BASE_Y-g.s.lava_height, VOLCANO_INNER_WIDTH*2, g.s.lava_height}, ( rl.RED/2+rl.ORANGE/2 ) )
+	rl.DrawRectangleRec({volcano_center_x-VOLCANO_INNER_WIDTH, VOLCANO_BASE_Y-g.lava_height, VOLCANO_INNER_WIDTH*2, g.lava_height}, ( rl.RED/2+rl.ORANGE/2 ) )
 
 	rl.BeginMode2D(game_camera())
 
 	rl.DrawRectangleGradientV(LEFT_HOLE_START_X, 0, RIGHT_HOLE_START_X-LEFT_HOLE_START_X, 100, rl.BROWN, rl.DARKBROWN)
 	// rl.DrawTextureEx(g.player_rect, pos_from_rect(g.player_rect), 0, 1, rl.WHITE)
 	// rl.DrawTextureEx(g.player_rect, pos_from_rect(g.player_rect), 0, 1, rl.WHITE)
-	rl.DrawRectangleRec(g.s.player_rect, rl.DARKPURPLE)
+	rl.DrawRectangleRec(g.player_rect, rl.DARKPURPLE)
 	// rl.DrawRectangleV({20, 20}, {10, 10}, rl.RED)
 
-	for i in 0..=g.s.last_sheep_index {
-		sheep := g.s.sheeps[i]
+	for i in 0..=g.last_sheep_index {
+		sheep := g.sheeps[i]
 		if sheep != {}{
 			rl.DrawRectangleRec(sheep, rl.WHITE)
 			rl.DrawRectangleLinesEx(sheep, 1, {210,210,210,255})
@@ -423,7 +403,7 @@ draw :: proc() {
 		}
 	}
 
-	carrot_loop: for &carrot, i in g.s.carrots{
+	carrot_loop: for &carrot, i in g.carrots{
 		if carrot != {}{
 			rl.DrawRectangleRec(carrot, rl.ORANGE)
 		} else if i != 0 {
@@ -435,11 +415,11 @@ draw :: proc() {
 
 	rl.BeginMode2D(ui_camera())
 
-	if g.s.lava_height >= VOLCANO_HEIGHT{
+	if g.lava_height >= VOLCANO_HEIGHT{
 		rl.DrawRectangle(30-5, 100-5, 270, 75, {100, 100, 100, 230})
 		rl.DrawText(fmt.ctprintf(
 "               GAME OVER\nSurvived %v seconds and %v frames\n  Sacrificed %v sheeps to the void\n      Press ENTER to restart",
-			g.s.frame_time/60, g.s.frame_time%60, g.s.count_sheep_sacrificed,
+			g.frame_time/60, g.frame_time%60, g.count_sheep_sacrificed,
 		), 30, 100, 15, rl.WHITE)
 
 	}
@@ -482,8 +462,6 @@ game_update :: proc() {
 
 	if update_ok {
 		input_vec = input()
-		// Swap the session memories so next frame's "old" is this frame's current
-		g.old_s, g.s = g.s, g.old_s
 	}
 	update_ok = update(input_vec)
 	// fmt.println(commodino_assert_message)
@@ -523,44 +501,43 @@ game_init :: proc() {
 
 	restart_current_session_memory()
 	game_hot_reloaded(g)
-	g.old_s = g.s
 }
 
 restart_current_session_memory :: proc(){
-	g.s = {}
-	g.old_s = {}
-	g.s.sheeps[1] = {
+	g.current_session = {}
+	g.sheeps[1] = {
 		rect = {200, -10, 10, 10,},
 		input = 1,
 		speed = {0, 0},
 		last_dir_decision = 0,
 	}
-	g.s.last_sheep_index  = g.old_s.last_sheep_index  + 1
+	g.last_sheep_index += 1
 
-	g.s.sheeps[2] = {
+	g.sheeps[2] = {
 		rect = {-200, -10, 10, 10,},
 		input = -1,
 		speed = {0, 0},
 		last_dir_decision = 0,
 	}
-	g.s.last_sheep_index  = g.old_s.last_sheep_index  + 1
+	g.last_sheep_index += 1
 
-	g.s.sheeps[3] = {
+	g.sheeps[3] = {
 		rect = {-150, -10, 10, 10,},
 		input = -1,
 		speed = {0, 0},
 		last_dir_decision = 0,
 	}
-	g.s.last_sheep_index  = g.old_s.last_sheep_index  + 1
+	g.last_sheep_index += 1
 
-	g.s.last_carrot_index = 0
-	g.s.carrots = {}
+	g.last_carrot_index = 0
+	g.carrots = {}
 
-	g.s.player_rect = {230, 0, 10, 15}
-	g.s.player_rect.y = -f32(g.s.player_rect.height)
+	g.player_rect = {230, 0, 10, 15}
+	g.player_rect.y = -f32(g.player_rect.height)
 
-	g.s.lava_height = VOLCANO_HEIGHT/3.5
-	g.s.lava_speed = 0.25
+	g.lava_height = VOLCANO_HEIGHT/3.5
+	g.lava_speed = 0.25
+
 }
 
 @(export)
@@ -602,7 +579,7 @@ game_hot_reloaded :: proc(mem: rawptr, is_replaying: bool = false) {
 	if g.commodino.is_replaying{
 		// Restart the game
 		restart_current_session_memory()
-		g.old_s = g.s
+
 		// We start counting from 0, check always this and next frame_index
 		g.commodino.replaying_prev_frame_index = 0
 	}
@@ -643,8 +620,8 @@ center_pos :: proc(rect: rl.Rectangle) -> rl.Vector2{
 
 player_center_pos :: proc(player_pos: rl.Vector2) -> rl.Vector2{
 	return {
-		player_pos.x + f32( g.old_s.player_rect.width )/2,
-		player_pos.y + f32( g.old_s.player_rect.height )/2,
+		player_pos.x + f32( g.player_rect.width )/2,
+		player_pos.y + f32( g.player_rect.height )/2,
 	}
 }
 
