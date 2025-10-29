@@ -36,30 +36,31 @@ import "core:fmt"
 _ :: fmt
 import "core:math"
 import "core:math/rand"
+import "base:runtime"
 import "core:math/linalg"
 import rl "vendor:raylib"
 
-// // For debugging traps
-// import "core:sys/posix"
+// For debugging traps
+import "core:sys/posix"
 
-// // To allow debugging tests:
-// //  1. add a call to breakpoint()
-// //  2. call the test or tests from main()
-// //  3. `odin run tests/ -debug -o:none`
-// //  4. `gdb tests.bin`
-// //  5. `run`
-// //  6. `next` a few times until you are out of th breakpoint() proc
-// //  7. profit
-// //
-// //  Bonus:
-// //  you can use gdb's:
-// //   - `display` to see the state of expression on every break,
-// //   - `watch` break on any write
-// //   - `rwatch` break on any read
-// //   - `awatch` break on any read or write
-// breakpoint :: proc () {
-// 	posix.kill(posix.getpid(), .SIGTRAP)
-// }
+// To allow debugging tests:
+//  1. add a call to breakpoint()
+//  2. call the test or tests from main()
+//  3. `odin run tests/ -debug -o:none`
+//  4. `gdb tests.bin`
+//  5. `run`
+//  6. `next` a few times until you are out of th breakpoint() proc
+//  7. profit
+//
+//  Bonus:
+//  you can use gdb's:
+//   - `display` to see the state of expression on every break,
+//   - `watch` break on any write
+//   - `rwatch` break on any read
+//   - `awatch` break on any read or write
+breakpoint :: proc () {
+	posix.kill(posix.getpid(), .SIGTRAP)
+}
 
 
 
@@ -442,12 +443,22 @@ draw :: proc() {
 	rl.EndDrawing()
 }
 
+prevent_rng_call :: proc(data: rawptr, mode: runtime.Random_Generator_Mode, p: []byte){
+	fmt.eprintln("ERROR: context.random_generator should not be used! Pass generator explicitly.")
+	breakpoint()
+}
 
 update_ok : bool
 input_vec : rl.Vector2
 
 @(export)
 game_update :: proc() {
+	// Prevent calling the context.random_generator,
+	// instead we want our system-specifig rng
+	context.random_generator = runtime.Random_Generator{
+		procedure = prevent_rng_call,
+		data = nil,
+	}
 
 	if update_ok {
 		input_vec = input()
