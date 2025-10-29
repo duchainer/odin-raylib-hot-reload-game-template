@@ -99,6 +99,8 @@ CachedInput :: struct {
 	keys : [UsedKeysEnum]KeyState,
 }
 
+commodino_assert_message : string
+
 Game_Memory :: struct {
 	run: bool,
 	commodino : struct {
@@ -173,9 +175,7 @@ player_input_enter_just_pressed:: proc() -> bool {
 	}
 }
 
-SHEEP_LAVA_WORTH :: 75
-CARROT_WIDTH :: 5.0
-update :: proc() {
+input :: proc() -> (input: rl.Vector2){
 	g.commodino.replaying_prev_frame_index += 1
 	g.recorded_input_events[g.commodino.replaying_prev_frame_index].keys = {
 		.LEFT =  { pressed = rl.IsKeyDown(.LEFT) || rl.IsKeyDown(.A) },
@@ -193,7 +193,6 @@ update :: proc() {
 	}
 	delta_time := rl.GetFrameTime()
 
-	input: rl.Vector2
 
 	// if rl.IsKeyDown(.UP) || rl.IsKeyDown(.W) {
 	// 	input.y -= 1
@@ -219,6 +218,14 @@ update :: proc() {
 	// }
 
 	input = linalg.normalize0(input)
+	return input
+}
+
+SHEEP_LAVA_WORTH :: 75
+CARROT_WIDTH :: 5.0
+update :: proc(input: rl.Vector2) -> (ok:bool) {
+	commodino_assert_message = "" // reset assert_message
+
 	player_speed :: 60.0
 	g.player_rect.x += input.x * delta_time * player_speed
 	g.player_rect.y += input.y * delta_time * player_speed
@@ -242,6 +249,10 @@ update :: proc() {
 		g.last_sheep_spawn = 0
 	}
 	g.last_sheep_spawn += 1
+	if g.last_sheep_spawn > 5{
+		commodino_assert_message = "Too much sheeps, expected less than 5"
+		return false // assert failed in update
+	}
 
 	SHEEP_SPEED :: 35.0
 	SHEEP_INITIAL_JUMP_SPEED :: -60.0
@@ -340,6 +351,7 @@ update :: proc() {
 	if rl.IsKeyPressed(.LEFT_CONTROL) && rl.IsKeyPressed(.LEFT_SHIFT) && rl.IsKeyPressed(.ESCAPE) {
 		g.run = false
 	}
+	return true
 }
 
 volcano_center_x : f32
@@ -411,7 +423,10 @@ draw :: proc() {
 	// cleared at the end of the frame by the main application, meaning inside
 	// `main_hot_reload.odin`, `main_release.odin` or `main_web_entry.odin`.
 	// when ODIN_DEBUG {
-	rl.DrawText(fmt.ctprintf("replaying_prev_frame_index: %v,\ng.commodino: %#v",g.commodino.replaying_prev_frame_index, g.commodino), 5, 5, 8, rl.WHITE)
+	if commodino_assert_message != ""{
+		rl.DrawText(fmt.ctprintf("assert_message:%v, \nreplaying_prev_frame_index: %v,\ng.commodino: %#v", commodino_assert_message, g.commodino.replaying_prev_frame_index, g.commodino), 5, 5, 8, rl.WHITE)
+
+	}
 		// rl.DrawText(fmt.ctprintf("frame_time: %v\nplayer_rect: %v\nlast_carrot_index: %v\nplayer_texture.width, height: %v, %v", g.frame_time, g.player_rect, g.last_carrot_index, g.player_rect.width, g.player_rect.height), 5, 5, 8, rl.WHITE)
 		// if g.sheeps[1] != {} {
 		// 	rl.DrawText(fmt.ctprintf("g.sheeps[1]: %#v", g.sheeps[1]), 200, 5, 8, rl.WHITE)
@@ -425,8 +440,10 @@ draw :: proc() {
 
 @(export)
 game_update :: proc() {
-	update()
-	draw()
+	input()
+	for err := update(); err{
+		draw(err)
+	}
 
 	// Everything on tracking allocator is valid until end-of-frame.
 	free_all(context.temp_allocator)
