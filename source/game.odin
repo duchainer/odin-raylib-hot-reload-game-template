@@ -253,8 +253,8 @@ update :: proc(input: rl.Vector2) -> (ok:bool) {
 		g.last_sheep_spawn = 0
 	}
 	g.last_sheep_spawn += 1
-	if g.last_sheep_spawn > 5{
-		commodino_assert_message = "Too much sheeps, expected less than 5"
+	if g.last_sheep_spawn > 10{
+		commodino_assert_message = fmt.tprintf("Too much sheeps, expected less than 10, instead got %v", g.last_sheep_spawn)
 		return false // assert failed in update
 	}
 
@@ -480,8 +480,13 @@ game_init :: proc() {
 
 		// You can put textures, sounds and music in the `assets` folder. Those
 		// files will be part any release or web build.
-
 	}
+	g.sheep_time_rand_gen_state = rand.create(rand.uint64())
+	g.sheep_time_rand_gen = rand.default_random_generator(&g.sheep_time_rand_gen_state)
+
+	g.sheep_dir_rand_gen_state = rand.create(rand.uint64())
+	g.sheep_dir_rand_gen = rand.default_random_generator(&g.sheep_dir_rand_gen_state)
+
 
 	restart_current_session_memory()
 	game_hot_reloaded(g)
