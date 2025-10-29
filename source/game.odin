@@ -111,7 +111,9 @@ Game_Memory :: struct {
 	// recording_session: Session_Memory,
 	// +1, because we don't do anything to the 0th element, it is a null element
 	recorded_input_events : [MAX_FRAME_COUNT+1]CachedInput,
-	sheep_time_rand_gen, sheep_dir_rand_gen :
+
+	sheep_time_rand_gen_state, sheep_dir_rand_gen_state : rand.Default_Random_State,
+	sheep_time_rand_gen, sheep_dir_rand_gen : runtime.Random_Generator,
 }
 Session_Memory :: struct {
 	frame_time: int,
@@ -283,8 +285,8 @@ update :: proc(input: rl.Vector2) -> (ok:bool) {
 
 
 				if sheep.last_dir_decision > 120 || is_sheep_near_left_hole || is_sheep_near_right_hole{
-					rand_time := rand.uint32(sheep_time_rand_gen) % 90
-					rand_num := rand.uint32( sheep_dir_rand_gen) % 3
+					rand_time := rand.uint32(g.sheep_time_rand_gen) % 90
+					rand_num := rand.uint32(g.sheep_dir_rand_gen) % 3
 					// We have an input between of -1, 0, or  1
 					sheep.input =  f32(rand_num) - 1
 					if ( sheep.input == -1 && is_sheep_near_left_hole ) || ( sheep.input == 1 && is_sheep_near_right_hole ) {
