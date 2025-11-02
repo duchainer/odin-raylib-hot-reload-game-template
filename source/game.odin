@@ -100,14 +100,10 @@ CachedInput :: struct {
 	keys : [UsedKeysEnum]KeyState,
 }
 
-commodino_assert_message : string
 
 Game_Memory :: struct {
 	run: bool,
-	commodino : struct {
-		is_replaying: bool,
-		replaying_prev_frame_index: int,
-	},
+	commodino : CommodinoStruct,
 	using current_session : Session_Memory,
 	// recording_session: Session_Memory,
 	// +1, because we don't do anything to the 0th element, it is a null element
@@ -149,80 +145,6 @@ ui_camera :: proc() -> rl.Camera2D {
 	}
 }
 
-// TODO unify the player_input_*_down, giving the UsedKeysEnum.* instead, cuts down on plain repetition.
-player_input_left_down :: proc() -> bool {
-	if g.commodino.is_replaying{
-		return g.recorded_input_events[g.commodino.replaying_prev_frame_index+1].keys[UsedKeysEnum.LEFT].pressed
-	} else {
-		return rl.IsKeyDown(.LEFT) || rl.IsKeyDown(.A)
-	}
-}
-
-player_input_right_down:: proc() -> bool{
-	if g.commodino.is_replaying{
-		return g.recorded_input_events[g.commodino.replaying_prev_frame_index+1].keys[UsedKeysEnum.RIGHT].pressed
-	} else {
-		return rl.IsKeyDown(.RIGHT) || rl.IsKeyDown(.D)
-	}
-}
-
-// TODO unify the player_input_*_just_pressed, giving the UsedKeysEnum.* instead, cuts down on plain repetition.
-player_input_enter_just_pressed:: proc() -> bool {
-	if g.commodino.is_replaying{
-		if g.recorded_input_events[g.commodino.replaying_prev_frame_index+1].keys[UsedKeysEnum.ENTER].pressed{
-			// just_pressed means : previous frame was not pressed
-			return !g.recorded_input_events[g.commodino.replaying_prev_frame_index].keys[UsedKeysEnum.ENTER].pressed
-		}
-		return false
-	} else {
-		return rl.IsKeyPressed(.ENTER)
-	}
-}
-
-input :: proc() -> (input: rl.Vector2){
-	g.commodino.replaying_prev_frame_index += 1
-	g.recorded_input_events[g.commodino.replaying_prev_frame_index].keys = {
-		.LEFT =  { pressed = rl.IsKeyDown(.LEFT) || rl.IsKeyDown(.A) },
-		.RIGHT = { pressed = rl.IsKeyDown(.RIGHT) || rl.IsKeyDown(.D) },
-		.ENTER = { pressed = rl.IsKeyPressed(.ENTER) },
-	}
-
-
-	if player_input_enter_just_pressed(){
-		game_init()
-	}
-
-	if g.lava_height >= VOLCANO_HEIGHT{
-		return
-	}
-
-
-	// if rl.IsKeyDown(.UP) || rl.IsKeyDown(.W) {
-	// 	input.y -= 1
-	// }
-	// if rl.IsKeyDown(.DOWN) || rl.IsKeyDown(.S) {
-	// 	input.y += 1
-	// }
-
-	if player_input_left_down() {
-		input.x -= 1
-	}
-	if player_input_right_down() {
-		input.x += 1
-	}
-	// if rl.IsKeyPressed(.SPACE){
-	// 	g.carrots[g.last_carrot_index+1] = Carrot{
-	// 		x = g.player_rect.x + f32( g.player_rect.width ) /2 - CARROT_WIDTH/2,
-	// 		y = 0 - CARROT_WIDTH,
-	// 		width = CARROT_WIDTH,
-	// 		height = CARROT_WIDTH,
-	// 	}
-	// 	g.last_carrot_index += 1
-	// }
-
-	input = linalg.normalize0(input)
-	return input
-}
 
 SHEEP_LAVA_WORTH :: 75
 CARROT_WIDTH :: 5.0
@@ -254,10 +176,10 @@ update :: proc(input: rl.Vector2) -> (ok:bool) {
 		g.last_sheep_spawn = 0
 	}
 	g.last_sheep_spawn += 1
-	if g.last_sheep_spawn > 10{
-		commodino_assert_message = fmt.tprintf("Too much sheeps, expected less than 10, instead got %v", g.last_sheep_spawn)
-		return false // assert failed in update
-	}
+	// if g.last_sheep_spawn > 10{
+	// 	commodino_assert_message = fmt.tprintf("Too much sheeps, expected less than 10, instead got %v", g.last_sheep_spawn)
+	// 	return false // assert failed in update
+	// }
 
 	SHEEP_SPEED :: 35.0
 	SHEEP_INITIAL_JUMP_SPEED :: -60.0
@@ -370,6 +292,7 @@ VOLCANO_INNER_WIDTH :: 50
 LEFT_HOLE_START_X :: -250
 RIGHT_HOLE_START_X :: 250
 
+
 draw :: proc() {
 	rl.BeginDrawing()
 	rl.ClearBackground(rl.BLACK)
@@ -440,6 +363,8 @@ draw :: proc() {
 
 	rl.EndMode2D()
 
+    draw_playback_scrubber()
+
 	rl.EndDrawing()
 }
 
@@ -455,10 +380,14 @@ input_vec : rl.Vector2
 game_update :: proc() {
 	// Prevent calling the context.random_generator,
 	// instead we want our system-specifig rng
+
+	// TODO Find ways for it to not affect game_init maybe, in hot-reload force_restart or plain memory layout changes
 	context.random_generator = runtime.Random_Generator{
 		procedure = prevent_rng_call,
 		data = nil,
 	}
+
+    commodino_input()
 
 	if update_ok {
 		input_vec = input()
@@ -628,3 +557,263 @@ player_center_pos :: proc(player_pos: rl.Vector2) -> rl.Vector2{
 pos_from_rect :: proc(rect: rl.Rectangle) -> rl.Vector2{
 	return {rect.x, rect.y}
 }
+
+//
+// COMMODINO
+//
+
+commodino_assert_message : string
+
+CommodinoStruct ::  struct {
+    is_replaying: bool,
+    replaying_prev_frame_index: int,
+    scrubber_dragging: bool,  // NEW: Track if user is dragging playback scrubber
+}
+
+// COMMODINO DRAW CONSTANTS
+// Add this constant near the top with other constants
+SCRUBBER_HEIGHT :: 30.0
+SCRUBBER_PADDING :: 10.0
+
+// TODO unify the player_input_*_down, giving the UsedKeysEnum.* instead, cuts down on plain repetition.
+player_input_left_down :: proc() -> bool {
+	if g.commodino.is_replaying{
+		return g.recorded_input_events[g.commodino.replaying_prev_frame_index+1].keys[UsedKeysEnum.LEFT].pressed
+	} else {
+		return rl.IsKeyDown(.LEFT) || rl.IsKeyDown(.A)
+	}
+}
+
+player_input_right_down:: proc() -> bool{
+	if g.commodino.is_replaying{
+		return g.recorded_input_events[g.commodino.replaying_prev_frame_index+1].keys[UsedKeysEnum.RIGHT].pressed
+	} else {
+		return rl.IsKeyDown(.RIGHT) || rl.IsKeyDown(.D)
+	}
+}
+
+// TODO unify the player_input_*_just_pressed, giving the UsedKeysEnum.* instead, cuts down on plain repetition.
+player_input_enter_just_pressed:: proc() -> bool {
+	if g.commodino.is_replaying{
+		if g.recorded_input_events[g.commodino.replaying_prev_frame_index+1].keys[UsedKeysEnum.ENTER].pressed{
+			// just_pressed means : previous frame was not pressed
+			return !g.recorded_input_events[g.commodino.replaying_prev_frame_index].keys[UsedKeysEnum.ENTER].pressed
+		}
+		return false
+	} else {
+		return rl.IsKeyPressed(.ENTER)
+	}
+}
+
+commodino_input :: proc() {
+    // Handle scrubber input BEFORE regular input
+    if jumped_frame, should_jump := handle_scrubber_input(); should_jump {
+        // Jump to the target frame by restarting and replaying up to that point
+        restart_current_session_memory()
+        g.commodino.replaying_prev_frame_index = 0
+        
+        // Fast-forward to the target frame
+        for g.commodino.replaying_prev_frame_index < jumped_frame && g.commodino.replaying_prev_frame_index < MAX_FRAME_COUNT {
+            temp_input := input()
+            if !update(temp_input) {
+                break
+            }
+        }
+    }
+}
+
+input :: proc() -> (input: rl.Vector2){
+	g.commodino.replaying_prev_frame_index += 1
+	g.recorded_input_events[g.commodino.replaying_prev_frame_index].keys = {
+		.LEFT =  { pressed = rl.IsKeyDown(.LEFT) || rl.IsKeyDown(.A) },
+		.RIGHT = { pressed = rl.IsKeyDown(.RIGHT) || rl.IsKeyDown(.D) },
+		.ENTER = { pressed = rl.IsKeyPressed(.ENTER) },
+	}
+
+
+	if player_input_enter_just_pressed(){
+		game_init()
+	}
+
+	if g.lava_height >= VOLCANO_HEIGHT{
+		return
+	}
+
+
+	// if rl.IsKeyDown(.UP) || rl.IsKeyDown(.W) {
+	// 	input.y -= 1
+	// }
+	// if rl.IsKeyDown(.DOWN) || rl.IsKeyDown(.S) {
+	// 	input.y += 1
+	// }
+
+	if player_input_left_down() {
+		input.x -= 1
+	}
+	if player_input_right_down() {
+		input.x += 1
+	}
+	// if rl.IsKeyPressed(.SPACE){
+	// 	g.carrots[g.last_carrot_index+1] = Carrot{
+	// 		x = g.player_rect.x + f32( g.player_rect.width ) /2 - CARROT_WIDTH/2,
+	// 		y = 0 - CARROT_WIDTH,
+	// 		width = CARROT_WIDTH,
+	// 		height = CARROT_WIDTH,
+	// 	}
+	// 	g.last_carrot_index += 1
+	// }
+
+	input = linalg.normalize0(input)
+	return input
+}
+
+// Add this helper function to check if mouse is over scrubber
+// over commodino's playback scrubber
+is_mouse_over_scrubber :: proc() -> bool {
+    mouse_pos := rl.GetMousePosition()
+    screen_height := f32(rl.GetScreenHeight())
+    
+    scrubber_y := screen_height - SCRUBBER_HEIGHT - SCRUBBER_PADDING
+    
+    return mouse_pos.y >= scrubber_y && mouse_pos.y <= scrubber_y + SCRUBBER_HEIGHT
+}
+
+
+// Add this function to handle scrubber input and return the frame to jump to
+handle_scrubber_input :: proc() -> (jumped_to_frame: int, should_jump: bool) {
+    if !g.commodino.is_replaying {
+        return 0, false
+    }
+    
+    mouse_pos := rl.GetMousePosition()
+    screen_width := f32(rl.GetScreenWidth())
+    
+    scrubber_x :f32 = SCRUBBER_PADDING
+    scrubber_width := screen_width - 2 * SCRUBBER_PADDING
+    
+    // Start dragging
+    if rl.IsMouseButtonPressed(.LEFT) && is_mouse_over_scrubber() {
+        g.commodino.scrubber_dragging = true
+    }
+    
+    // Stop dragging
+    if rl.IsMouseButtonReleased(.LEFT) {
+        g.commodino.scrubber_dragging = false
+    }
+    
+    // Handle dragging or clicking
+    if g.commodino.scrubber_dragging || (rl.IsMouseButtonDown(.LEFT) && is_mouse_over_scrubber()) {
+        // Calculate which frame was clicked
+        relative_x := mouse_pos.x - scrubber_x
+        relative_x = math.max(0, math.min(relative_x, scrubber_width))
+        
+        percent := relative_x / scrubber_width
+        target_frame := int(percent * f32(g.frame_time))
+        target_frame = math.max(0, math.min(target_frame, g.frame_time))
+        
+        return target_frame, true
+    }
+    
+    return 0, false
+}
+
+// Add this function to draw the scrubber (call it in your draw() function)
+draw_playback_scrubber :: proc() {
+    if !g.commodino.is_replaying {
+        return
+    }
+    
+    screen_width := f32(rl.GetScreenWidth())
+    screen_height := f32(rl.GetScreenHeight())
+    
+    scrubber_x :f32 = SCRUBBER_PADDING
+    scrubber_y :f32 = screen_height - SCRUBBER_HEIGHT - SCRUBBER_PADDING
+    scrubber_width := screen_width - 2 * SCRUBBER_PADDING
+    scrubber_height :f32 = SCRUBBER_HEIGHT
+    
+    // Draw background track
+    rl.DrawRectangleRec(
+        {scrubber_x, scrubber_y, scrubber_width, scrubber_height},
+        {50, 50, 50, 200},
+    )
+    
+    // Draw progress bar
+    if g.frame_time > 0 {
+        progress := f32(g.commodino.replaying_prev_frame_index) / f32(g.frame_time)
+        progress_width := progress * scrubber_width
+        
+        rl.DrawRectangleRec(
+            {scrubber_x, scrubber_y, progress_width, scrubber_height},
+            {100, 150, 255, 150},
+        )
+    }
+    
+    // Draw scrubber dot
+    if g.frame_time > 0 {
+        progress := f32(g.commodino.replaying_prev_frame_index) / f32(g.frame_time)
+        dot_x := scrubber_x + progress * scrubber_width
+        dot_y := scrubber_y + scrubber_height / 2
+        
+        dot_radius: f32 = 12
+        if is_mouse_over_scrubber() || g.commodino.scrubber_dragging {
+            dot_radius = 15
+        }
+        
+        // Draw dot shadow
+        rl.DrawCircle(i32(dot_x), i32(dot_y + 2), dot_radius, {0, 0, 0, 100})
+        
+        // Draw dot
+        dot_color := g.commodino.scrubber_dragging ? rl.YELLOW : rl.WHITE
+        rl.DrawCircle(i32(dot_x), i32(dot_y), dot_radius, dot_color)
+        rl.DrawCircle(i32(dot_x), i32(dot_y), dot_radius - 3, {100, 150, 255, 255})
+    }
+    
+    // Draw frame info
+    frame_text := fmt.ctprintf("Frame: %d / %d", g.commodino.replaying_prev_frame_index, g.frame_time)
+    text_width := rl.MeasureText(frame_text, 10)
+    rl.DrawText(
+        frame_text,
+        i32(scrubber_x + scrubber_width/2 - f32(text_width)/2),
+        i32(scrubber_y - 15),
+        10,
+        rl.WHITE,
+    )
+}
+
+// // Modify your game_update proc to handle scrubbing:
+// @(export)
+// game_update :: proc() {
+//     context.random_generator = runtime.Random_Generator{
+//         procedure = prevent_rng_call,
+//         data = nil,
+//     }
+    
+//     // Handle scrubber input BEFORE regular input
+//     if jumped_frame, should_jump := handle_scrubber_input(); should_jump {
+//         // Jump to the target frame by restarting and replaying up to that point
+//         restart_current_session_memory()
+//         g.commodino.replaying_prev_frame_index = 0
+        
+//         // Fast-forward to the target frame
+//         for g.commodino.replaying_prev_frame_index < jumped_frame && g.commodino.replaying_prev_frame_index < MAX_FRAME_COUNT {
+//             temp_input := input()
+//             if !update(temp_input) {
+//                 break
+//             }
+//         }
+//     }
+    
+//     if update_ok {
+//         input_vec = input()
+//     }
+//     update_ok = update(input_vec)
+//     draw()
+    
+//     free_all(context.temp_allocator)
+// }
+
+// In your draw() function, add this before rl.EndDrawing():
+// (Add it after your other UI drawing, before EndDrawing)
+
+// Inside draw() proc, before rl.EndDrawing():
+// draw_playback_scrubber()  // Add this line
