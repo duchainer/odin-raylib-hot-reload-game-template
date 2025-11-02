@@ -387,7 +387,26 @@ game_update :: proc() {
 		data = nil,
 	}
 
-    commodino_input()
+    // Handle scrubber input BEFORE regular input
+    if jumped_frame, pressed_or_just_released := handle_scrubber_input(); pressed_or_just_released {
+                // Jump to the target frame by restarting and replaying up to that point
+        restart_current_session_memory()
+        g.commodino.replaying_prev_frame_index = 0
+        
+        // Fast-forward to the target frame
+        for g.commodino.replaying_prev_frame_index < jumped_frame && g.commodino.replaying_prev_frame_index < MAX_FRAME_COUNT {
+            temp_input := input()
+            if !update(temp_input) {
+                break
+            }
+        }
+        if g.commodino.scrubber_dragging {
+            // if we have not released the scrub, then don't carry on the simulation, but do draw()
+            
+            draw()
+            return
+        }
+    }
 
 	if update_ok {
 		input_vec = input()
@@ -605,23 +624,6 @@ player_input_enter_just_pressed:: proc() -> bool {
 	}
 }
 
-commodino_input :: proc() {
-    // Handle scrubber input BEFORE regular input
-    if jumped_frame, should_jump := handle_scrubber_input(); should_jump {
-        // Jump to the target frame by restarting and replaying up to that point
-        restart_current_session_memory()
-        g.commodino.replaying_prev_frame_index = 0
-        
-        // Fast-forward to the target frame
-        for g.commodino.replaying_prev_frame_index < jumped_frame && g.commodino.replaying_prev_frame_index < MAX_FRAME_COUNT {
-            temp_input := input()
-            if !update(temp_input) {
-                break
-            }
-        }
-    }
-}
-
 input :: proc() -> (input: rl.Vector2){
 	g.commodino.replaying_prev_frame_index += 1
 	g.recorded_input_events[g.commodino.replaying_prev_frame_index].keys = {
@@ -680,8 +682,9 @@ is_mouse_over_scrubber :: proc() -> bool {
 
 
 // Add this function to handle scrubber input and return the frame to jump to
-handle_scrubber_input :: proc() -> (jumped_to_frame: int, should_jump: bool) {
-    if !g.commodino.is_replaying {
+handle_scrubber_input :: proc() -> (jumped_to_frame: int, pressed_or_just_released: bool) {
+    // Allow scrubbing at any time if we have recorded frames
+    if g.frame_time <= 0 {
         return 0, false
     }
     
