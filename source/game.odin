@@ -498,11 +498,13 @@ restart_current_session_memory :: proc(){
 	g.current_session = {}
 
     sheep_time_rand_gen_state_seed := rand.uint64()
+    // g.commodino.sheep_time_rand_gen_state_seed = sheep_time_rand_gen_state_seed
 
 	g.sheep_time_rand_gen_state = rand.create(seed)
 	g.sheep_time_rand_gen = rand.default_random_generator(&g.sheep_time_rand_gen_state)
 
     sheep_dir_rand_gen_state_seed = rand.uint64()
+    // g.commodino.sheep_dir_rand_gen_state_seed = sheep_dir_rand_gen_state_seed
 
 	g.sheep_dir_rand_gen_state = rand.create(sheep_dir_rand_gen_state_seed)
 	g.sheep_dir_rand_gen = rand.default_random_generator(&g.sheep_dir_rand_gen_state)
