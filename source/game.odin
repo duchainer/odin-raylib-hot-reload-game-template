@@ -426,8 +426,7 @@ draw :: proc() {
 	// `main_hot_reload.odin`, `main_release.odin` or `main_web_entry.odin`.
 	// when ODIN_DEBUG {
 	if commodino_assert_message != ""{
-		rl.DrawText(fmt.ctprintf("assert_message:%v, \nreplaying_prev_frame_index: %v,\ng.commodino: %#v", commodino_assert_message, g.commodino.replaying_prev_frame_index, g.commodino), 5, 5, 8, rl.WHITE)
-
+		rl.DrawText(fmt.ctprintf("assert_message:\"%v\", \nreplaying_prev_frame_index: %v,\ng.commodino.is_replaying: %#v,\ng.commodino.is_dragging_playback_scrubber:%v,\n", commodino_assert_message, g.commodino.replaying_prev_frame_index, g.commodino.is_replaying, g.commodino.is_dragging_playback_scrubber), 5, 5, 8, rl.WHITE)
 	}
 		// rl.DrawText(fmt.ctprintf("frame_time: %v\nplayer_rect: %v\nlast_carrot_index: %v\nplayer_texture.width, height: %v, %v", g.frame_time, g.player_rect, g.last_carrot_index, g.player_rect.width, g.player_rect.height), 5, 5, 8, rl.WHITE)
 		// if g.sheeps[1] != {} {
