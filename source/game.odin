@@ -175,12 +175,45 @@ player_input_enter_just_pressed:: proc() -> bool {
 }
 
 input :: proc() -> (input: rl.Vector2){
-	g.commodino.replaying_prev_frame_index += 1
-	g.recorded_input_events[g.commodino.replaying_prev_frame_index].keys = {
-		.LEFT =  { pressed = rl.IsKeyDown(.LEFT) || rl.IsKeyDown(.A) },
-		.RIGHT = { pressed = rl.IsKeyDown(.RIGHT) || rl.IsKeyDown(.D) },
-		.ENTER = { pressed = rl.IsKeyPressed(.ENTER) },
-	}
+
+        mouse_pos := rl.GetMousePosition()
+    // commodino_input :: proc() {
+        if rl.IsMouseButtonPressed(.LEFT){
+            if mouse_pos.y > 0 && mouse_pos.y < SCRUBBER_HEIGHT - SCRUBBER_PADDING {
+                // If we are clicking inside the playback/recording scrubber
+                g.commodino.is_dragging_playback_scrubber = true
+                g.commodino.target_frame_index = int(mouse_pos.x / f32(rl.GetScreenWidth())) * g.commodino.recorded_input_events_count
+                return
+            }
+        }
+        if g.commodino.is_dragging_playback_scrubber{
+            if !rl.IsMouseButtonDown(.LEFT){
+                g.commodino.is_dragging_playback_scrubber = false
+            }
+            g.commodino.target_frame_index = int(mouse_pos.x / f32(rl.GetScreenWidth())) * g.commodino.recorded_input_events_count
+        }
+    // }
+    // commodino_input()
+
+    if g.commodino.is_replaying {
+        g.commodino.replaying_prev_frame_index += 1
+        // We read from g.commodino.recorded_input_events in player_input_* procs
+
+        // g.commodino.recorded_input_events[g.commodino.].keys = {
+        //     .LEFT =  { pressed = rl.IsKeyDown(.LEFT) || rl.IsKeyDown(.A) },
+        //     .RIGHT = { pressed = rl.IsKeyDown(.RIGHT) || rl.IsKeyDown(.D) },
+        //     .ENTER = { pressed = rl.IsKeyPressed(.ENTER) },
+        // }
+    } else {
+       // We are either replaying OR Recording 
+
+        g.commodino.recorded_input_events_count += 1
+        g.commodino.recorded_input_events[g.commodino.recorded_input_events_count].keys = {
+            .LEFT =  { pressed = rl.IsKeyDown(.LEFT) || rl.IsKeyDown(.A) },
+            .RIGHT = { pressed = rl.IsKeyDown(.RIGHT) || rl.IsKeyDown(.D) },
+            .ENTER = { pressed = rl.IsKeyPressed(.ENTER) },
+        }
+    }
 
 
 	if player_input_enter_just_pressed(){
@@ -447,6 +480,14 @@ prevent_rng_call :: proc(data: rawptr, mode: runtime.Random_Generator_Mode, p: [
 update_ok : bool
 input_vec : rl.Vector2
 
+Update_State :: enum {
+    PLAYING,
+    SCRUBBING,
+    REPLAYING,
+    REPLAY_UNTIL_ASSERT_FIXED,
+}
+update_state : Update_State
+
 @(export)
 game_update :: proc() {
 	// Prevent calling the context.random_generator,
@@ -456,12 +497,36 @@ game_update :: proc() {
 		data = nil,
 	}
 
-	if update_ok {
-		input_vec = input()
-	}
-	update_ok = update(input_vec)
+    switch update_state {
+    case .PLAYING:
+            if g.commodino.is_dragging_playback_scrubber{
+                update_state = .SCRUBBING
+                g.commodino.replaying_prev_frame_index = 0
+                break
+            } 
+            if update_ok {
+                input_vec = input()
+            }
+            _ = update(input_vec)
+    case .SCRUBBING:
+        // If still scrubbing, don't generate more frames than needed, and draw at the end of this frame
+        for i:=g.commodino.replaying_prev_frame_index; i <= g.commodino.target_frame_index; i+=1 {
+            input_vec = input()
+            _ = update(input_vec)
+        }
+
+        draw()
+        
+        // TODO Have the simulation pause to draw if we are near the FPS limit or something, maybe just draw every Xth frame?
+        // If no longer scrubbing, go to replaying for next frame, as we now want to continue looking at the game
+    case .REPLAYING:
+    case .REPLAY_UNTIL_ASSERT_FIXED:
+    }
+
 	// fmt.println(commodino_assert_message)
 	draw()
+
+    // if !update_ok do update_state = .REPLAY_UNTIL_ASSERT_FIXED
 
 	// Everything on tracking allocator is valid until end-of-frame.
 	free_all(context.temp_allocator)
