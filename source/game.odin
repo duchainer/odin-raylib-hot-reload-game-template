@@ -100,18 +100,13 @@ CachedInput :: struct {
 	keys : [UsedKeysEnum]KeyState,
 }
 
-commodino_assert_message : string
 
 Game_Memory :: struct {
 	run: bool,
-	commodino : struct {
-		is_replaying: bool,
-		replaying_prev_frame_index: int,
-	},
+	commodino : CommodinoStruct,
 	using current_session : Session_Memory,
 	// recording_session: Session_Memory,
 	// +1, because we don't do anything to the 0th element, it is a null element
-	recorded_input_events : [MAX_FRAME_COUNT+1]CachedInput,
 
 	sheep_time_rand_gen_state, sheep_dir_rand_gen_state : rand.Default_Random_State,
 	sheep_time_rand_gen, sheep_dir_rand_gen : runtime.Random_Generator,
@@ -152,7 +147,7 @@ ui_camera :: proc() -> rl.Camera2D {
 // TODO unify the player_input_*_down, giving the UsedKeysEnum.* instead, cuts down on plain repetition.
 player_input_left_down :: proc() -> bool {
 	if g.commodino.is_replaying{
-		return g.recorded_input_events[g.commodino.replaying_prev_frame_index+1].keys[UsedKeysEnum.LEFT].pressed
+		return g.commodino.recorded_input_events[g.commodino.replaying_prev_frame_index+1].keys[UsedKeysEnum.LEFT].pressed
 	} else {
 		return rl.IsKeyDown(.LEFT) || rl.IsKeyDown(.A)
 	}
@@ -160,7 +155,7 @@ player_input_left_down :: proc() -> bool {
 
 player_input_right_down:: proc() -> bool{
 	if g.commodino.is_replaying{
-		return g.recorded_input_events[g.commodino.replaying_prev_frame_index+1].keys[UsedKeysEnum.RIGHT].pressed
+		return g.commodino.recorded_input_events[g.commodino.replaying_prev_frame_index+1].keys[UsedKeysEnum.RIGHT].pressed
 	} else {
 		return rl.IsKeyDown(.RIGHT) || rl.IsKeyDown(.D)
 	}
@@ -169,9 +164,9 @@ player_input_right_down:: proc() -> bool{
 // TODO unify the player_input_*_just_pressed, giving the UsedKeysEnum.* instead, cuts down on plain repetition.
 player_input_enter_just_pressed:: proc() -> bool {
 	if g.commodino.is_replaying{
-		if g.recorded_input_events[g.commodino.replaying_prev_frame_index+1].keys[UsedKeysEnum.ENTER].pressed{
+		if g.commodino.recorded_input_events[g.commodino.replaying_prev_frame_index+1].keys[UsedKeysEnum.ENTER].pressed{
 			// just_pressed means : previous frame was not pressed
-			return !g.recorded_input_events[g.commodino.replaying_prev_frame_index].keys[UsedKeysEnum.ENTER].pressed
+			return !g.commodino.recorded_input_events[g.commodino.replaying_prev_frame_index].keys[UsedKeysEnum.ENTER].pressed
 		}
 		return false
 	} else {
@@ -254,6 +249,8 @@ update :: proc(input: rl.Vector2) -> (ok:bool) {
 		g.last_sheep_spawn = 0
 	}
 	g.last_sheep_spawn += 1
+	commodino_assert_message = fmt.tprintf("test?")
+
 	if g.last_sheep_spawn > 10{
 		commodino_assert_message = fmt.tprintf("Too much sheeps, expected less than 10, instead got %v", g.last_sheep_spawn)
 		return false // assert failed in update
@@ -628,3 +625,23 @@ player_center_pos :: proc(player_pos: rl.Vector2) -> rl.Vector2{
 pos_from_rect :: proc(rect: rl.Rectangle) -> rl.Vector2{
 	return {rect.x, rect.y}
 }
+
+//
+// COMMODINO (Record-and-replay, etc)
+//
+
+commodino_assert_message : string
+
+
+CommodinoStruct ::struct {
+	recorded_input_events : [MAX_FRAME_COUNT+1]CachedInput,
+    recorded_input_events_count : int,
+    replaying_prev_frame_index: int,
+    target_frame_index: int,
+
+    is_replaying: bool,
+    is_dragging_playback_scrubber: bool,
+}
+
+SCRUBBER_HEIGHT :: 30.0
+SCRUBBER_PADDING :: 5.0
