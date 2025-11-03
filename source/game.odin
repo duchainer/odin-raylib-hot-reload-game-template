@@ -175,12 +175,17 @@ player_input_enter_just_pressed:: proc() -> bool {
 }
 
 input :: proc() -> (input: rl.Vector2){
-	g.commodino.replaying_prev_frame_index += 1
-	g.recorded_input_events[g.commodino.replaying_prev_frame_index].keys = {
-		.LEFT =  { pressed = rl.IsKeyDown(.LEFT) || rl.IsKeyDown(.A) },
-		.RIGHT = { pressed = rl.IsKeyDown(.RIGHT) || rl.IsKeyDown(.D) },
-		.ENTER = { pressed = rl.IsKeyPressed(.ENTER) },
-	}
+
+    if g.commodino.is_replaying{
+        
+    } else {
+        g.commodino.recorded_input_events_count += 1
+        g.commodino.recorded_input_events[g.commodino.recorded_input_events_count].keys = {
+            .LEFT =  { pressed = rl.IsKeyDown(.LEFT) || rl.IsKeyDown(.A) },
+            .RIGHT = { pressed = rl.IsKeyDown(.RIGHT) || rl.IsKeyDown(.D) },
+            .ENTER = { pressed = rl.IsKeyPressed(.ENTER) },
+        }
+    }
 
 
 	if player_input_enter_just_pressed(){
@@ -249,12 +254,12 @@ update :: proc(input: rl.Vector2) -> (ok:bool) {
 		g.last_sheep_spawn = 0
 	}
 	g.last_sheep_spawn += 1
-	commodino_assert_message = fmt.tprintf("test?")
+	// commodino_assert_message = fmt.tprintf("test?")
 
-	if g.last_sheep_spawn > 10{
-		commodino_assert_message = fmt.tprintf("Too much sheeps, expected less than 10, instead got %v", g.last_sheep_spawn)
-		return false // assert failed in update
-	}
+	// if g.last_sheep_spawn > 10{
+	// 	commodino_assert_message = fmt.tprintf("Too much sheeps, expected less than 10, instead got %v", g.last_sheep_spawn)
+	// 	return false // assert failed in update
+	// }
 
 	SHEEP_SPEED :: 35.0
 	SHEEP_INITIAL_JUMP_SPEED :: -60.0
@@ -449,6 +454,13 @@ input_vec : rl.Vector2
 
 @(export)
 game_update :: proc() {
+    if g.commodino.is_replaying{
+        if g.commodino.replaying_prev_frame_index >= g.commodino.recorded_input_events_count{
+            commodino_assert_message = "End of replay"
+	        draw()
+            return
+        }
+    }
 	// Prevent calling the context.random_generator,
 	// instead we want our system-specifig rng
 	context.random_generator = runtime.Random_Generator{
@@ -465,6 +477,8 @@ game_update :: proc() {
 
 	// Everything on tracking allocator is valid until end-of-frame.
 	free_all(context.temp_allocator)
+        g.commodino.replaying_prev_frame_index += 1
+        fmt.eprintfln("g.commodino.replaying_prev_frame_index: %v, g.commodino.recorded_input_events_count: %v", g.commodino.replaying_prev_frame_index, g.commodino.recorded_input_events_count)
 }
 
 TARGET_FPS :: 30
@@ -498,13 +512,13 @@ restart_current_session_memory :: proc(){
 	g.current_session = {}
 
     sheep_time_rand_gen_state_seed := rand.uint64()
-    // g.commodino.sheep_time_rand_gen_state_seed = sheep_time_rand_gen_state_seed
+    g.commodino.sheep_time_rand_gen_state_seed = sheep_time_rand_gen_state_seed
 
-	g.sheep_time_rand_gen_state = rand.create(seed)
+	g.sheep_time_rand_gen_state = rand.create(sheep_time_rand_gen_state_seed)
 	g.sheep_time_rand_gen = rand.default_random_generator(&g.sheep_time_rand_gen_state)
 
-    sheep_dir_rand_gen_state_seed = rand.uint64()
-    // g.commodino.sheep_dir_rand_gen_state_seed = sheep_dir_rand_gen_state_seed
+    sheep_dir_rand_gen_state_seed := rand.uint64()
+    g.commodino.sheep_dir_rand_gen_state_seed = sheep_dir_rand_gen_state_seed
 
 	g.sheep_dir_rand_gen_state = rand.create(sheep_dir_rand_gen_state_seed)
 	g.sheep_dir_rand_gen = rand.default_random_generator(&g.sheep_dir_rand_gen_state)
@@ -645,6 +659,11 @@ CommodinoStruct ::struct {
     recorded_input_events_count : int,
     replaying_prev_frame_index: int,
     target_frame_index: int,
+
+    // random seeds for each system
+    sheep_time_rand_gen_state_seed: u64,
+    sheep_dir_rand_gen_state_seed: u64,
+
 
     is_replaying: bool,
     is_dragging_playback_scrubber: bool,
