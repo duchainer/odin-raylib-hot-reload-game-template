@@ -40,6 +40,9 @@ import "base:runtime"
 import "core:math/linalg"
 import rl "vendor:raylib"
 
+import "core:hash/xxhash"
+import "core:mem"
+
 // For debugging traps
 import "core:sys/posix"
 
@@ -236,7 +239,6 @@ update :: proc(input: rl.Vector2) -> (ok:bool) {
 	g.player_rect.y += input.y * delta_time * player_speed
 	g.player_rect.x = max(g.player_rect.x, LEFT_HOLE_START_X)
 	g.player_rect.x = min(g.player_rect.x, RIGHT_HOLE_START_X-g.player_rect.width)
-	g.frame_time += 1
 
 
 	percent_lava_on_max := g.lava_height / VOLCANO_HEIGHT
@@ -456,7 +458,9 @@ input_vec : rl.Vector2
 game_update :: proc() {
     if g.commodino.is_replaying{
         if g.commodino.replaying_prev_frame_index >= g.commodino.recorded_input_events_count{
-            commodino_assert_message = "End of replay"
+            if commodino_assert_message == ""{
+                commodino_assert_message = "End of replay"    
+            } 
 	        draw()
             return
         }
@@ -470,15 +474,38 @@ game_update :: proc() {
 
 	if update_ok {
 		input_vec = input()
+	    g.frame_time += 1
 	}
 	update_ok = update(input_vec)
 	// fmt.println(commodino_assert_message)
 	draw()
 
+
 	// Everything on tracking allocator is valid until end-of-frame.
 	free_all(context.temp_allocator)
+
+    _ :: mem
+    _ :: xxhash
+    // frame_checksum := xxhash.XXH3_64_default(mem.byte_slice(&g.current_session, size_of(g.current_session)))
+    frame_checksum := g.current_session
+
+    if g.commodino.is_replaying{
+        i := g.commodino.replaying_prev_frame_index
+        if (g.commodino.frame_checksums[i+1] != frame_checksum){
+            commodino_assert_message = fmt.tprintf("Replay desync")//: '%v', '%v'", g.commodino.frame_checksums[i], frame_checksum) 
+            breakpoint()
+            // fmt.eprintln(commodino_assert_message)
+            draw()
+        }else{
+            breakpoint()
+        }
+
         g.commodino.replaying_prev_frame_index += 1
-        fmt.eprintfln("g.commodino.replaying_prev_frame_index: %v, g.commodino.recorded_input_events_count: %v", g.commodino.replaying_prev_frame_index, g.commodino.recorded_input_events_count)
+    } else {
+        // We already increase the recorded_input_events_count in input()
+        i := g.commodino.recorded_input_events_count
+        g.commodino.frame_checksums[i] = frame_checksum
+    }
 }
 
 TARGET_FPS :: 30
@@ -620,7 +647,7 @@ game_force_restart :: proc() -> bool {
 
 @(export)
 game_force_replay :: proc() -> bool {
-	return rl.IsKeyPressed(.F10)
+	return g.current_session.frame_time == 2//rl.IsKeyPressed(.F10)
 }
 
 // In a web build, this is called when browser changes size. Remove the
@@ -659,6 +686,8 @@ CommodinoStruct ::struct {
     recorded_input_events_count : int,
     replaying_prev_frame_index: int,
     target_frame_index: int,
+
+    frame_checksums : [MAX_FRAME_COUNT+1]Session_Memory,
 
     // random seeds for each system
     sheep_time_rand_gen_state_seed: u64,
