@@ -33,7 +33,6 @@ created.
 package game
 
 import "core:fmt"
-_ :: fmt
 import "core:math"
 import "core:math/rand"
 import "base:runtime"
@@ -469,8 +468,8 @@ game_update :: proc() {
         }
         g.commodino.replaying_prev_frame_index += 1
     } else {
-        // We already increase the recorded_input_events_count in input()
-        i := g.commodino.recorded_input_events_count
+        // HACK Way to get the frame_checksums to sync when matching, except for frame_time, mostly
+        i := g.current_session.frame_time-1
         g.commodino.frame_checksums[i] = frame_checksum
     }
 }
@@ -487,6 +486,7 @@ game_init_window :: proc() {
 
 @(export)
 game_init :: proc() {
+    // breakpoint()
 	update_ok = true // Allow getting the input right after init, as we can't have errors yet
 	g = new(Game_Memory)
 
@@ -511,6 +511,18 @@ reset_current_session_rand_gen :: proc() {
 
     sheep_dir_rand_gen_state_seed := rand.uint64()
     g.commodino.sheep_dir_rand_gen_state_seed = sheep_dir_rand_gen_state_seed
+
+	g.sheep_dir_rand_gen_state = rand.create(sheep_dir_rand_gen_state_seed)
+	g.sheep_dir_rand_gen = rand.default_random_generator(&g.sheep_dir_rand_gen_state)
+}
+
+restore_recorded_session_rand_gen :: proc() {
+    sheep_time_rand_gen_state_seed := g.commodino.sheep_time_rand_gen_state_seed
+
+	g.sheep_time_rand_gen_state = rand.create(sheep_time_rand_gen_state_seed)
+	g.sheep_time_rand_gen = rand.default_random_generator(&g.sheep_time_rand_gen_state)
+
+    sheep_dir_rand_gen_state_seed := g.commodino.sheep_dir_rand_gen_state_seed
 
 	g.sheep_dir_rand_gen_state = rand.create(sheep_dir_rand_gen_state_seed)
 	g.sheep_dir_rand_gen = rand.default_random_generator(&g.sheep_dir_rand_gen_state)
@@ -589,6 +601,9 @@ game_hot_reloaded :: proc(mem: rawptr, is_replaying: bool = false) {
 	if g.commodino.is_replaying{
 		// Restart the game
 		restart_current_session_memory()
+
+        // To set the recorded seeds into new random generators
+        restore_recorded_session_rand_gen()
 
 		// We start counting from 0, check always this and next frame_index
 		g.commodino.replaying_prev_frame_index = 0
