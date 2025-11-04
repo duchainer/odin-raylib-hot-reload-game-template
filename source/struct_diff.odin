@@ -1,7 +1,6 @@
 package game
 
 import "core:fmt"
-import "base:runtime"
 import "core:reflect"
 // import "core:strings"
 
@@ -16,7 +15,7 @@ Field_Diff :: struct {
 diff_struct :: proc($T: typeid, old: T, new: T) -> [dynamic]Field_Diff {
     diffs := make([dynamic]Field_Diff)
     
-    type_info := runtime.type_info_base(T)
+    type_info := type_info_of(T)
     
     #partial switch info in type_info.variant {
     case reflect.Type_Info_Struct:
