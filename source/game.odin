@@ -105,10 +105,7 @@ Game_Memory :: struct {
 	commodino : CommodinoStruct,
 	using current_session : Session_Memory,
 	// recording_session: Session_Memory,
-	// +1, because we don't do anything to the 0th element, it is a null element
 
-	sheep_time_rand_gen_state, sheep_dir_rand_gen_state : rand.Default_Random_State,
-	sheep_time_rand_gen, sheep_dir_rand_gen : runtime.Random_Generator,
 }
 Session_Memory :: struct {
 	frame_time: int,
@@ -119,6 +116,8 @@ Session_Memory :: struct {
 	lava_speed: f32,
 	last_sheep_spawn: f32,
 	count_sheep_sacrificed: u32,
+	sheep_time_rand_gen_state, sheep_dir_rand_gen_state : rand.Default_Random_State,
+	sheep_time_rand_gen, sheep_dir_rand_gen : runtime.Random_Generator,
 }
 
 g: ^Game_Memory
@@ -457,21 +456,17 @@ game_update :: proc() {
 
     if g.commodino.is_replaying{
         i := g.commodino.replaying_prev_frame_index
-        current_frame_checksum := g.commodino.frame_checksums[i+1]
+        current_frame_checksum := g.commodino.frame_checksums[i]
         config_diffs := diff_struct(Session_Memory, current_frame_checksum, frame_checksum)
         defer delete(config_diffs)
         print_diffs(config_diffs)
         // if (current_frame_checksum != frame_checksum){
         if len(config_diffs) > 0{
-
-            commodino_assert_message = fmt.tprintf("Replay desync")//: '%v', '%v'", g.commodino.frame_checksums[i], frame_checksum) 
+            commodino_assert_message = fmt.tprintf("Replay desync, check stdout")//: '%v', '%v'", g.commodino.frame_checksums[i], frame_checksum) 
             breakpoint()
             // fmt.eprintln(commodino_assert_message)
             draw()
-        }else{
-            breakpoint()
         }
-
         g.commodino.replaying_prev_frame_index += 1
     } else {
         // We already increase the recorded_input_events_count in input()
@@ -502,14 +497,12 @@ game_init :: proc() {
 		// files will be part any release or web build.
 	}
 
-
 	restart_current_session_memory()
+    reset_current_session_rand_gen()
 	game_hot_reloaded(g)
 }
 
-restart_current_session_memory :: proc(){
-	g.current_session = {}
-
+reset_current_session_rand_gen :: proc() {
     sheep_time_rand_gen_state_seed := rand.uint64()
     g.commodino.sheep_time_rand_gen_state_seed = sheep_time_rand_gen_state_seed
 
@@ -521,6 +514,10 @@ restart_current_session_memory :: proc(){
 
 	g.sheep_dir_rand_gen_state = rand.create(sheep_dir_rand_gen_state_seed)
 	g.sheep_dir_rand_gen = rand.default_random_generator(&g.sheep_dir_rand_gen_state)
+}
+
+restart_current_session_memory :: proc(){
+	g.current_session = {}
 
 	g.sheeps[1] = {
 		rect = {200, -10, 10, 10,},
@@ -551,7 +548,6 @@ restart_current_session_memory :: proc(){
 
 	g.lava_height = VOLCANO_HEIGHT/3.5
 	g.lava_speed = 0.25
-
 }
 
 @(export)
@@ -616,7 +612,9 @@ game_force_restart :: proc() -> bool {
 
 @(export)
 game_force_replay :: proc() -> bool {
-	return g.current_session.frame_time == 2//rl.IsKeyPressed(.F10)
+    // ret := g.current_session.frame_time > 10
+    // g.current_session.frame_time = 0
+	return rl.IsKeyPressed(.F10)
 }
 
 // In a web build, this is called when browser changes size. Remove the
@@ -651,11 +649,13 @@ commodino_assert_message : string
 
 
 CommodinoStruct ::struct {
+	// +1, because we don't do anything to the 0th element, it is a null element
 	recorded_input_events : [MAX_FRAME_COUNT+1]CachedInput,
     recorded_input_events_count : int,
     replaying_prev_frame_index: int,
     target_frame_index: int,
 
+	// +1, because we don't do anything to the 0th element, it is a null element
     frame_checksums : [MAX_FRAME_COUNT+1]Session_Memory,
 
     // random seeds for each system

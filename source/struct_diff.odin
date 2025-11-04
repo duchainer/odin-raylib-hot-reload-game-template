@@ -1,5 +1,6 @@
 package game
 
+import "core:mem"
 import "core:fmt"
 import "core:reflect"
 // import "core:strings"
@@ -17,28 +18,32 @@ diff_struct :: proc($T: typeid, old: T, new: T) -> [dynamic]Field_Diff {
     
     type_info := type_info_of(T)
     
-    #partial switch info in type_info.variant {
-    case reflect.Type_Info_Struct:
-        // Use field_count and slice the multi-pointers
-        names := info.names[:info.field_count]
-        
-        for field_name, _ in names {
-            old_field := reflect.struct_field_value_by_name(old, field_name)
-            new_field := reflect.struct_field_value_by_name(new, field_name)
-            
-            if old_field.id != new_field.id {
-                continue
-            }
-            
-            // Compare values using any comparison
-            if !values_equal(old_field, new_field) {
-                diff := Field_Diff{
-                    field_name = field_name,
-                    old_value = value_to_string(old_field),
-                    new_value = value_to_string(new_field),
+	loop: for {
+        #partial switch info in type_info.variant {
+        case reflect.Type_Info_Named:   type_info = info.base
+        case reflect.Type_Info_Struct:
+            // Use field_count and slice the multi-pointers
+            names := info.names[:info.field_count]
+
+            for field_name, _ in names {
+                old_field := reflect.struct_field_value_by_name(old, field_name)
+                new_field := reflect.struct_field_value_by_name(new, field_name)
+
+                if old_field.id != new_field.id {
+                    continue
                 }
-                append(&diffs, diff)
+
+                // Compare values using any comparison
+                if !values_equal(old_field, new_field) {
+                    diff := Field_Diff{
+                        field_name = field_name,
+                        old_value = value_to_string(old_field),
+                        new_value = value_to_string(new_field),
+                    }
+                    append(&diffs, diff)
+                }
             }
+            break loop
         }
     }
     
@@ -68,6 +73,11 @@ values_equal :: proc(a, b: any) -> bool {
         }
     case reflect.Type_Info_Boolean:
         return (^bool)(a.data)^ == (^bool)(b.data)^
+    case:
+        data_size := ti.size
+        ret := mem.compare_byte_ptrs((^u8)( a.data ), (^u8)( b.data ), data_size) == 0
+        // breakpoint()
+        return ret
     }
     
     return false
@@ -79,24 +89,24 @@ value_to_string :: proc(v: any) -> string {
     
     #partial switch info in ti.variant {
     case reflect.Type_Info_String:
-        return fmt.aprintf("%q", (^string)(v.data)^)
+        return fmt.tprintf("%q", (^string)(v.data)^)
     case reflect.Type_Info_Integer:
         switch ti.size {
-        case 4: return fmt.aprintf("%d", (^i32)(v.data)^)
-        case 8: return fmt.aprintf("%d", (^i64)(v.data)^)
-        case 2: return fmt.aprintf("%d", (^i16)(v.data)^)
-        case 1: return fmt.aprintf("%d", (^i8)(v.data)^)
+        case 4: return fmt.tprintf("%d", (^i32)(v.data)^)
+        case 8: return fmt.tprintf("%d", (^i64)(v.data)^)
+        case 2: return fmt.tprintf("%d", (^i16)(v.data)^)
+        case 1: return fmt.tprintf("%d", (^i8)(v.data)^)
         }
     case reflect.Type_Info_Float:
         switch ti.size {
-        case 4: return fmt.aprintf("%.2f", (^f32)(v.data)^)
-        case 8: return fmt.aprintf("%.2f", (^f64)(v.data)^)
+        case 4: return fmt.tprintf("%.2f", (^f32)(v.data)^)
+        case 8: return fmt.tprintf("%.2f", (^f64)(v.data)^)
         }
     case reflect.Type_Info_Boolean:
-        return fmt.aprintf("%v", (^bool)(v.data)^)
+        return fmt.tprintf("%v", (^bool)(v.data)^)
     }
     
-    return "<unknown>"
+    return "<gdb knows>"
 }
 
 // Pretty print the differences
