@@ -1,0 +1,110 @@
+package game
+
+import "core:fmt"
+import "core:reflect"
+// import "core:strings"
+
+// Field difference result
+Field_Diff :: struct {
+    field_name: string,
+    old_value: string,
+    new_value: string,
+}
+
+// Compare two structs and return list of differences
+diff_struct :: proc($T: typeid, old: T, new: T) -> [dynamic]Field_Diff {
+    diffs := make([dynamic]Field_Diff)
+    
+    type_info := type_info_of(T)
+    
+    #partial switch info in type_info.variant {
+    case reflect.Type_Info_Struct:
+        for field_name, i in info.names {
+            old_field := reflect.struct_field_value_by_name(old, field_name)
+            new_field := reflect.struct_field_value_by_name(new, field_name)
+            
+            if old_field.id != new_field.id {
+                continue
+            }
+            
+            // Compare values using any comparison
+            if !values_equal(old_field, new_field) {
+                diff := Field_Diff{
+                    field_name = field_name,
+                    old_value = value_to_string(old_field),
+                    new_value = value_to_string(new_field),
+                }
+                append(&diffs, diff)
+            }
+        }
+    }
+    
+    return diffs
+}
+
+// Helper to check if two any values are equal
+values_equal :: proc(a, b: any) -> bool {
+    if a.id != b.id do return false
+    
+    ti := type_info_of(a.id)
+    
+    #partial switch info in ti.variant {
+    case reflect.Type_Info_String:
+        return (^string)(a.data)^ == (^string)(b.data)^
+    case reflect.Type_Info_Integer:
+        switch ti.size {
+        case 4: return (^i32)(a.data)^ == (^i32)(b.data)^
+        case 8: return (^i64)(a.data)^ == (^i64)(b.data)^
+        case 2: return (^i16)(a.data)^ == (^i16)(b.data)^
+        case 1: return (^i8)(a.data)^ == (^i8)(b.data)^
+        }
+    case reflect.Type_Info_Float:
+        switch ti.size {
+        case 4: return (^f32)(a.data)^ == (^f32)(b.data)^
+        case 8: return (^f64)(a.data)^ == (^f64)(b.data)^
+        }
+    case reflect.Type_Info_Boolean:
+        return (^bool)(a.data)^ == (^bool)(b.data)^
+    }
+    
+    return false
+}
+
+// Helper to convert any value to string for display
+value_to_string :: proc(v: any) -> string {
+    ti := type_info_of(v.id)
+    
+    #partial switch info in ti.variant {
+    case reflect.Type_Info_String:
+        return fmt.aprintf("%q", (^string)(v.data)^)
+    case reflect.Type_Info_Integer:
+        switch ti.size {
+        case 4: return fmt.aprintf("%d", (^i32)(v.data)^)
+        case 8: return fmt.aprintf("%d", (^i64)(v.data)^)
+        case 2: return fmt.aprintf("%d", (^i16)(v.data)^)
+        case 1: return fmt.aprintf("%d", (^i8)(v.data)^)
+        }
+    case reflect.Type_Info_Float:
+        switch ti.size {
+        case 4: return fmt.aprintf("%.2f", (^f32)(v.data)^)
+        case 8: return fmt.aprintf("%.2f", (^f64)(v.data)^)
+        }
+    case reflect.Type_Info_Boolean:
+        return fmt.aprintf("%v", (^bool)(v.data)^)
+    }
+    
+    return "<unknown>"
+}
+
+// Pretty print the differences
+print_diffs :: proc(diffs: [dynamic]Field_Diff) {
+    if len(diffs) == 0 {
+        fmt.println("No differences found")
+        return
+    }
+    
+    fmt.printf("Found %d difference(s):\n", len(diffs))
+    for diff in diffs {
+        fmt.printf("  %s: %s -> %s\n", diff.field_name, diff.old_value, diff.new_value)
+    }
+}
