@@ -83,10 +83,6 @@ Sheep :: struct {
 	state: SheepState,
 }
 
-Carrot :: struct {
-	using rect: rl.Rectangle,
-}
-
 MAX_FRAME_COUNT :: TARGET_FPS * 60 /*secs in minute*/ * 10 /* minutes */ // 60 /*minutes in hour*/ * 1
 
 
@@ -119,8 +115,6 @@ Session_Memory :: struct {
 	player_rect : rl.Rectangle,
 	sheeps : [1024]Sheep,
 	last_sheep_index: u32,
-	carrots : [1024]Carrot,
-	last_carrot_index: u32,
 	lava_height: f32,
 	lava_speed: f32,
 	last_sheep_spawn: f32,
@@ -213,22 +207,11 @@ input :: proc() -> (input: rl.Vector2){
 	if player_input_right_down() {
 		input.x += 1
 	}
-	// if rl.IsKeyPressed(.SPACE){
-	// 	g.carrots[g.last_carrot_index+1] = Carrot{
-	// 		x = g.player_rect.x + f32( g.player_rect.width ) /2 - CARROT_WIDTH/2,
-	// 		y = 0 - CARROT_WIDTH,
-	// 		width = CARROT_WIDTH,
-	// 		height = CARROT_WIDTH,
-	// 	}
-	// 	g.last_carrot_index += 1
-	// }
-
 	input = linalg.normalize0(input)
 	return input
 }
 
 SHEEP_LAVA_WORTH :: 75
-CARROT_WIDTH :: 5.0
 update :: proc(input: rl.Vector2) -> (ok:bool) {
 	commodino_assert_message = "" // reset assert_message
 
@@ -349,14 +332,6 @@ update :: proc(input: rl.Vector2) -> (ok:bool) {
 		}
 	}
 
-	carrot_loop: for &carrot, i in g.carrots{
-		if carrot != {}{
-
-		} else if i != 0 {
-			break
-		}
-	}
-
 	if rl.IsKeyPressed(.LEFT_CONTROL) && rl.IsKeyPressed(.LEFT_SHIFT) && rl.IsKeyPressed(.ESCAPE) {
 		g.run = false
 	}
@@ -407,14 +382,6 @@ draw :: proc() {
 		}
 	}
 
-	carrot_loop: for &carrot, i in g.carrots{
-		if carrot != {}{
-			rl.DrawRectangleRec(carrot, rl.ORANGE)
-		} else if i != 0 {
-			break
-		}
-	}
-
 	rl.EndMode2D()
 
 	rl.BeginMode2D(ui_camera())
@@ -435,7 +402,6 @@ draw :: proc() {
 	if commodino_assert_message != ""{
 		rl.DrawText(fmt.ctprintf("assert_message:\"%v\", \nreplaying_prev_frame_index: %v,\ng.commodino.is_replaying: %#v,\ng.commodino.is_dragging_playback_scrubber:%v,\n", commodino_assert_message, g.commodino.replaying_prev_frame_index, g.commodino.is_replaying, g.commodino.is_dragging_playback_scrubber), 5, 5, 8, rl.WHITE)
 	}
-		// rl.DrawText(fmt.ctprintf("frame_time: %v\nplayer_rect: %v\nlast_carrot_index: %v\nplayer_texture.width, height: %v, %v", g.frame_time, g.player_rect, g.last_carrot_index, g.player_rect.width, g.player_rect.height), 5, 5, 8, rl.WHITE)
 		// if g.sheeps[1] != {} {
 		// 	rl.DrawText(fmt.ctprintf("g.sheeps[1]: %#v", g.sheeps[1]), 200, 5, 8, rl.WHITE)
 		// }
@@ -491,7 +457,13 @@ game_update :: proc() {
 
     if g.commodino.is_replaying{
         i := g.commodino.replaying_prev_frame_index
-        if (g.commodino.frame_checksums[i+1] != frame_checksum){
+        current_frame_checksum := g.commodino.frame_checksums[i+1]
+        config_diffs := diff_struct(Session_Memory, current_frame_checksum, frame_checksum)
+        defer delete(config_diffs)
+        print_diffs(config_diffs)
+        // if (current_frame_checksum != frame_checksum){
+        if len(config_diffs) > 0{
+
             commodino_assert_message = fmt.tprintf("Replay desync")//: '%v', '%v'", g.commodino.frame_checksums[i], frame_checksum) 
             breakpoint()
             // fmt.eprintln(commodino_assert_message)
@@ -573,9 +545,6 @@ restart_current_session_memory :: proc(){
 		last_dir_decision = 0,
 	}
 	g.last_sheep_index += 1
-
-	g.last_carrot_index = 0
-	g.carrots = {}
 
 	g.player_rect = {230, 0, 10, 15}
 	g.player_rect.y = -f32(g.player_rect.height)
