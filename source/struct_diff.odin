@@ -19,7 +19,10 @@ diff_struct :: proc($T: typeid, old: T, new: T) -> [dynamic]Field_Diff {
     
     #partial switch info in type_info.variant {
     case reflect.Type_Info_Struct:
-        for field_name, i in info.names {
+        // Use field_count and slice the multi-pointers
+        names := info.names[:info.field_count]
+        
+        for field_name, _ in names {
             old_field := reflect.struct_field_value_by_name(old, field_name)
             new_field := reflect.struct_field_value_by_name(new, field_name)
             
