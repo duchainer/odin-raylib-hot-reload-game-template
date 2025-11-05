@@ -136,7 +136,10 @@ main :: proc() {
 	old_game_apis := make([dynamic]Game_API, default_allocator)
 
 	for game_api.should_run() {
+		old_rand_gen := context.random_generator
 		game_api.update()
+		assert(old_rand_gen == context.random_generator, "Context should only be affecting callees, not callers, no?")
+
 		force_reload := game_api.force_reload()
 		force_restart := game_api.force_restart()
 		force_replay := game_api.force_replay()
