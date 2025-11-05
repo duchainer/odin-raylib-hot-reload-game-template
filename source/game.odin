@@ -467,14 +467,15 @@ game_update :: proc() {
         // if (current_frame_checksum != frame_checksum){
         if len(config_diffs) > 0{
             commodino_assert_message = fmt.tprintf("Replay desync, check stdout")//: '%v', '%v'", g.commodino.frame_checksums[i], frame_checksum) 
-            breakpoint()
+            // breakpoint()
             // fmt.eprintln(commodino_assert_message)
             draw()
         }
         g.commodino.replaying_prev_frame_index += 1
     } else {
+        // TODO FIXME
         // HACK Way to get the frame_checksums to sync when matching, except for frame_time, mostly
-        i := g.current_session.frame_time-1
+        i := g.current_session.frame_time
         g.commodino.frame_checksums[i] = frame_checksum
     }
 }
