@@ -76,7 +76,7 @@ SheepState :: enum{
 
 Sheep :: struct {
 	using rect: rl.Rectangle,
-	input: f32,
+	input: i8,
 	speed: rl.Vector2,
 	last_dir_decision: i32,
 	state: SheepState,
@@ -106,6 +106,11 @@ Game_Memory :: struct {
 	// recording_session: Session_Memory,
 
 }
+
+// TODO Use some fixed point math like fixedptc or libfixmath
+// TODO Replace f32 with fixed point values
+// TODO Check if we can have deterministic rand_gen or not
+
 Session_Memory :: struct {
 	frame_time: int,
 	player_rect : rl.Rectangle,
@@ -274,7 +279,7 @@ update :: proc(input: rl.Vector2) -> (ok:bool) {
 					rand_time := rand.uint32(g.sheep_time_rand_gen) % 90
 					rand_num := rand.uint32(g.sheep_dir_rand_gen) % 3
 					// We have an input between of -1, 0, or  1
-					sheep.input =  f32(rand_num) - 1
+					sheep.input =  i8(rand_num) - 1
 					if ( sheep.input == -1 && is_sheep_near_left_hole ) || ( sheep.input == 1 && is_sheep_near_right_hole ) {
 						sheep.input = -sheep.input
 					}
@@ -284,7 +289,7 @@ update :: proc(input: rl.Vector2) -> (ok:bool) {
 				if distance_player_sheep <= SHEEP_DETECTION {
 					sheep.state = .JUMPING
 					sheep.speed.y = SHEEP_INITIAL_JUMP_SPEED
-					sheep.input = delta_x_player_sheep / distance_player_sheep
+					sheep.input = i8(delta_x_player_sheep / distance_player_sheep)
 					// continue sheep_loop
 				} else{
 					sheep.y = -sheep.height
@@ -323,7 +328,7 @@ update :: proc(input: rl.Vector2) -> (ok:bool) {
 				}
 			}
 			}
-			sheep.speed.x = sheep.input * SHEEP_SPEED
+			sheep.speed.x = f32(sheep.input * SHEEP_SPEED)
 			sheep.x += sheep.speed.x * delta_time
 			sheep.y += sheep.speed.y * delta_time
 			sheep.last_dir_decision += 1
