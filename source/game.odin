@@ -457,9 +457,13 @@ game_update :: proc() {
     _ :: xxhash
     // frame_checksum := xxhash.XXH3_64_default(mem.byte_slice(&g.current_session, size_of(g.current_session)))
     frame_checksum := g.current_session
+    // HACK figure out why we have an off-by-one recording vs replaying
+    //    Might be that we have frame_time be 0, but store on 1.. or something
+    frame_checksum.frame_time = 0
+
 
     if g.commodino.is_replaying{
-        i := g.commodino.replaying_prev_frame_index
+        i := g.commodino.replaying_prev_frame_index+1
         current_frame_checksum := g.commodino.frame_checksums[i]
         config_diffs := diff_struct(Session_Memory, current_frame_checksum, frame_checksum)
         defer delete(config_diffs)
