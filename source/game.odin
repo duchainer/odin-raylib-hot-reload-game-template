@@ -467,6 +467,16 @@ game_update :: proc() {
     //    Might be that we have frame_time be 0, but store on 1.. or something
     frame_checksum.frame_time = 0
 
+    // We don't care if the procecure is not the same pointer,
+    // TODO Make sure that this has no effect on the actual random generated numbers
+    // It shouldn't because gdb says that they both are `runtime::default_random_generator_proc` but still
+    // (gdb) p g.current_session.sheep_time_rand_gen
+    // $8 = {procedure = 0x7fff5bc47ca0 <runtime::default_random_generator_proc>, data = 0x7fffb3fff028 "\257\211Q\264\223a\022\3657\354\210\342)\\\027X\033\272*\242D\267\313k\257\272X\255!xcϠ|\304[\377\177"}
+    // (gdb) p g.commodino.frame_checksums[71].sheep_time_rand_gen
+    // $9 = {procedure = 0x7fffcb247ca0 <runtime::default_random_generator_proc>, data = 0x7fffb3fff028 "\257\211Q\264\223a\022\3657\354\210\342)\\\027X\033\272*\242D\267\313k\257\272X\255!xcϠ|\304[\377\177"}
+    // 
+    frame_checksum.sheep_time_rand_gen.procedure = nil
+    frame_checksum.sheep_dir_rand_gen.procedure = nil
 
     if g.commodino.is_replaying{
         i := g.commodino.replaying_prev_frame_index+1
