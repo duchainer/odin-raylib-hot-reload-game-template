@@ -218,7 +218,13 @@ SHEEP_LAVA_WORTH :: 75
 update :: proc(input: rl.Vector2) -> (ok:bool) {
 	commodino_assert_message = "" // reset assert_message
 
-	delta_time := rl.GetFrameTime()
+	delta_time : f32
+    if g.commodino.is_replaying{
+        delta_time = g.commodino.delta_times[g.frame_time]
+    }else{
+        delta_time = rl.GetFrameTime()
+        g.commodino.delta_times[g.frame_time] = delta_time
+    }
 
 	player_speed :: 60.0
 	g.player_rect.x += input.x * delta_time * player_speed
@@ -690,6 +696,8 @@ CommodinoStruct ::struct {
 
     is_replaying: bool,
     is_dragging_playback_scrubber: bool,
+
+    delta_times : [MAX_FRAME_COUNT+1]f32,
 }
 
 SCRUBBER_HEIGHT :: 30.0
