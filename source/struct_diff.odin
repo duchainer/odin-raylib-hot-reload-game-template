@@ -73,14 +73,93 @@ values_equal :: proc(a, b: any) -> bool {
         }
     case reflect.Type_Info_Boolean:
         return (^bool)(a.data)^ == (^bool)(b.data)^
+    case reflect.Type_Info_Array:
+        return arrays_equal(a, b, info)
+    case reflect.Type_Info_Dynamic_Array:
+        return dynamic_arrays_equal(a, b, info)
+    case reflect.Type_Info_Slice:
+        return slices_equal(a, b, info)
     case:
         data_size := ti.size
-        ret := mem.compare_byte_ptrs((^u8)( a.data ), (^u8)( b.data ), data_size) == 0
-        // breakpoint()
+        ret := mem.compare_byte_ptrs((^u8)(a.data), (^u8)(b.data), data_size) == 0
         return ret
     }
     
     return false
+}
+
+// Compare fixed-size arrays
+arrays_equal :: proc(a, b: any, info: reflect.Type_Info_Array) -> bool {
+    elem_size := info.elem_size
+    count := info.count
+    
+    a_data := (^u8)(a.data)
+    b_data := (^u8)(b.data)
+    
+    for i in 0..<count {
+        a_elem := any{rawptr(uintptr(a_data) + uintptr(i * elem_size)), info.elem.id}
+        b_elem := any{rawptr(uintptr(b_data) + uintptr(i * elem_size)), info.elem.id}
+        
+        if !values_equal(a_elem, b_elem) {
+            return false
+        }
+    }
+    
+    return true
+}
+
+// Compare dynamic arrays
+dynamic_arrays_equal :: proc(a, b: any, info: reflect.Type_Info_Dynamic_Array) -> bool {
+    a_raw := (^mem.Raw_Dynamic_Array)(a.data)
+    b_raw := (^mem.Raw_Dynamic_Array)(b.data)
+    
+    if a_raw.len != b_raw.len {
+        return false
+    }
+    
+    elem_size := info.elem_size
+    count := a_raw.len
+    
+    a_data := (^u8)(a_raw.data)
+    b_data := (^u8)(b_raw.data)
+    
+    for i in 0..<count {
+        a_elem := any{rawptr(uintptr(a_data) + uintptr(i * elem_size)), info.elem.id}
+        b_elem := any{rawptr(uintptr(b_data) + uintptr(i * elem_size)), info.elem.id}
+        
+        if !values_equal(a_elem, b_elem) {
+            return false
+        }
+    }
+    
+    return true
+}
+
+// Compare slices
+slices_equal :: proc(a, b: any, info: reflect.Type_Info_Slice) -> bool {
+    a_raw := (^mem.Raw_Slice)(a.data)
+    b_raw := (^mem.Raw_Slice)(b.data)
+    
+    if a_raw.len != b_raw.len {
+        return false
+    }
+    
+    elem_size := info.elem_size
+    count := a_raw.len
+    
+    a_data := (^u8)(a_raw.data)
+    b_data := (^u8)(b_raw.data)
+    
+    for i in 0..<count {
+        a_elem := any{rawptr(uintptr(a_data) + uintptr(i * elem_size)), info.elem.id}
+        b_elem := any{rawptr(uintptr(b_data) + uintptr(i * elem_size)), info.elem.id}
+        
+        if !values_equal(a_elem, b_elem) {
+            return false
+        }
+    }
+    
+    return true
 }
 
 // Helper to convert any value to string for display
@@ -104,9 +183,68 @@ value_to_string :: proc(v: any) -> string {
         }
     case reflect.Type_Info_Boolean:
         return fmt.tprintf("%v", (^bool)(v.data)^)
+    case reflect.Type_Info_Array:
+        return array_to_string(v, info)
+    case reflect.Type_Info_Dynamic_Array:
+        return dynamic_array_to_string(v, info)
+    case reflect.Type_Info_Slice:
+        return slice_to_string(v, info)
     }
     
     return "<gdb knows>"
+}
+
+// Convert fixed array to string
+array_to_string :: proc(v: any, info: reflect.Type_Info_Array) -> string {
+    elem_size := info.elem_size
+    count := info.count
+    v_data := (^u8)(v.data)
+    
+    result := "["
+    for i in 0..<count {
+        elem := any{rawptr(uintptr(v_data) + uintptr(i * elem_size)), info.elem.id}
+        if i > 0 do result = fmt.tprintf("%s, ", result)
+        result = fmt.tprintf("%s%s", result, value_to_string(elem))
+    }
+    result = fmt.tprintf("%s]", result)
+    
+    return result
+}
+
+// Convert dynamic array to string
+dynamic_array_to_string :: proc(v: any, info: reflect.Type_Info_Dynamic_Array) -> string {
+    raw := (^mem.Raw_Dynamic_Array)(v.data)
+    elem_size := info.elem_size
+    count := raw.len
+    v_data := (^u8)(raw.data)
+    
+    result := "["
+    for i in 0..<count {
+        elem := any{rawptr(uintptr(v_data) + uintptr(i * elem_size)), info.elem.id}
+        if i > 0 do result = fmt.tprintf("%s, ", result)
+        result = fmt.tprintf("%s%s", result, value_to_string(elem))
+    }
+    result = fmt.tprintf("%s]", result)
+    
+    return result
+}
+
+// Convert slice to string
+slice_to_string :: proc(v: any, info: reflect.Type_Info_Slice) -> string {
+    raw := (^mem.Raw_Slice)(v.data)
+    elem_size := info.elem_size
+    count := raw.len
+    v_data := (^u8)(raw.data)
+    
+    result := "["
+    for i in 0..<count {
+        elem := any{rawptr(uintptr(v_data) + uintptr(i * elem_size)), info.elem.id}
+        if i > 0 do result = fmt.tprintf("%s, ", result)
+        result = fmt.tprintf("%s%s", result, value_to_string(elem))
+    }
+    result = fmt.tprintf("%s]", result)
+    
+    return result
 }
 
 // Pretty print the differences
