@@ -79,6 +79,14 @@ values_equal :: proc(a, b: any) -> bool {
         return dynamic_arrays_equal(a, b, info)
     case reflect.Type_Info_Slice:
         return slices_equal(a, b, info)
+    case reflect.Type_Info_Named:
+        // Recurse into named types
+        return values_equal(
+            any{a.data, info.base.id},
+            any{b.data, info.base.id},
+        )
+    case reflect.Type_Info_Struct:
+        return structs_equal(a, b, info)
     case:
         data_size := ti.size
         ret := mem.compare_byte_ptrs((^u8)(a.data), (^u8)(b.data), data_size) == 0
@@ -86,6 +94,26 @@ values_equal :: proc(a, b: any) -> bool {
     }
     
     return false
+}
+
+// Compare structs field by field
+structs_equal :: proc(a, b: any, info: reflect.Type_Info_Struct) -> bool {
+    names := info.names[:info.field_count]
+    
+    for field_name in names {
+        a_field := reflect.struct_field_value_by_name(a, field_name)
+        b_field := reflect.struct_field_value_by_name(b, field_name)
+        
+        if a_field.id != b_field.id {
+            return false
+        }
+        
+        if !values_equal(a_field, b_field) {
+            return false
+        }
+    }
+    
+    return true
 }
 
 // Compare fixed-size arrays
@@ -189,9 +217,29 @@ value_to_string :: proc(v: any) -> string {
         return dynamic_array_to_string(v, info)
     case reflect.Type_Info_Slice:
         return slice_to_string(v, info)
+    case reflect.Type_Info_Named:
+        // Recurse into named types
+        return value_to_string(any{v.data, info.base.id})
+    case reflect.Type_Info_Struct:
+        return struct_to_string(v, info)
     }
     
-    return "<gdb knows>"
+    return "<unknown>"
+}
+
+// Convert struct to string
+struct_to_string :: proc(v: any, info: reflect.Type_Info_Struct) -> string {
+    names := info.names[:info.field_count]
+    
+    result := "{"
+    for field_name, i in names {
+        field_val := reflect.struct_field_value_by_name(v, field_name)
+        if i > 0 do result = fmt.tprintf("%s, ", result)
+        result = fmt.tprintf("%s%s: %s", result, field_name, value_to_string(field_val))
+    }
+    result = fmt.tprintf("%s}", result)
+    
+    return result
 }
 
 // Convert fixed array to string
