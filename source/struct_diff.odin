@@ -383,7 +383,24 @@ enum_to_string :: proc(v: any, info: reflect.Type_Info_Enum) -> string {
     
     // Find the name for this value
     for name, i in info.names {
-        if info.values[i] == int_value {
+        enum_val := info.values[i]
+        enum_int: i64
+        
+        switch val in enum_val {
+        case rune: enum_int = i64(val)
+        case i8:   enum_int = i64(val)
+        case i16:  enum_int = i64(val)
+        case i32:  enum_int = i64(val)
+        case i64:  enum_int = val
+        case int:  enum_int = i64(val)
+        case u8:   enum_int = i64(val)
+        case u16:  enum_int = i64(val)
+        case u32:  enum_int = i64(val)
+        case u64:  enum_int = i64(val)
+        case uint: enum_int = i64(val)
+        }
+        
+        if enum_int == int_value {
             return fmt.tprintf("%s(%d)", name, int_value)
         }
     }
