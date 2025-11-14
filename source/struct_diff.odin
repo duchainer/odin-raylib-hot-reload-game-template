@@ -33,21 +33,138 @@ diff_struct :: proc($T: typeid, old: T, new: T) -> [dynamic]Field_Diff {
                     continue
                 }
 
-                // Compare values using any comparison
-                if !values_equal(old_field, new_field) {
-                    diff := Field_Diff{
-                        field_name = field_name,
-                        old_value = value_to_string(old_field),
-                        new_value = value_to_string(new_field),
-                    }
-                    append(&diffs, diff)
-                }
+                // Get detailed differences
+                diff_values(&diffs, field_name, old_field, new_field)
             }
             break loop
         }
     }
     
     return diffs
+}
+
+// Recursively find differences between two values
+diff_values :: proc(diffs: ^[dynamic]Field_Diff, path: string, a, b: any) {
+    if a.id != b.id do return
+    
+    ti := type_info_of(a.id)
+    
+    #partial switch info in ti.variant {
+    case reflect.Type_Info_Array:
+        diff_arrays(diffs, path, a, b, info)
+    case reflect.Type_Info_Dynamic_Array:
+        diff_dynamic_arrays(diffs, path, a, b, info)
+    case reflect.Type_Info_Slice:
+        diff_slices(diffs, path, a, b, info)
+    case reflect.Type_Info_Named:
+        // Recurse into named types
+        diff_values(diffs, path, any{a.data, info.base.id}, any{b.data, info.base.id})
+    case reflect.Type_Info_Struct:
+        diff_structs(diffs, path, a, b, info)
+    case:
+        // For primitive types, check if they're different
+        if !values_equal(a, b) {
+            append(diffs, Field_Diff{
+                field_name = path,
+                old_value = value_to_string(a),
+                new_value = value_to_string(b),
+            })
+        }
+    }
+}
+
+// Diff two structs field by field
+diff_structs :: proc(diffs: ^[dynamic]Field_Diff, path: string, a, b: any, info: reflect.Type_Info_Struct) {
+    names := info.names[:info.field_count]
+    
+    for field_name in names {
+        a_field := reflect.struct_field_value_by_name(a, field_name)
+        b_field := reflect.struct_field_value_by_name(b, field_name)
+        
+        if a_field.id != b_field.id {
+            continue
+        }
+        
+        field_path := fmt.tprintf("%s.%s", path, field_name)
+        diff_values(diffs, field_path, a_field, b_field)
+    }
+}
+
+// Diff two fixed arrays
+diff_arrays :: proc(diffs: ^[dynamic]Field_Diff, path: string, a, b: any, info: reflect.Type_Info_Array) {
+    elem_size := info.elem_size
+    count := info.count
+    
+    a_data := (^u8)(a.data)
+    b_data := (^u8)(b.data)
+    
+    for i in 0..<count {
+        a_elem := any{rawptr(uintptr(a_data) + uintptr(i * elem_size)), info.elem.id}
+        b_elem := any{rawptr(uintptr(b_data) + uintptr(i * elem_size)), info.elem.id}
+        
+        elem_path := fmt.tprintf("%s[%d]", path, i)
+        diff_values(diffs, elem_path, a_elem, b_elem)
+    }
+}
+
+// Diff two dynamic arrays
+diff_dynamic_arrays :: proc(diffs: ^[dynamic]Field_Diff, path: string, a, b: any, info: reflect.Type_Info_Dynamic_Array) {
+    a_raw := (^mem.Raw_Dynamic_Array)(a.data)
+    b_raw := (^mem.Raw_Dynamic_Array)(b.data)
+    
+    // Report length difference
+    if a_raw.len != b_raw.len {
+        append(diffs, Field_Diff{
+            field_name = fmt.tprintf("%s.len", path),
+            old_value = fmt.tprintf("%d", a_raw.len),
+            new_value = fmt.tprintf("%d", b_raw.len),
+        })
+    }
+    
+    elem_size := info.elem_size
+    min_count := min(a_raw.len, b_raw.len)
+    
+    a_data := (^u8)(a_raw.data)
+    b_data := (^u8)(b_raw.data)
+    
+    // Compare common elements
+    for i in 0..<min_count {
+        a_elem := any{rawptr(uintptr(a_data) + uintptr(i * elem_size)), info.elem.id}
+        b_elem := any{rawptr(uintptr(b_data) + uintptr(i * elem_size)), info.elem.id}
+        
+        elem_path := fmt.tprintf("%s[%d]", path, i)
+        diff_values(diffs, elem_path, a_elem, b_elem)
+    }
+}
+
+// Diff two slices
+diff_slices :: proc(diffs: ^[dynamic]Field_Diff, path: string, a, b: any, info: reflect.Type_Info_Slice) {
+    a_raw := (^mem.Raw_Slice)(a.data)
+    b_raw := (^mem.Raw_Slice)(b.data)
+    
+    // Report length difference
+    if a_raw.len != b_raw.len {
+        append(diffs, Field_Diff{
+            field_name = fmt.tprintf("%s.len", path),
+            old_value = fmt.tprintf("%d", a_raw.len),
+            new_value = fmt.tprintf("%d", b_raw.len),
+        })
+    }
+    
+    elem_size := info.elem_size
+    min_count := min(a_raw.len, b_raw.len)
+    
+    a_data := (^u8)(a_raw.data)
+    b_data := (^u8)(b_raw.data)
+    
+    // Compare common elements
+    for i in 0..<min_count {
+        a_elem := any{rawptr(uintptr(a_data) + uintptr(i * elem_size)), info.elem.id}
+        b_elem := any{rawptr(uintptr(b_data) + uintptr(i * elem_size)), info.elem.id}
+        
+        elem_path := fmt.tprintf("%s[%d]", path, i)
+        diff_values(diffs, elem_path, a_elem, b_elem)
+    }
 }
 
 // Helper to check if two any values are equal
