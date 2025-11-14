@@ -481,7 +481,7 @@ game_update :: proc() {
     if g.commodino.is_replaying{
         i := g.commodino.replaying_prev_frame_index+1
         current_frame_checksum := g.commodino.frame_checksums[i]
-        config_diffs := diff_struct(Session_Memory, current_frame_checksum, frame_checksum)
+        config_diffs := diff_struct(Session_Memory, frame_checksum, current_frame_checksum)
         defer delete(config_diffs)
         print_diffs(config_diffs)
         // if (current_frame_checksum != frame_checksum){
