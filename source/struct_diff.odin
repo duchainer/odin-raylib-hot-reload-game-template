@@ -190,6 +190,8 @@ values_equal :: proc(a, b: any) -> bool {
         }
     case reflect.Type_Info_Boolean:
         return (^bool)(a.data)^ == (^bool)(b.data)^
+    case reflect.Type_Info_Enum:
+        return enums_equal(a, b, info)
     case reflect.Type_Info_Array:
         return arrays_equal(a, b, info)
     case reflect.Type_Info_Dynamic_Array:
@@ -208,6 +210,23 @@ values_equal :: proc(a, b: any) -> bool {
         data_size := ti.size
         ret := mem.compare_byte_ptrs((^u8)(a.data), (^u8)(b.data), data_size) == 0
         return ret
+    }
+    
+    return false
+}
+
+// Compare enums
+enums_equal :: proc(a, b: any, info: reflect.Type_Info_Enum) -> bool {
+    base_ti := type_info_of(info.base.id)
+    
+    #partial switch base_info in base_ti.variant {
+    case reflect.Type_Info_Integer:
+        switch base_ti.size {
+        case 4: return (^i32)(a.data)^ == (^i32)(b.data)^
+        case 8: return (^i64)(a.data)^ == (^i64)(b.data)^
+        case 2: return (^i16)(a.data)^ == (^i16)(b.data)^
+        case 1: return (^i8)(a.data)^ == (^i8)(b.data)^
+        }
     }
     
     return false
@@ -328,6 +347,8 @@ value_to_string :: proc(v: any) -> string {
         }
     case reflect.Type_Info_Boolean:
         return fmt.tprintf("%v", (^bool)(v.data)^)
+    case reflect.Type_Info_Enum:
+        return enum_to_string(v, info)
     case reflect.Type_Info_Array:
         return array_to_string(v, info)
     case reflect.Type_Info_Dynamic_Array:
@@ -342,6 +363,33 @@ value_to_string :: proc(v: any) -> string {
     }
     
     return "<unknown>"
+}
+
+// Convert enum to string with name
+enum_to_string :: proc(v: any, info: reflect.Type_Info_Enum) -> string {
+    base_ti := type_info_of(info.base.id)
+    
+    // Get the integer value
+    int_value: i64
+    #partial switch base_info in base_ti.variant {
+    case reflect.Type_Info_Integer:
+        switch base_ti.size {
+        case 4: int_value = i64((^i32)(v.data)^)
+        case 8: int_value = (^i64)(v.data)^
+        case 2: int_value = i64((^i16)(v.data)^)
+        case 1: int_value = i64((^i8)(v.data)^)
+        }
+    }
+    
+    // Find the name for this value
+    for name, i in info.names {
+        if info.values[i] == int_value {
+            return fmt.tprintf("%s(%d)", name, int_value)
+        }
+    }
+    
+    // Value not found in enum (invalid enum value)
+    return fmt.tprintf("<invalid>(%d)", int_value)
 }
 
 // Convert struct to string
