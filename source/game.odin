@@ -33,8 +33,8 @@ created.
 package game
 
 import "core:fmt"
-import "core:math"
-import "core:math/rand"
+// import "core:math"
+// import "core:math/rand"
 import "base:runtime"
 import "core:math/linalg"
 import rl "vendor:raylib"
@@ -68,20 +68,6 @@ breakpoint :: proc () {
 
 PIXEL_WINDOW_HEIGHT :: 180
 
-SheepState :: enum{
-	DEFAULT,
-	JUMPING,
-	FALLING,
-}
-
-Sheep :: struct {
-	using rect: rl.Rectangle,
-	input: i8,
-	speed: rl.Vector2,
-	last_dir_decision: i32,
-	state: SheepState,
-}
-
 MAX_FRAME_COUNT :: TARGET_FPS * 60 /*secs in minute*/ * 10 /* minutes */ // 60 /*minutes in hour*/ * 1
 
 
@@ -109,6 +95,10 @@ Game_Memory :: struct {
 
 }
 
+Mercenary :: struct {
+    using rect: rl.Rectangle,
+}
+
 // TODO Use some fixed point math like fixedptc or libfixmath
 // TODO Replace f32 with fixed point values
 // TODO Check if we can have deterministic rand_gen or not
@@ -116,12 +106,8 @@ Game_Memory :: struct {
 Session_Memory :: struct {
 	frame_time: int,
 	player_rect : rl.Rectangle,
-	sheeps : [1024]Sheep,
-	last_sheep_index: u32,
-	last_sheep_spawn: f32,
-	count_sheep_sacrificed: u32,
-	sheep_time_rand_gen_state, sheep_dir_rand_gen_state : rand.Default_Random_State,
-	sheep_time_rand_gen, sheep_dir_rand_gen : runtime.Random_Generator,
+	mercenaries : [16]Mercenary,
+	last_mercenary_index: u32,
 }
 
 g: ^Game_Memory
@@ -233,104 +219,9 @@ update :: proc(input: rl.Vector2) -> (ok:bool) {
 	g.player_rect.x = min(g.player_rect.x, RIGHT_HOLE_START_X-g.player_rect.width)
 
 
-	if g.last_sheep_spawn > 120 {
-		g.sheeps[g.last_sheep_index+1] = Sheep{
-			rect= rl.Rectangle{
-				-5, -20, 10, 10,
-			},
-			state=.JUMPING,
-		}
-		g.last_sheep_index += 1
-		g.last_sheep_spawn = 0
-	}
-	g.last_sheep_spawn += 1
 	// commodino_assert_message = fmt.tprintf("test?")
 
-	// if g.last_sheep_spawn > 10{
-	// 	commodino_assert_message = fmt.tprintf("Too much sheeps, expected less than 10, instead got %v", g.last_sheep_spawn)
-	// 	return false // assert failed in update
-	// }
 
-	SHEEP_SPEED :: 35.0
-	SHEEP_INITIAL_JUMP_SPEED :: -60.0
-	GRAVITY_ON_SHEEP :: 60.0
-	SHEEP_DETECTION :: 20.0
-	NEAR_HOLE_DISTANCE :: SHEEP_DETECTION * 1.5
-
-	// Reverse loop, to allow for unordered remove of sheeps that fell in the hole
-	sheep_loop: for i := g.last_sheep_index;  i>0; i-=1 {
-		sheep := &g.sheeps[i]
-		if sheep != {}{
-			is_sheep_over_ground := sheep.x + sheep.width > LEFT_HOLE_START_X && sheep.x < RIGHT_HOLE_START_X
-			is_sheep_near_left_hole := sheep.x < LEFT_HOLE_START_X + NEAR_HOLE_DISTANCE
-			is_sheep_near_right_hole := sheep.x > RIGHT_HOLE_START_X - NEAR_HOLE_DISTANCE
-			switch sheep.state{
-			case .DEFAULT:{
-				if !is_sheep_over_ground{
-					sheep.state = .FALLING
-					continue
-				}
-				player_center_pos := player_center_pos(pos_from_rect(g.player_rect))
-				sheep_center_pos := center_pos(sheep.rect)
-
-				delta_x_player_sheep := player_center_pos.x - sheep_center_pos.x
-				distance_player_sheep := math.abs(delta_x_player_sheep)
-
-
-				if sheep.last_dir_decision > 120 || is_sheep_near_left_hole || is_sheep_near_right_hole{
-					rand_time := rand.uint32(g.sheep_time_rand_gen) % 90
-					rand_num := rand.uint32(g.sheep_dir_rand_gen) % 3
-					// We have an input between of -1, 0, or  1
-					sheep.input =  i8(rand_num) - 1
-					if ( sheep.input == -1 && is_sheep_near_left_hole ) || ( sheep.input == 1 && is_sheep_near_right_hole ) {
-						sheep.input = -sheep.input
-					}
-					sheep.last_dir_decision = i32(rand_time)
-				}
-
-				if distance_player_sheep <= SHEEP_DETECTION {
-					sheep.state = .JUMPING
-					sheep.speed.y = SHEEP_INITIAL_JUMP_SPEED
-					sheep.input = i8(delta_x_player_sheep / distance_player_sheep)
-					// continue sheep_loop
-				} else{
-					sheep.y = -sheep.height
-				}
-
-			}
-			case .JUMPING:{
-				sheep.speed.y += GRAVITY_ON_SHEEP * delta_time
-				is_sheep_at_ground_level := sheep.y + sheep.height >= 0
-				if is_sheep_at_ground_level{
-					if is_sheep_over_ground && is_sheep_at_ground_level{
-						sheep.speed.y = 0
-						sheep.state = .DEFAULT
-					} else {
-						sheep.state = .FALLING
-					}
-				}
-			}
-			case .FALLING: {
-				sheep.speed.y += GRAVITY_ON_SHEEP * delta_time
-				is_sheep_deep_in_hole := sheep.y + sheep.height >= 100
-				if is_sheep_deep_in_hole {
-					// Unordered remove of sheep, by replacing by last sheep of g.sheeps
-					// Yes, if it is already the last sheep, this line does nothing, but that's alright
-					g.sheeps[i] = g.sheeps[g.last_sheep_index]
-					// No need to clear the previous last sheep, because we will write over it when we use that slot
-					// g.sheeps[g.last_sheep_index] = {}
-					g.last_sheep_index -= 1
-					g.count_sheep_sacrificed += 1
-					continue
-				}
-			}
-			}
-			sheep.speed.x = f32(sheep.input * SHEEP_SPEED)
-			sheep.x += sheep.speed.x * delta_time
-			sheep.y += sheep.speed.y * delta_time
-			sheep.last_dir_decision += 1
-		}
-	}
 
 	if rl.IsKeyPressed(.LEFT_CONTROL) && rl.IsKeyPressed(.LEFT_SHIFT) && rl.IsKeyPressed(.ESCAPE) {
 		g.run = false
@@ -353,13 +244,13 @@ draw :: proc() {
 	rl.DrawRectangleRec(g.player_rect, rl.DARKPURPLE)
 	// rl.DrawRectangleV({20, 20}, {10, 10}, rl.RED)
 
-	for i in 0..=g.last_sheep_index {
-		sheep := g.sheeps[i]
-		if sheep != {}{
-			rl.DrawRectangleRec(sheep, rl.WHITE)
-			rl.DrawRectangleLinesEx(sheep, 1, {210,210,210,255})
+	for i in 0..=g.last_mercenary_index {
+		mercenary := g.mercenaries[i]
+		if mercenary != {}{
+			rl.DrawRectangleRec(mercenary, rl.WHITE)
+			rl.DrawRectangleLinesEx(mercenary, 1, {210,210,210,255})
 		} else if i != 0 {
-			// We ignore the NULL Sheep
+			// We ignore the NULL mercenary
 			break
 		}
 	}
@@ -368,14 +259,6 @@ draw :: proc() {
 
 	rl.BeginMode2D(ui_camera())
 
-	if false{
-		rl.DrawRectangle(30-5, 100-5, 270, 75, {100, 100, 100, 230})
-		rl.DrawText(fmt.ctprintf(
-"               GAME OVER\nSurvived %v seconds and %v frames\n  Sacrificed %v sheeps to the void\n      Press ENTER to restart",
-			g.frame_time/60, g.frame_time%60, g.count_sheep_sacrificed,
-		), 30, 100, 15, rl.WHITE)
-
-	}
 
 	// NOTE: `fmt.ctprintf` uses the temp allocator. The temp allocator is
 	// cleared at the end of the frame by the main application, meaning inside
@@ -384,9 +267,6 @@ draw :: proc() {
 	if commodino_assert_message != ""{
 		rl.DrawText(fmt.ctprintf("assert_message:\"%v\", \nreplaying_prev_frame_index: %v,\ng.commodino.is_replaying: %#v,\ng.commodino.is_dragging_playback_scrubber:%v,\n", commodino_assert_message, g.commodino.replaying_prev_frame_index, g.commodino.is_replaying, g.commodino.is_dragging_playback_scrubber), 5, 5, 8, rl.WHITE)
 	}
-		// if g.sheeps[1] != {} {
-		// 	rl.DrawText(fmt.ctprintf("g.sheeps[1]: %#v", g.sheeps[1]), 200, 5, 8, rl.WHITE)
-		// }
 	// }
 
 	rl.EndMode2D()
@@ -440,17 +320,6 @@ game_update :: proc() {
     // //    Might be that we have frame_time be 0, but store on 1.. or something
     // frame_checksum.frame_time = 0
 
-    // We don't care if the procecure is not the same pointer,
-    // TODO Make sure that this has no effect on the actual random generated numbers
-    // It shouldn't because gdb says that they both are `runtime::default_random_generator_proc` but still
-    // (gdb) p g.current_session.sheep_time_rand_gen
-    // $8 = {procedure = 0x7fff5bc47ca0 <runtime::default_random_generator_proc>, data = 0x7fffb3fff028 "\257\211Q\264\223a\022\3657\354\210\342)\\\027X\033\272*\242D\267\313k\257\272X\255!xcϠ|\304[\377\177"}
-    // (gdb) p g.commodino.frame_checksums[71].sheep_time_rand_gen
-    // $9 = {procedure = 0x7fffcb247ca0 <runtime::default_random_generator_proc>, data = 0x7fffb3fff028 "\257\211Q\264\223a\022\3657\354\210\342)\\\027X\033\272*\242D\267\313k\257\272X\255!xcϠ|\304[\377\177"}
-    // 
-    frame_checksum.sheep_time_rand_gen.procedure = nil
-    frame_checksum.sheep_dir_rand_gen.procedure = nil
-
     if g.commodino.is_replaying{
         i := g.commodino.replaying_prev_frame_index+1
         current_frame_checksum := g.commodino.frame_checksums[i]
@@ -502,57 +371,13 @@ game_init :: proc() {
 }
 
 reset_current_session_rand_gen :: proc() {
-    sheep_time_rand_gen_state_seed := rand.uint64()
-    g.commodino.sheep_time_rand_gen_state_seed = sheep_time_rand_gen_state_seed
-
-	g.sheep_time_rand_gen_state = rand.create(sheep_time_rand_gen_state_seed)
-	g.sheep_time_rand_gen = rand.default_random_generator(&g.sheep_time_rand_gen_state)
-
-    sheep_dir_rand_gen_state_seed := rand.uint64()
-    g.commodino.sheep_dir_rand_gen_state_seed = sheep_dir_rand_gen_state_seed
-
-	g.sheep_dir_rand_gen_state = rand.create(sheep_dir_rand_gen_state_seed)
-	g.sheep_dir_rand_gen = rand.default_random_generator(&g.sheep_dir_rand_gen_state)
 }
 
 restore_recorded_session_rand_gen :: proc() {
-    sheep_time_rand_gen_state_seed := g.commodino.sheep_time_rand_gen_state_seed
-
-	g.sheep_time_rand_gen_state = rand.create(sheep_time_rand_gen_state_seed)
-	g.sheep_time_rand_gen = rand.default_random_generator(&g.sheep_time_rand_gen_state)
-
-    sheep_dir_rand_gen_state_seed := g.commodino.sheep_dir_rand_gen_state_seed
-
-	g.sheep_dir_rand_gen_state = rand.create(sheep_dir_rand_gen_state_seed)
-	g.sheep_dir_rand_gen = rand.default_random_generator(&g.sheep_dir_rand_gen_state)
 }
 
 restart_current_session_memory :: proc(){
 	g.current_session = {}
-
-	g.sheeps[1] = {
-		rect = {200, -10, 10, 10,},
-		input = 1,
-		speed = {0, 0},
-		last_dir_decision = 0,
-	}
-	g.last_sheep_index += 1
-
-	g.sheeps[2] = {
-		rect = {-200, -10, 10, 10,},
-		input = -1,
-		speed = {0, 0},
-		last_dir_decision = 0,
-	}
-	g.last_sheep_index += 1
-
-	g.sheeps[3] = {
-		rect = {-150, -10, 10, 10,},
-		input = -1,
-		speed = {0, 0},
-		last_dir_decision = 0,
-	}
-	g.last_sheep_index += 1
 
 	g.player_rect = {230, 0, 10, 15}
 	g.player_rect.y = -f32(g.player_rect.height)
@@ -668,11 +493,6 @@ CommodinoStruct ::struct {
 
 	// +1, because we don't do anything to the 0th element, it is a null element
     frame_checksums : [MAX_FRAME_COUNT+1]Session_Memory,
-
-    // random seeds for each system
-    sheep_time_rand_gen_state_seed: u64,
-    sheep_dir_rand_gen_state_seed: u64,
-
 
     is_replaying: bool,
     is_dragging_playback_scrubber: bool,
