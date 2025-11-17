@@ -118,8 +118,6 @@ Session_Memory :: struct {
 	player_rect : rl.Rectangle,
 	sheeps : [1024]Sheep,
 	last_sheep_index: u32,
-	lava_height: f32,
-	lava_speed: f32,
 	last_sheep_spawn: f32,
 	count_sheep_sacrificed: u32,
 	sheep_time_rand_gen_state, sheep_dir_rand_gen_state : rand.Default_Random_State,
@@ -152,7 +150,7 @@ USED_KEY_TO_RL_KEY : [UsedKeysEnum][2]rl.KeyboardKey= {
         .DOWN = { .DOWN, .S },
         .ENTER = { .ENTER, .KEY_NULL },
 }
-// TODO unify the player_input_*_down, giving the UsedKeysEnum.* instead, cuts down on plain repetition.
+// unify the player_input_*_down, giving the UsedKeysEnum.* instead, cuts down on plain repetition.
 player_input_down :: proc(my_key: UsedKeysEnum) -> bool {
 	if g.commodino.is_replaying{
 		return g.commodino.recorded_input_events[g.commodino.replaying_prev_frame_index+1].keys[my_key].pressed
@@ -199,9 +197,6 @@ input :: proc() -> (input: rl.Vector2){
 		game_init()
 	}
 
-	if g.lava_height >= VOLCANO_HEIGHT{
-		return
-	}
 
  	if player_input_down(.UP) {
  		input.y -= 1
@@ -220,7 +215,6 @@ input :: proc() -> (input: rl.Vector2){
 	return input
 }
 
-SHEEP_LAVA_WORTH :: 75
 update :: proc(input: rl.Vector2) -> (ok:bool) {
 	commodino_assert_message = "" // reset assert_message
 
@@ -238,10 +232,6 @@ update :: proc(input: rl.Vector2) -> (ok:bool) {
 	g.player_rect.x = max(g.player_rect.x, LEFT_HOLE_START_X)
 	g.player_rect.x = min(g.player_rect.x, RIGHT_HOLE_START_X-g.player_rect.width)
 
-
-	percent_lava_on_max := g.lava_height / VOLCANO_HEIGHT
-	g.lava_height += g.lava_speed * (1.1 - percent_lava_on_max)
-	g.lava_speed *= 1.001
 
 	if g.last_sheep_spawn > 120 {
 		g.sheeps[g.last_sheep_index+1] = Sheep{
@@ -324,11 +314,6 @@ update :: proc(input: rl.Vector2) -> (ok:bool) {
 				sheep.speed.y += GRAVITY_ON_SHEEP * delta_time
 				is_sheep_deep_in_hole := sheep.y + sheep.height >= 100
 				if is_sheep_deep_in_hole {
-					g.lava_height -= SHEEP_LAVA_WORTH
-					if g.lava_height < 0{
-						g.lava_height = 1
-					}
-
 					// Unordered remove of sheep, by replacing by last sheep of g.sheeps
 					// Yes, if it is already the last sheep, this line does nothing, but that's alright
 					g.sheeps[i] = g.sheeps[g.last_sheep_index]
@@ -353,30 +338,12 @@ update :: proc(input: rl.Vector2) -> (ok:bool) {
 	return true
 }
 
-volcano_center_x : f32
-VOLCANO_HEIGHT :: 300
-
-VOLCANO_TOP_Y :: 50
-VOLCANO_BASE_Y :: VOLCANO_TOP_Y + VOLCANO_HEIGHT
-VOLCANO_SIDE_WIDTH :: 500
-VOLCANO_INNER_WIDTH :: 50
-
 LEFT_HOLE_START_X :: -250
 RIGHT_HOLE_START_X :: 250
 
 draw :: proc() {
 	rl.BeginDrawing()
 	rl.ClearBackground(rl.BLACK)
-
-	volcano_center_x = f32(rl.GetScreenWidth())/2
-	// volcano_center_x -= g.player_rect.x /10
-
-	rl.DrawTriangle({volcano_center_x-30, VOLCANO_BASE_Y},{volcano_center_x, 0},{volcano_center_x+30,VOLCANO_BASE_Y}, rl.BROWN)
-
-	// rl.DrawTriangle({volcano_center_x,0},{volcano_center_x-30, VOLCANO_BASE_Y},{volcano_center_x+30, VOLCANO_BASE_Y}, rl.BROWN)
-	rl.DrawTriangle({volcano_center_x-VOLCANO_INNER_WIDTH,VOLCANO_TOP_Y},{volcano_center_x-VOLCANO_INNER_WIDTH-VOLCANO_SIDE_WIDTH, VOLCANO_BASE_Y},{volcano_center_x-VOLCANO_INNER_WIDTH, VOLCANO_BASE_Y}, rl.BROWN)
-	rl.DrawTriangle({volcano_center_x+VOLCANO_INNER_WIDTH,VOLCANO_TOP_Y},{volcano_center_x+VOLCANO_INNER_WIDTH, VOLCANO_BASE_Y},{volcano_center_x+VOLCANO_INNER_WIDTH+VOLCANO_SIDE_WIDTH, VOLCANO_BASE_Y}, rl.BROWN)
-	rl.DrawRectangleRec({volcano_center_x-VOLCANO_INNER_WIDTH, VOLCANO_BASE_Y-g.lava_height, VOLCANO_INNER_WIDTH*2, g.lava_height}, ( rl.RED/2+rl.ORANGE/2 ) )
 
 	rl.BeginMode2D(game_camera())
 
@@ -401,7 +368,7 @@ draw :: proc() {
 
 	rl.BeginMode2D(ui_camera())
 
-	if g.lava_height >= VOLCANO_HEIGHT{
+	if false{
 		rl.DrawRectangle(30-5, 100-5, 270, 75, {100, 100, 100, 230})
 		rl.DrawText(fmt.ctprintf(
 "               GAME OVER\nSurvived %v seconds and %v frames\n  Sacrificed %v sheeps to the void\n      Press ENTER to restart",
@@ -589,9 +556,6 @@ restart_current_session_memory :: proc(){
 
 	g.player_rect = {230, 0, 10, 15}
 	g.player_rect.y = -f32(g.player_rect.height)
-
-	g.lava_height = VOLCANO_HEIGHT/3.5
-	g.lava_speed = 0.25
 }
 
 @(export)
