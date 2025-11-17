@@ -78,12 +78,19 @@ UsedKeysEnum :: enum{
     DOWN,
 	ENTER,
 }
+UsedMouseKeysEnum :: enum{
+    LEFT,
+}
 
 KeyState :: struct{
 	pressed : bool,
 }
 CachedInput :: struct {
 	keys : [UsedKeysEnum]KeyState,
+    mouse : struct {
+        mouse_pos : rl.Vector2,
+        mouse_keys : [UsedMouseKeysEnum]KeyState,
+    },
 }
 
 
@@ -175,6 +182,13 @@ input :: proc() -> (input: rl.Vector2){
             .UP = { pressed = rl.IsKeyDown(.UP) || rl.IsKeyDown(.W) },
             .DOWN = { pressed = rl.IsKeyDown(.DOWN) || rl.IsKeyDown(.S) },
             .ENTER = { pressed = rl.IsKeyPressed(.ENTER) },
+        }
+        mouse_pos := rl.GetMousePosition()
+        g.commodino.recorded_input_events[g.commodino.recorded_input_events_count].mouse = {
+            mouse_pos = mouse_pos,
+            mouse_keys = {
+                    .LEFT = {pressed = rl.IsMouseButtonDown(.LEFT)},
+            },
         }
     }
 
@@ -270,6 +284,9 @@ draw :: proc() {
 	// }
 
 	rl.EndMode2D()
+
+    mouse_record := &g.commodino.recorded_input_events[g.commodino.recorded_input_events_count].mouse
+    rl.DrawCircleV(mouse_record.mouse_pos, 3, rl.GREEN if mouse_record.mouse_keys[.LEFT].pressed else rl.WHITE)
 
 	rl.EndDrawing()
 }
