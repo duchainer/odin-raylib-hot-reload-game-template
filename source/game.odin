@@ -342,7 +342,7 @@ game_update :: proc() {
     frame_checksum := g.current_session
     // // HACK figure out why we have an off-by-one recording vs replaying
     // //    Might be that we have frame_time be 0, but store on 1.. or something
-    // frame_checksum.frame_time = 0
+    frame_checksum.frame_time = 0
 
     if g.commodino.is_replaying{
         i := g.commodino.replaying_prev_frame_index+1
