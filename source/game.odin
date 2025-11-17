@@ -88,6 +88,8 @@ MAX_FRAME_COUNT :: TARGET_FPS * 60 /*secs in minute*/ * 10 /* minutes */ // 60 /
 UsedKeysEnum :: enum{
 	LEFT,
 	RIGHT,
+    UP,
+    DOWN,
 	ENTER,
 }
 
@@ -146,6 +148,8 @@ ui_camera :: proc() -> rl.Camera2D {
 USED_KEY_TO_RL_KEY : [UsedKeysEnum][2]rl.KeyboardKey= {
         .LEFT =  { .LEFT, .A },
         .RIGHT = { .RIGHT, .D },
+        .UP = { .UP, .W },
+        .DOWN = { .DOWN, .S },
         .ENTER = { .ENTER, .KEY_NULL },
 }
 // TODO unify the player_input_*_down, giving the UsedKeysEnum.* instead, cuts down on plain repetition.
@@ -184,6 +188,8 @@ input :: proc() -> (input: rl.Vector2){
         g.commodino.recorded_input_events[g.commodino.recorded_input_events_count].keys = {
             .LEFT =  { pressed = rl.IsKeyDown(.LEFT) || rl.IsKeyDown(.A) },
             .RIGHT = { pressed = rl.IsKeyDown(.RIGHT) || rl.IsKeyDown(.D) },
+            .UP = { pressed = rl.IsKeyDown(.UP) || rl.IsKeyDown(.W) },
+            .DOWN = { pressed = rl.IsKeyDown(.DOWN) || rl.IsKeyDown(.S) },
             .ENTER = { pressed = rl.IsKeyPressed(.ENTER) },
         }
     }
@@ -197,15 +203,12 @@ input :: proc() -> (input: rl.Vector2){
 		return
 	}
 
-
-	// if rl.IsKeyDown(.UP) || rl.IsKeyDown(.W) {
-	// 	input.y -= 1
-	// }
-	// if rl.IsKeyDown(.DOWN) || rl.IsKeyDown(.S) {
-	// 	input.y += 1
-	// }
-
-	if player_input_left_down() {
+ 	if player_input_down(.UP) {
+ 		input.y -= 1
+ 	}
+ 	if player_input_down(.DOWN) {
+ 		input.y += 1
+ 	}
 	if player_input_down(.LEFT) {
 		input.x -= 1
 	}
