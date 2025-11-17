@@ -143,21 +143,22 @@ ui_camera :: proc() -> rl.Camera2D {
 		zoom = f32(rl.GetScreenHeight())/PIXEL_WINDOW_HEIGHT,
 	}
 }
-
-// TODO unify the player_input_*_down, giving the UsedKeysEnum.* instead, cuts down on plain repetition.
-player_input_left_down :: proc() -> bool {
-	if g.commodino.is_replaying{
-		return g.commodino.recorded_input_events[g.commodino.replaying_prev_frame_index+1].keys[UsedKeysEnum.LEFT].pressed
-	} else {
-		return rl.IsKeyDown(.LEFT) || rl.IsKeyDown(.A)
-	}
+USED_KEY_TO_RL_KEY : [UsedKeysEnum][2]rl.KeyboardKey= {
+        .LEFT =  { .LEFT, .A },
+        .RIGHT = { .RIGHT, .D },
+        .ENTER = { .ENTER, .KEY_NULL },
 }
-
-player_input_right_down:: proc() -> bool{
+// TODO unify the player_input_*_down, giving the UsedKeysEnum.* instead, cuts down on plain repetition.
+player_input_down :: proc(my_key: UsedKeysEnum) -> bool {
 	if g.commodino.is_replaying{
-		return g.commodino.recorded_input_events[g.commodino.replaying_prev_frame_index+1].keys[UsedKeysEnum.RIGHT].pressed
+		return g.commodino.recorded_input_events[g.commodino.replaying_prev_frame_index+1].keys[my_key].pressed
 	} else {
-		return rl.IsKeyDown(.RIGHT) || rl.IsKeyDown(.D)
+        for key in USED_KEY_TO_RL_KEY[my_key] {
+            if rl.IsKeyDown(key){
+                return true
+            }
+        }
+        return false
 	}
 }
 
@@ -205,11 +206,13 @@ input :: proc() -> (input: rl.Vector2){
 	// }
 
 	if player_input_left_down() {
+	if player_input_down(.LEFT) {
 		input.x -= 1
 	}
-	if player_input_right_down() {
+	if player_input_down(.RIGHT) {
 		input.x += 1
 	}
+
 	input = linalg.normalize0(input)
 	return input
 }
