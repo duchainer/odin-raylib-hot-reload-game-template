@@ -285,7 +285,14 @@ draw :: proc() {
 
 	rl.EndMode2D()
 
-    mouse_record := &g.commodino.recorded_input_events[g.commodino.recorded_input_events_count].mouse
+    record := (
+            &g.commodino.recorded_input_events[
+                g.commodino.replaying_prev_frame_index+1
+            ] if g.commodino.is_replaying
+        else &g.commodino.recorded_input_events[g.commodino.recorded_input_events_count]
+    )
+    
+    mouse_record := &record.mouse
     rl.DrawCircleV(mouse_record.mouse_pos, 3, rl.GREEN if mouse_record.mouse_keys[.LEFT].pressed else rl.WHITE)
 
 	rl.EndDrawing()
