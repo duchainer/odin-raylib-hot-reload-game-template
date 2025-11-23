@@ -112,7 +112,7 @@ Game_Memory :: struct {
 // TODO Check if we can have deterministic rand_gen or not
 
 Session_Memory :: struct {
-	frame_time: int,
+	frame_count: int,
 	player_rect : rl.Rectangle,
 	sheeps : [1024]Sheep,
 	last_sheep_index: u32,
@@ -220,10 +220,10 @@ update :: proc(input: rl.Vector2) -> (ok:bool) {
 
 	delta_time : f32
     if g.commodino.is_replaying{
-        delta_time = g.commodino.delta_times[g.frame_time]
+        delta_time = g.commodino.delta_times[g.frame_count]
     }else{
         delta_time = rl.GetFrameTime()
-        g.commodino.delta_times[g.frame_time] = delta_time
+        g.commodino.delta_times[g.frame_count] = delta_time
     }
 
 	player_speed :: 60.0
@@ -399,7 +399,7 @@ draw :: proc() {
 		rl.DrawRectangle(30-5, 100-5, 270, 75, {100, 100, 100, 230})
 		rl.DrawText(fmt.ctprintf(
 "               GAME OVER\nSurvived %v seconds and %v frames\n  Sacrificed %v sheeps to the void\n      Press ENTER to restart",
-			g.frame_time/60, g.frame_time%60, g.count_sheep_sacrificed,
+			g.frame_count/60, g.frame_count%60, g.count_sheep_sacrificed,
 		), 30, 100, 15, rl.WHITE)
 
 	}
@@ -449,7 +449,7 @@ game_update :: proc() {
 
 	if update_ok {
 		input_vec = input()
-	    g.frame_time += 1
+	    g.frame_count += 1
 	}
 	update_ok = update(input_vec)
 	// fmt.println(commodino_assert_message)
@@ -464,8 +464,8 @@ game_update :: proc() {
     // frame_checksum := xxhash.XXH3_64_default(mem.byte_slice(&g.current_session, size_of(g.current_session)))
     frame_checksum := g.current_session
     // // HACK figure out why we have an off-by-one recording vs replaying
-    // //    Might be that we have frame_time be 0, but store on 1.. or something
-    // frame_checksum.frame_time = 0
+    // //    Might be that we have frame_count be 0, but store on 1.. or something
+    // frame_checksum.frame_count = 0
 
     // We don't care if the procecure is not the same pointer,
     // TODO Make sure that this has no effect on the actual random generated numbers
@@ -494,8 +494,8 @@ game_update :: proc() {
         g.commodino.replaying_prev_frame_index += 1
     } else {
         // TODO FIXME
-        // HACK Way to get the frame_checksums to sync when matching, except for frame_time, mostly
-        i := g.current_session.frame_time
+        // HACK Way to get the frame_checksums to sync when matching, except for frame_count, mostly
+        i := g.current_session.frame_count
         g.commodino.frame_checksums[i] = frame_checksum
     }
 }
@@ -653,8 +653,8 @@ game_force_restart :: proc() -> bool {
 
 @(export)
 game_force_replay :: proc() -> bool {
-    // ret := g.current_session.frame_time > 10
-    // g.current_session.frame_time = 0
+    // ret := g.current_session.frame_count > 10
+    // g.current_session.frame_count = 0
 	return rl.IsKeyPressed(.F10)
 }
 
