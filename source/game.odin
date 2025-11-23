@@ -106,6 +106,12 @@ Mercenary :: struct {
     using rect: rl.Rectangle,
 }
 
+Bullet :: struct{
+    startPos, endPos: rl.Vector2,
+    thick: f32,
+    color: rl.Color,
+}
+
 // TODO Use some fixed point math like fixedptc or libfixmath
 // TODO Replace f32 with fixed point values
 // TODO Check if we can have deterministic rand_gen or not
@@ -114,6 +120,7 @@ Session_Memory :: struct {
 	frame_time: int,
 	player_rect : rl.Rectangle,
 	mercenaries : [16]Mercenary,
+    bullets : [64]Bullet,
 	last_mercenary_index: u32,
 }
 
@@ -269,6 +276,15 @@ draw :: proc() {
 		}
 	}
 
+	for bullet, i in g.bullets {
+		if bullet != {}{
+            rl.DrawLineEx(bullet.startPos, bullet.endPos, bullet.thick, bullet.color)
+		} else if i != 0 {
+			// We ignore the NULL mercenary
+			break
+		}
+	}
+
 	rl.EndMode2D()
 
 	rl.BeginMode2D(ui_camera())
@@ -405,6 +421,13 @@ restart_current_session_memory :: proc(){
 
 	g.player_rect = {230, 0, 10, 15}
 	g.player_rect.y = -f32(g.player_rect.height)
+
+    g.bullets[1] = Bullet{
+        startPos = 20,
+        endPos = 50,
+        thick = 2,
+        color = rl.RED,
+    }
 }
 
 @(export)
