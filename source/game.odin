@@ -125,13 +125,33 @@ USED_KEY_TO_RL_KEY : [UsedKeysEnum][2]rl.KeyboardKey= {
         .RIGHT = { .RIGHT, .D },
         .ENTER = { .ENTER, .KEY_NULL },
 }
-// TODO unify the player_input_*_down, giving the UsedKeysEnum.* instead, cuts down on plain repetition.
+
 player_input_down :: proc(my_key: UsedKeysEnum) -> bool {
 	if g.commodino.is_replaying{
 		return g.commodino.recorded_input_events[g.commodino.replaying_prev_frame_index+1].keys[my_key].pressed
 	} else {
         for key in USED_KEY_TO_RL_KEY[my_key] {
             if rl.IsKeyDown(key){
+                return true
+            }
+        }
+        return false
+	}
+}
+
+player_input_just_pressed :: proc(my_key: UsedKeysEnum) -> bool {
+	if g.commodino.is_replaying{
+		if g.commodino.recorded_input_events[g.commodino.replaying_prev_frame_index+1].keys[my_key].pressed{
+            return !g.commodino.recorded_input_events[g.commodino.replaying_prev_frame_index].keys[my_key].pressed
+        }
+        return false
+	} else {
+        for key in USED_KEY_TO_RL_KEY[my_key] {
+            //  NOTE There is one single effect of that for when we have 2 raylib keys to the same used_key
+            //  If you were to frame perfect alternate keys being just pressed, you could have multiple frames of that key being "just_pressed"
+            //  But It shouldn't be an issue, I think.
+            //  Worse case, it will become some speedrun trick or something
+            if rl.IsKeyPressed(key){
                 return true
             }
         }
@@ -158,15 +178,35 @@ input :: proc() -> (input: rl.Vector2){
         
     } else {
         g.commodino.recorded_input_events_count += 1
-        g.commodino.recorded_input_events[g.commodino.recorded_input_events_count].keys = {
-            .LEFT =  { pressed = rl.IsKeyDown(.LEFT) || rl.IsKeyDown(.A) },
-            .RIGHT = { pressed = rl.IsKeyDown(.RIGHT) || rl.IsKeyDown(.D) },
-            .ENTER = { pressed = rl.IsKeyPressed(.ENTER) },
+
+        // NOTE That for loop, it is equivalent to this:
+        // g.commodino.recorded_input_events[g.commodino.recorded_input_events_count].keys = {
+        //     .LEFT =  { pressed = rl.IsKeyDown(.LEFT) || rl.IsKeyDown(.A) },
+        //     .RIGHT = { pressed = rl.IsKeyDown(.RIGHT) || rl.IsKeyDown(.D) },
+        //     .ENTER = { pressed = rl.IsKeyDown(.ENTER) },
+        // }
+        // if we have : 
+        // USED_KEY_TO_RL_KEY : [UsedKeysEnum][2]rl.KeyboardKey= {
+        //         .LEFT =  { .LEFT, .A },
+        //         .RIGHT = { .RIGHT, .D },
+        //         .ENTER = { .ENTER, .KEY_NULL },
+        // }
+        // 
+        for rl_keys, used_key in USED_KEY_TO_RL_KEY {
+			// fmt.println(used_key, rl_keys)
+            // m : [2]rl.KeyboardKey = rl_keys
+            pressed: bool
+            for key in rl_keys{
+                pressed = rl.IsKeyDown(key) || pressed
+            }
+            g.commodino.recorded_input_events[g.commodino.recorded_input_events_count].keys[used_key] = {
+                pressed = pressed,
+            }
         }
     }
 
 
-	if player_input_enter_just_pressed(){
+	if player_input_just_pressed(.ENTER){
 		game_init()
 	}
 
