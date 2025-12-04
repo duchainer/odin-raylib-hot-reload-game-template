@@ -207,7 +207,7 @@ input :: proc() -> (input: rl.Vector2){
 
 
 	if player_input_just_pressed(.ENTER){
-		game_init()
+		should_game_init = true
 	}
 
 	if g.lava_height >= VOLCANO_HEIGHT{
@@ -450,6 +450,17 @@ input_vec : rl.Vector2
 
 @(export)
 game_update :: proc() {
+    if should_game_init{
+        game_init()
+        should_game_init = false
+    }
+	// Prevent calling the context.random_generator,
+	// instead we want our system-specifig rng
+	context.random_generator = runtime.Random_Generator{
+		procedure = prevent_rng_call,
+		data = nil,
+	}
+
     if g.commodino.is_replaying{
         if g.commodino.replaying_prev_frame_index >= g.commodino.recorded_input_events_count{
             if commodino_assert_message == ""{
@@ -459,12 +470,6 @@ game_update :: proc() {
             return
         }
     }
-	// Prevent calling the context.random_generator,
-	// instead we want our system-specifig rng
-	context.random_generator = runtime.Random_Generator{
-		procedure = prevent_rng_call,
-		data = nil,
-	}
 
 	if update_ok {
 		input_vec = input()
@@ -529,6 +534,7 @@ game_init_window :: proc() {
 	rl.SetExitKey(nil)
 }
 
+should_game_init: bool
 @(export)
 game_init :: proc() {
     // breakpoint()
