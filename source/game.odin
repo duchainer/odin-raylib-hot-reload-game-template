@@ -576,6 +576,23 @@ game_init_window :: proc() {
 should_game_init: bool
 @(export)
 game_init :: proc() {
+    // At initialization - with git commit and push:
+    commit_hash, commit_ok := git_commit_and_push()
+    if !commit_ok {
+        fmt.eprintln("Warning: Failed to commit/push to git")
+        // You can decide whether to continue or not
+    }
+
+    db_conn, ok := init_database("game_state.db")
+    if !ok {
+        fmt.eprintln("Failed to initialize database")
+        return
+    }
+
+
+    // In your game loop (every frame):
+    save_commodino_state(db_conn, &game_memory.commodino, commit_hash)
+
     // breakpoint()
 	update_ok = true // Allow getting the input right after init, as we can't have errors yet
 	g = new(Game_Memory)
@@ -685,6 +702,7 @@ game_should_run :: proc() -> bool {
 
 @(export)
 game_shutdown :: proc() {
+    close_database(db_conn)
 	free(g)
 }
 
@@ -708,14 +726,31 @@ game_hot_reloaded :: proc(mem: rawptr, is_replaying: bool = false) {
 	g = (^Game_Memory)(mem)
 	g.commodino.is_replaying = is_replaying
 	if g.commodino.is_replaying{
-		// Restart the game
-		restart_current_session_memory()
+        if g.commodino.load_path == "" {
+            // Restart the game
+            restart_current_session_memory()
 
-        // To set the recorded seeds into new random generators
-        restore_recorded_session_rand_gen()
+            // To set the recorded seeds into new random generators
+            restore_recorded_session_rand_gen()
 
-		// We start counting from 0, check always this and next frame_index
-		g.commodino.replaying_prev_frame_index = 0
+            // We start counting from 0, check always this and next frame_index
+            g.commodino.replaying_prev_frame_index = 0
+        } else{
+            db_conn, ok := init_database(g.commodino.load_path)
+            if !ok {
+                fmt.eprintln("Failed to open database")
+                return
+            }
+            
+            // Check if current code matches saved state
+            check_git_commit_match(db_conn)
+
+            // Load previous state (optional)
+            load_commodino_state(db_conn, &game_memory.commodino)
+
+            // Start replay from first frame
+            g.commodino.replaying_prev_frame_index = 0
+        }
 	}
 
 
