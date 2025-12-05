@@ -346,8 +346,8 @@ value_to_string :: proc(v: any) -> string {
         }
     case reflect.Type_Info_Float:
         switch ti.size {
-        case 4: return fmt.tprintf("%.2f", (^f32)(v.data)^)
-        case 8: return fmt.tprintf("%.2f", (^f64)(v.data)^)
+        case 4: return fmt.tprintf("%.9f", (^f32)(v.data)^)
+        case 8: return fmt.tprintf("%.18f", (^f64)(v.data)^)
         }
     case reflect.Type_Info_Boolean:
         return fmt.tprintf("%v", (^bool)(v.data)^)
