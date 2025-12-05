@@ -510,19 +510,18 @@ game_update :: proc() {
     frame_checksum.sheep_dir_rand_gen.procedure = nil
 
     if g.commodino.is_replaying{
-        i := g.commodino.replaying_prev_frame_index
+        i := g.commodino.replaying_prev_frame_index+1
 
-        recorded_frame_checksum := g.commodino.frame_checksums[i+1]
+        recorded_frame_checksum := g.commodino.frame_checksums[i]
 
         // FOR FUN/PERF, to see how quickly we run our replays,
         fmt.printfln(
             "delta_time: recorded(%.9f)/replaying(%.9f) = %.9f%% faster",
-            g.commodino.delta_times[i+1], latest_delta_time,
-            g.commodino.delta_times[i+1]/latest_delta_time*100)
+            g.commodino.delta_times[i], latest_delta_time,
+            g.commodino.delta_times[i]/latest_delta_time*100)
 
         config_diffs := diff_struct(Session_Memory, recorded_frame_checksum, frame_checksum)
         defer delete(config_diffs)
-        fmt.println("i+1")
         print_diffs(config_diffs)
 
         // if (current_frame_checksum != frame_checksum){
