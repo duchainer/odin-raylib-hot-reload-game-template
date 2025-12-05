@@ -503,11 +503,31 @@ game_update :: proc() {
     frame_checksum.sheep_dir_rand_gen.procedure = nil
 
     if g.commodino.is_replaying{
-        i := g.commodino.replaying_prev_frame_index+1
+        i := g.commodino.replaying_prev_frame_index
+        if i >= 1 {
+            previous_frame_checksum := g.commodino.frame_checksums[i-1]
+            prev_config_diffs := diff_struct(Session_Memory, frame_checksum, previous_frame_checksum)
+            defer delete(prev_config_diffs)
+
+            fmt.println("i-1")
+            print_diffs(prev_config_diffs)
+        }
+
         current_frame_checksum := g.commodino.frame_checksums[i]
+        next_frame_checksum := g.commodino.frame_checksums[i+1]
+
+
         config_diffs := diff_struct(Session_Memory, frame_checksum, current_frame_checksum)
         defer delete(config_diffs)
+
+        next_config_diffs := diff_struct(Session_Memory, frame_checksum, next_frame_checksum)
+        defer delete(next_config_diffs)
+
+        fmt.println("i+0")
         print_diffs(config_diffs)
+        fmt.println("i+1")
+        print_diffs(next_config_diffs)
+
         // if (current_frame_checksum != frame_checksum){
         if len(config_diffs) > 0{
             commodino_assert_message = fmt.tprintf("Replay desync, check stdout")//: '%v', '%v'", g.commodino.frame_checksums[i], frame_checksum) 
