@@ -1,5 +1,9 @@
 package game
 
+// Mostly done with Claude.ai help:
+//  - general diff : https://claude.ai/chat/32eb8d88-4aa4-4b27-9463-cac4e7d97cb5
+//  - diff between arrays: https://claude.ai/chat/996e8fcb-d53b-466e-ab81-bd2b63782fb0
+
 import "core:mem"
 import "core:fmt"
 import "core:reflect"
