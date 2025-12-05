@@ -516,7 +516,8 @@ game_update :: proc() {
 
         // FOR FUN/PERF, to see how quickly we run our replays,
         fmt.printfln(
-            "delta_time: recorded(%.9f)/replaying(%.9f) = %.9f%% faster",
+            "replaying frame[%d], delta_time: recorded(%.9f)/replaying(%.9f) = %.9f%% faster",
+            i,
             g.commodino.delta_times[i], latest_delta_time,
             g.commodino.delta_times[i]/latest_delta_time*100)
 
