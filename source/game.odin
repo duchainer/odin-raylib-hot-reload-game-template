@@ -99,9 +99,6 @@ Session_Memory :: struct {
 	count_sheep_sacrificed: u32,
 	sheep_time_rand_gen_state, sheep_dir_rand_gen_state : rand.Default_Random_State,
 	sheep_time_rand_gen, sheep_dir_rand_gen : runtime.Random_Generator,
-
-    // DEBUG
-    latest_delta_time: f32, 
 }
 
 g: ^Game_Memory
@@ -236,20 +233,20 @@ input :: proc() -> (input: rl.Vector2){
 	return input
 }
 
+latest_delta_time: f32
+
 SHEEP_LAVA_WORTH :: 75
 update :: proc(input: rl.Vector2) -> (ok:bool) {
 	commodino_assert_message = "" // reset assert_message
 
-	delta_time : f32
+
+    delta_time : f32 = rl.GetFrameTime()
     if g.commodino.is_replaying{
+        latest_delta_time = delta_time
         frame_index := g.commodino.replaying_prev_frame_index+1
         delta_time = g.commodino.delta_times[frame_index]
         assert(frame_index == 1 || delta_time > 0, fmt.tprintf("Unless we just started (1st frame), delta_time should be around 1/FPS, not zero"))
-        // FOR FUN, to see how quickly we run our replays,
-        // TODO: remove from the diff_struct when happy with it
-        g.current_session.latest_delta_time = rl.GetFrameTime()
     }else{
-        delta_time = rl.GetFrameTime()
         frame_index := g.frame_count
         assert(frame_index == 1 || delta_time > 0, fmt.tprintf("Unless we just started (1st frame), delta_time should be around 1/FPS, not zero"))
         g.commodino.delta_times[g.frame_count] = delta_time
@@ -516,7 +513,12 @@ game_update :: proc() {
         i := g.commodino.replaying_prev_frame_index
 
         recorded_frame_checksum := g.commodino.frame_checksums[i+1]
-        recorded_frame_checksum.latest_delta_time = g.commodino.delta_times[i+1]
+
+        // FOR FUN/PERF, to see how quickly we run our replays,
+        fmt.printfln(
+            "delta_time: recorded(%.9f)/replaying(%.9f) = %.9f%% faster",
+            g.commodino.delta_times[i+1], latest_delta_time,
+            g.commodino.delta_times[i+1]/latest_delta_time*100)
 
         config_diffs := diff_struct(Session_Memory, recorded_frame_checksum, frame_checksum)
         defer delete(config_diffs)
