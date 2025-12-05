@@ -470,7 +470,7 @@ print_diffs :: proc(diffs: [dynamic]Field_Diff) {
         return
     }
     
-    fmt.printf("Found %d difference(s):\n", len(diffs))
+    fmt.printf("Found %d difference(s) (recorded -> replayed):\n", len(diffs))
     for diff in diffs {
         fmt.printf("  %s: %s -> %s\n", diff.field_name, diff.old_value, diff.new_value)
     }
