@@ -487,9 +487,9 @@ game_update :: proc() {
     _ :: xxhash
     // frame_checksum := xxhash.XXH3_64_default(mem.byte_slice(&g.current_session, size_of(g.current_session)))
     frame_checksum := g.current_session
-    // // HACK figure out why we have an off-by-one recording vs replaying
-    // //    Might be that we have frame_count be 0, but store on 1.. or something
-    // frame_checksum.frame_count = 0
+    // HACK figured out why we had an off-by-one recording vs replaying:
+    //  In short, we increment the frame count right after input, but we store the "frame_checksum" at the end of game_update
+    frame_checksum.frame_count -= 1
 
     // We don't care if the procecure is not the same pointer,
     // TODO Make sure that this has no effect on the actual random generated numbers
