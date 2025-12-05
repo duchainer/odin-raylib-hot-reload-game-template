@@ -534,8 +534,6 @@ game_update :: proc() {
         }
         g.commodino.replaying_prev_frame_index += 1
     } else {
-        // TODO FIXME
-        // HACK Way to get the frame_checksums to sync when matching, except for frame_count, mostly
         assert(g.current_session.frame_count > 0, `
     Because we increment inside
     """
@@ -544,7 +542,11 @@ game_update :: proc() {
             g.frame_count += 1
         }
     """
+    the 0-th index is free for game_init initial state
 `)
+        // HACK Way to get the frame_checksums to sync when matching, except for frame_count
+        frame_checksum.frame_count -= 1
+
         i := g.current_session.frame_count
         g.commodino.frame_checksums[i] = frame_checksum
     }
