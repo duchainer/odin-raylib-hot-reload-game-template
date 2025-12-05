@@ -519,6 +519,15 @@ game_update :: proc() {
     } else {
         // TODO FIXME
         // HACK Way to get the frame_checksums to sync when matching, except for frame_count, mostly
+        assert(g.current_session.frame_count > 0, `
+    Because we increment inside
+    """
+        if update_ok {
+            input_vec = input()
+            g.frame_count += 1
+        }
+    """
+`)
         i := g.current_session.frame_count
         g.commodino.frame_checksums[i] = frame_checksum
     }
