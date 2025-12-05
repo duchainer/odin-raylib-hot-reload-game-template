@@ -99,6 +99,9 @@ Session_Memory :: struct {
 	count_sheep_sacrificed: u32,
 	sheep_time_rand_gen_state, sheep_dir_rand_gen_state : rand.Default_Random_State,
 	sheep_time_rand_gen, sheep_dir_rand_gen : runtime.Random_Generator,
+
+    // DEBUG
+    latest_delta_time: f32, 
 }
 
 g: ^Game_Memory
@@ -239,9 +242,16 @@ update :: proc(input: rl.Vector2) -> (ok:bool) {
 
 	delta_time : f32
     if g.commodino.is_replaying{
-        delta_time = g.commodino.delta_times[g.frame_count]
+        frame_index := g.commodino.replaying_prev_frame_index+1
+        delta_time = g.commodino.delta_times[frame_index]
+        assert(frame_index == 1 || delta_time > 0, fmt.tprintf("Unless we just started (1st frame), delta_time should be around 1/FPS, not zero"))
+        // FOR FUN, to see how quickly we run our replays,
+        // TODO: remove from the diff_struct when happy with it
+        g.current_session.latest_delta_time = rl.GetFrameTime()
     }else{
         delta_time = rl.GetFrameTime()
+        frame_index := g.frame_count
+        assert(frame_index == 1 || delta_time > 0, fmt.tprintf("Unless we just started (1st frame), delta_time should be around 1/FPS, not zero"))
         g.commodino.delta_times[g.frame_count] = delta_time
     }
 
@@ -504,29 +514,14 @@ game_update :: proc() {
 
     if g.commodino.is_replaying{
         i := g.commodino.replaying_prev_frame_index
-        if i >= 1 {
-            previous_frame_checksum := g.commodino.frame_checksums[i-1]
-            prev_config_diffs := diff_struct(Session_Memory, frame_checksum, previous_frame_checksum)
-            defer delete(prev_config_diffs)
 
-            fmt.println("i-1")
-            print_diffs(prev_config_diffs)
-        }
+        recorded_frame_checksum := g.commodino.frame_checksums[i+1]
+        recorded_frame_checksum.latest_delta_time = g.commodino.delta_times[i+1]
 
-        current_frame_checksum := g.commodino.frame_checksums[i]
-        next_frame_checksum := g.commodino.frame_checksums[i+1]
-
-
-        config_diffs := diff_struct(Session_Memory, frame_checksum, current_frame_checksum)
+        config_diffs := diff_struct(Session_Memory, recorded_frame_checksum, frame_checksum)
         defer delete(config_diffs)
-
-        next_config_diffs := diff_struct(Session_Memory, frame_checksum, next_frame_checksum)
-        defer delete(next_config_diffs)
-
-        fmt.println("i+0")
-        print_diffs(config_diffs)
         fmt.println("i+1")
-        print_diffs(next_config_diffs)
+        print_diffs(config_diffs)
 
         // if (current_frame_checksum != frame_checksum){
         if len(config_diffs) > 0{
