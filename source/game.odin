@@ -483,8 +483,16 @@ game_update :: proc() {
 	    g.frame_count += 1
 	}
 	update_ok = update(input_vec)
+
+    DRAW_EVERY_NTH_FRAME :: 6
 	// fmt.println(commodino_assert_message)
-	draw()
+    if g.commodino.is_replaying{
+        if g.commodino.replaying_prev_frame_index % DRAW_EVERY_NTH_FRAME == 0{
+            draw()
+        }
+    } else {
+        draw()
+    }
 
 
 	// Everything on tracking allocator is valid until end-of-frame.
@@ -515,11 +523,14 @@ game_update :: proc() {
         recorded_frame_checksum := g.commodino.frame_checksums[i]
 
         // FOR FUN/PERF, to see how quickly we run our replays,
+        // NOTE, rl.GetFrameTime() actually "Returns time in seconds for last frame drawn (delta time)", not from the last call to it
+        //      So we multiply by the amount of skipped draw frames, to approximate the actual delta_time, of those updates and that one draw
+        // TODO: Use rl.GetTime() and compare, instead, to have something closer to the delta_time
         fmt.printfln(
-            "replaying frame[%d], delta_time: recorded(%.9f)/replaying(%.9f) = %.9f%% faster",
+            "replaying frame[%d], delta_time: recorded(%.9f)/replaying(%.9f) = %.9f times faster",
             i,
-            g.commodino.delta_times[i], latest_delta_time,
-            g.commodino.delta_times[i]/latest_delta_time*100)
+            g.commodino.delta_times[i], latest_delta_time/DRAW_EVERY_NTH_FRAME,
+            g.commodino.delta_times[i] / latest_delta_time * DRAW_EVERY_NTH_FRAME)
 
         config_diffs := diff_struct(Session_Memory, recorded_frame_checksum, frame_checksum)
         defer delete(config_diffs)
