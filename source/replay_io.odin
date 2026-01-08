@@ -19,8 +19,8 @@ git_commit_all :: proc(message: string, allocator := context.temp_allocator) -> 
     }
     
     state, stdout, stderr, err := os2.process_exec(desc, allocator)
-    defer delete(stdout)
-    defer delete(stderr)
+    // defer delete(stdout)
+    // defer delete(stderr)
     
     if err != nil {
         fmt.eprintln("Error executing git commit:", err)
