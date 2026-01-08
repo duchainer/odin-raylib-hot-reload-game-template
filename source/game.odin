@@ -42,6 +42,8 @@ import rl "vendor:raylib"
 import "core:hash/xxhash"
 import "core:mem"
 
+import sqlite "../vendor/odin-sqlite3/"
+
 
 PIXEL_WINDOW_HEIGHT :: 180
 
@@ -591,7 +593,7 @@ game_init :: proc() {
 
 
     // In your game loop (every frame):
-    save_commodino_state(db_conn, &game_memory.commodino, commit_hash)
+    save_commodino_state(db_conn, &g.commodino, commit_hash)
 
     // breakpoint()
 	update_ok = true // Allow getting the input right after init, as we can't have errors yet
@@ -702,7 +704,7 @@ game_should_run :: proc() -> bool {
 
 @(export)
 game_shutdown :: proc() {
-    close_database(db_conn)
+    close_database(g.commodino.db_conn)
 	free(g)
 }
 
@@ -746,7 +748,7 @@ game_hot_reloaded :: proc(mem: rawptr, is_replaying: bool = false) {
             check_git_commit_match(db_conn)
 
             // Load previous state (optional)
-            load_commodino_state(db_conn, &game_memory.commodino)
+            load_commodino_state(db_conn, &g.commodino)
 
             // Start replay from first frame
             g.commodino.replaying_prev_frame_index = 0
@@ -826,6 +828,10 @@ CommodinoStruct ::struct {
     is_dragging_playback_scrubber: bool,
 
     delta_times : [MAX_FRAME_COUNT+1]f32,
+
+    
+    load_path : string,
+    db_conn: ^sqlite.Connection,
 }
 
 SCRUBBER_HEIGHT :: 30.0
