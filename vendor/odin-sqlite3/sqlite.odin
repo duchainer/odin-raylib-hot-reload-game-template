@@ -56,7 +56,7 @@ when ODIN_OS == .Windows {
 			when USE_SQLCIPHER {
 				foreign import sqlite "system:libsqlcipher.a"
 			} else {
-				foreign import sqlite "system:libsqlite3.a"
+				foreign import sqlite "system:libsqlite3-macos.a"
 			}
 		}
 	} else {
@@ -70,7 +70,7 @@ when ODIN_OS == .Windows {
 			when USE_SQLCIPHER {
 				foreign import sqlite "libsqlcipher.a"
 			} else {
-				foreign import sqlite "libsqlite3.a"
+				foreign import sqlite "libsqlite3-macos.a"
 			}
 		}
 	}
