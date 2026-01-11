@@ -591,10 +591,6 @@ game_init :: proc() {
         return
     }
 
-
-    // In your game loop (every frame):
-    save_commodino_state(db_conn, &g.commodino, commit_hash)
-
     // breakpoint()
 	update_ok = true // Allow getting the input right after init, as we can't have errors yet
 	g = new(Game_Memory)
@@ -605,6 +601,11 @@ game_init :: proc() {
 		// You can put textures, sounds and music in the `assets` folder. Those
 		// files will be part any release or web build.
 	}
+
+    // In your game loop (every frame):
+    save_commodino_state(db_conn, &g.commodino, commit_hash)
+
+
 
 	restart_current_session_memory()
     reset_current_session_rand_gen()
