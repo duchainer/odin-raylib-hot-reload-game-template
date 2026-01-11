@@ -247,6 +247,9 @@ check_git_commit_match :: proc(db_conn: ^sqlite.Connection) -> bool {
 
 // Save CommodinoStruct to database
 save_commodino_state :: proc(db_conn: ^sqlite.Connection, state: ^CommodinoStruct, git_commit_hash: string) -> bool {
+    assert(db_conn != nil)
+    assert(state != nil)
+
     // First, delete existing row (we only keep one state)
     delete_sql := "DELETE FROM game_state WHERE id = 1;"
     if !execute_sql(db_conn, delete_sql) {
