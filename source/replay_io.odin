@@ -45,8 +45,8 @@ git_push :: proc(allocator := context.temp_allocator) -> (success: bool) {
     }
     
     state, stdout, stderr, err := os2.process_exec(desc, allocator)
-    defer delete(stdout)
-    defer delete(stderr)
+    // defer delete(stdout)
+    // defer delete(stderr)
     
     if err != nil {
         fmt.eprintln("Error executing git push:", err)
@@ -185,7 +185,7 @@ git_commit_and_push :: proc() -> (commit_hash: string, success: bool) {
     // Commit all, with timestamp
     timestamp := time.now()
     commit_msg := fmt.tprintf("AUTO-SAVE game state at %v", timestamp)
-    defer delete(commit_msg)
+    // defer delete(commit_msg)
     
     _ = git_commit_all(commit_msg)
     // Note: commit might "fail" if there are no changes, which is ok
