@@ -463,6 +463,9 @@ game_update :: proc() {
         game_init()
         should_game_init = false
     }
+    // In your game loop (every frame):
+    save_commodino_state(g.commodino.db_conn, &g.commodino, commit_hash)
+
 	// Prevent calling the context.random_generator,
 	// instead we want our system-specifig rng
 	context.random_generator = runtime.Random_Generator{
@@ -579,13 +582,14 @@ should_game_init: bool
 @(export)
 game_init :: proc() {
     // At initialization - with git commit and push:
-    commit_hash, commit_ok := git_commit_and_push()
+    g.commodino.commit_hash, commit_ok := git_commit_and_push()
     if !commit_ok {
         fmt.eprintln("Warning: Failed to commit/push to git")
         // You can decide whether to continue or not
     }
 
-    db_conn, ok := init_database("game_state.db")
+    ok : bool
+    g.commodino.db_conn, ok = init_database("game_state.db")
     if !ok {
         fmt.eprintln("Failed to initialize database")
         return
@@ -602,8 +606,6 @@ game_init :: proc() {
 		// files will be part any release or web build.
 	}
 
-    // In your game loop (every frame):
-    save_commodino_state(db_conn, &g.commodino, commit_hash)
 
 
 
@@ -739,17 +741,18 @@ game_hot_reloaded :: proc(mem: rawptr, is_replaying: bool = false) {
             // We start counting from 0, check always this and next frame_index
             g.commodino.replaying_prev_frame_index = 0
         } else{
-            db_conn, ok := init_database(g.commodino.load_path)
+            ok: bool
+            g.commodino.db_conn, ok = init_database(g.commodino.load_path)
             if !ok {
                 fmt.eprintln("Failed to open database")
                 return
             }
             
             // Check if current code matches saved state
-            check_git_commit_match(db_conn)
+            check_git_commit_match(g.commodino.db_conn)
 
             // Load previous state (optional)
-            load_commodino_state(db_conn, &g.commodino)
+            load_commodino_state(g.commodino.db_conn, &g.commodino)
 
             // Start replay from first frame
             g.commodino.replaying_prev_frame_index = 0

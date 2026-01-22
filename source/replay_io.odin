@@ -65,7 +65,7 @@ git_push :: proc(allocator := context.temp_allocator) -> (success: bool) {
 }
 
 // Read current commit hash
-git_get_commit :: proc(allocator := context.temp_allocator) -> (commit: string, ok: bool) {
+git_get_commit :: proc(allocator := context.temp_allocator) -> (commit_hash: string, ok: bool) {
     desc := os2.Process_Desc{
         command = {"git", "rev-parse", "HEAD"},
     }
@@ -85,9 +85,9 @@ git_get_commit :: proc(allocator := context.temp_allocator) -> (commit: string, 
     
     // Remove trailing newline
     commit_str := string(stdout)
-    commit = strings.trim_right(commit_str, "\n\r")
+    commit_hash = strings.trim_right(commit_str, "\n\r")
     
-    return commit, true
+    return commit_hash, true
 }
 
 // Usage example
