@@ -1,0 +1,8 @@
+#+title: Notes
+* If you have a SIGSEV
+** Are you deferencing a null pointer
+*** Are you using something that is not yet created?
+I did that twice already, trying to use the global Game_Memory `g` before init of it
+So I moved it at the very top of game_init, inside of game_memory_init
+Let's hope I do not do the same mistake again in a week :P
+
