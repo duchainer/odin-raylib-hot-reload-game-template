@@ -464,7 +464,7 @@ game_update :: proc() {
         should_game_init = false
     }
     // In your game loop (every frame):
-    save_commodino_state(g.commodino.db_conn, &g.commodino, commit_hash)
+    save_commodino_state(g.commodino.db_conn, &g.commodino, g.commodino.commit_hash,)
 
 	// Prevent calling the context.random_generator,
 	// instead we want our system-specifig rng
@@ -578,11 +578,27 @@ game_init_window :: proc() {
 	rl.SetExitKey(nil)
 }
 
+game_memory_init :: proc() {
+ 	update_ok = true // Allow getting the input right after init, as we can't have errors yet
+	g = new(Game_Memory)
+	g^ = Game_Memory {
+		run = true,
+
+		// You can put textures, sounds and music in the `assets` folder. Those
+		// files will be part any release or web build.
+	}
+	restart_current_session_memory()
+    reset_current_session_rand_gen()
+}
+
 should_game_init: bool
 @(export)
 game_init :: proc() {
+    game_memory_init()
+
     // At initialization - with git commit and push:
-    g.commodino.commit_hash, commit_ok := git_commit_and_push()
+    commit_ok: bool
+    g.commodino.commit_hash, commit_ok = git_commit_and_push()
     if !commit_ok {
         fmt.eprintln("Warning: Failed to commit/push to git")
         // You can decide whether to continue or not
@@ -595,22 +611,6 @@ game_init :: proc() {
         return
     }
 
-    // breakpoint()
-	update_ok = true // Allow getting the input right after init, as we can't have errors yet
-	g = new(Game_Memory)
-
-	g^ = Game_Memory {
-		run = true,
-
-		// You can put textures, sounds and music in the `assets` folder. Those
-		// files will be part any release or web build.
-	}
-
-
-
-
-	restart_current_session_memory()
-    reset_current_session_rand_gen()
 
     // Reset frame_checksums
     // TODO MAYBE, reset most of Commodino
@@ -836,6 +836,7 @@ CommodinoStruct ::struct {
     
     load_path : string,
     db_conn: ^sqlite.Connection,
+    commit_hash : string,
 }
 
 SCRUBBER_HEIGHT :: 30.0
