@@ -574,8 +574,16 @@ game_init_window :: proc() {
 }
 
 should_game_init: bool
+
+db_conn: DB_CONN
 @(export)
 game_init :: proc() {
+    ok: bool
+    db_conn, ok = init_database("game_state.db")
+    if !ok {
+        fmt.eprintln("Failed to initialize database")
+        return
+    }
     // breakpoint()
 	update_ok = true // Allow getting the input right after init, as we can't have errors yet
 	g = new(Game_Memory)
@@ -685,6 +693,7 @@ game_should_run :: proc() -> bool {
 
 @(export)
 game_shutdown :: proc() {
+    close_database(db_conn)
 	free(g)
 }
 
