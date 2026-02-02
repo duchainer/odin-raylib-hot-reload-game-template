@@ -42,8 +42,6 @@ import rl "vendor:raylib"
 import "core:hash/xxhash"
 import "core:mem"
 
-import sqlite "../vendor/odin-sqlite3/"
-
 
 PIXEL_WINDOW_HEIGHT :: 180
 
@@ -463,9 +461,6 @@ game_update :: proc() {
         game_init()
         should_game_init = false
     }
-    // In your game loop (every frame):
-    save_commodino_state(g.commodino.db_conn, &g.commodino, g.commodino.commit_hash,)
-
 	// Prevent calling the context.random_generator,
 	// instead we want our system-specifig rng
 	context.random_generator = runtime.Random_Generator{
@@ -578,39 +573,30 @@ game_init_window :: proc() {
 	rl.SetExitKey(nil)
 }
 
-game_memory_init :: proc() {
- 	update_ok = true // Allow getting the input right after init, as we can't have errors yet
+should_game_init: bool
+
+db_conn: DB_CONN
+@(export)
+game_init :: proc() {
+    ok: bool
+    db_conn, ok = init_database("game_state.db")
+    if !ok {
+        fmt.eprintln("Failed to initialize database")
+        return
+    }
+    // breakpoint()
+	update_ok = true // Allow getting the input right after init, as we can't have errors yet
 	g = new(Game_Memory)
+
 	g^ = Game_Memory {
 		run = true,
 
 		// You can put textures, sounds and music in the `assets` folder. Those
 		// files will be part any release or web build.
 	}
+
 	restart_current_session_memory()
     reset_current_session_rand_gen()
-}
-
-should_game_init: bool
-@(export)
-game_init :: proc() {
-    game_memory_init()
-
-    // At initialization - with git commit and push:
-    commit_ok: bool
-    g.commodino.commit_hash, commit_ok = git_commit_and_push()
-    if !commit_ok {
-        fmt.eprintln("Warning: Failed to commit/push to git")
-        // You can decide whether to continue or not
-    }
-
-    ok : bool
-    g.commodino.db_conn, ok = init_database("game_state.db")
-    if !ok {
-        fmt.eprintln("Failed to initialize database")
-        return
-    }
-
 
     // Reset frame_checksums
     // TODO MAYBE, reset most of Commodino
@@ -707,7 +693,7 @@ game_should_run :: proc() -> bool {
 
 @(export)
 game_shutdown :: proc() {
-    close_database(g.commodino.db_conn)
+    close_database(db_conn)
 	free(g)
 }
 
@@ -731,32 +717,14 @@ game_hot_reloaded :: proc(mem: rawptr, is_replaying: bool = false) {
 	g = (^Game_Memory)(mem)
 	g.commodino.is_replaying = is_replaying
 	if g.commodino.is_replaying{
-        if g.commodino.load_path == "" {
-            // Restart the game
-            restart_current_session_memory()
+		// Restart the game
+		restart_current_session_memory()
 
-            // To set the recorded seeds into new random generators
-            restore_recorded_session_rand_gen()
+        // To set the recorded seeds into new random generators
+        restore_recorded_session_rand_gen()
 
-            // We start counting from 0, check always this and next frame_index
-            g.commodino.replaying_prev_frame_index = 0
-        } else{
-            ok: bool
-            g.commodino.db_conn, ok = init_database(g.commodino.load_path)
-            if !ok {
-                fmt.eprintln("Failed to open database")
-                return
-            }
-            
-            // Check if current code matches saved state
-            check_git_commit_match(g.commodino.db_conn)
-
-            // Load previous state (optional)
-            load_commodino_state(g.commodino.db_conn, &g.commodino)
-
-            // Start replay from first frame
-            g.commodino.replaying_prev_frame_index = 0
-        }
+		// We start counting from 0, check always this and next frame_index
+		g.commodino.replaying_prev_frame_index = 0
 	}
 
 
@@ -832,11 +800,6 @@ CommodinoStruct ::struct {
     is_dragging_playback_scrubber: bool,
 
     delta_times : [MAX_FRAME_COUNT+1]f32,
-
-    
-    load_path : string,
-    db_conn: ^sqlite.Connection,
-    commit_hash : string,
 }
 
 SCRUBBER_HEIGHT :: 30.0

@@ -1,7 +1,7 @@
 #!/usr/bin/env sh
 
 # Compile
-clang -c sqlite-amalgamation-3510100/sqlite3.c -o sqlite3.o
+clang -g -c sqlite-amalgamation-3510100/sqlite3.c -o sqlite3.o
 
 # Make a static library archive
 ar rcs libsqlite3-macos.a sqlite3.o
