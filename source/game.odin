@@ -579,7 +579,7 @@ db_conn: DB_CONN
 @(export)
 game_init :: proc() {
     ok: bool
-    db_conn, ok = init_database("game_state.db")
+    db_conn, ok = db_init("game_state.db")
     if !ok {
         fmt.eprintln("Failed to initialize database")
         return
@@ -693,7 +693,7 @@ game_should_run :: proc() -> bool {
 
 @(export)
 game_shutdown :: proc() {
-    close_database(db_conn)
+    db_close(db_conn)
 	free(g)
 }
 
