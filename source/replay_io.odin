@@ -15,10 +15,19 @@ db_init :: proc(db_path: string) -> (db_conn: DB_CONN, ok: bool){
     return db_conn, ( result == .Ok )
 }
 
-// insert_in_database :: proc(db_path: string) -> (db_conn: DB_CONN, ok: bool){
-//     // result := sqlite.open(cstring(raw_data(db_path)), &db_conn)
-//     // return db_conn, ( result == .Ok )
-// }
+db_insert_in :: proc(db_conn: DB_CONN, commodino_struct: ^CommodinoStruct) -> (ok: bool){
+
+    breakpoint()
+    // sqlite.prepare_v2(db_conn)
+
+    // // Bind parameters  id
+    // sqlite.bind_int(stmt, 1, 1) 
+    // sqlite.bind_
+
+    // struct_size := size_of(commodino_struct)
+    // sqlite.bind_blob(stmt, 2, cast([^]u8)&commodino_struct, i32(struct_size), {behaviour = .Static})
+    return true
+}
 
 db_close :: proc(db_conn: DB_CONN) -> ( ok:bool ){
     result := sqlite.close(db_conn)
