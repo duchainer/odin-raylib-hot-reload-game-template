@@ -16,6 +16,7 @@ ArtistId :: enum {
 	AC_DC     = 1,
 	Accept    = 2,
 	Aerosmith = 3,
+    Styx      = 4,
 }
 
 main :: proc() {
@@ -57,6 +58,83 @@ main :: proc() {
 		fmt.printfln("\nconnection closed")
 	}
 
+    {
+        fmt.println("======= drop table example begin =======\n")
+        defer fmt.println("\n======= drop table example end =======")
+
+        if rc := sa.execute(
+            db, 
+            `DROP TABLE IF EXISTS my_albums`
+            //        `CREATE TABLE IF NOT EXISTS people(
+            // 	id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+            // 	number INTEGER DEFAULT 0,
+            // 	big_number DECIMAL DEFAULT 0,
+            // 	name VARCHAR(30)
+            // ) STRICT` 
+        ); rc != .Ok {
+            fmt.println(sqlite.errmsg(db))
+            fmt.panicf("failed to execute query. result code {}", rc)
+        }
+    }
+        
+    // create table example
+    {
+		fmt.println("======= create table example begin =======\n")
+		defer fmt.println("\n======= create table example end =======")
+
+		if rc := sa.execute(
+            db, 
+			`CREATE TABLE IF NOT EXISTS my_albums (
+                AlbumId INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+                Title TEXT,
+                ArtistId INTEGER
+             ) STRICT; -- To have strict type-checking in sqlite
+            `
+    //        `CREATE TABLE IF NOT EXISTS people(
+	// 	id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+	// 	number INTEGER DEFAULT 0,
+	// 	big_number DECIMAL DEFAULT 0,
+	// 	name VARCHAR(30)
+	// ) STRICT` 
+        ); rc != .Ok {
+
+			fmt.println(sqlite.errmsg(db))
+            fmt.panicf("failed to execute query. result code {}", rc)
+		}
+
+        
+    }
+{
+		fmt.println("======= Insert example begin =======\n")
+		defer fmt.println("\n======= Insert example end =======")
+
+		if rc := sa.execute(
+            db, 
+			`INSERT INTO my_albums (
+                -- AlbumId,
+                Title,
+                ArtistId
+             ) VALUES (
+"Renagade",
+4
+            );
+            `
+    //        `CREATE TABLE IF NOT EXISTS people(
+	// 	id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+	// 	number INTEGER DEFAULT 0,
+	// 	big_number DECIMAL DEFAULT 0,
+	// 	name VARCHAR(30)
+	// ) STRICT` 
+        ); rc != .Ok {
+
+			fmt.println(sqlite.errmsg(db))
+            fmt.panicf("failed to execute query. result code {}", rc)
+		}
+
+        
+    }
+
+
 	// query example
 	{
 		fmt.println("======= query example begin =======\n")
@@ -74,10 +152,11 @@ main :: proc() {
 		if rc := sa.query(
 			db,
 			&albums,
-			"select AlbumId, Title, ArtistId from Album where ArtistId <= ? limit ?",
-			{{1, i64(ArtistId.Aerosmith)}, {2, i32(5)}},
+			"select AlbumId, Title, ArtistId from my_albums where ArtistId <= ? limit ?",
+			{{1, i64(ArtistId.Styx)}, {2, i32(5)}},
 		); rc != .Ok {
-			fmt.panicf("failed to execute query. result code {}", rc)
+			fmt.println(sqlite.errmsg(db))
+            fmt.panicf("failed to execute query. result code {}", rc)
 		}
 
 		fmt.printfln("albums: %#v", albums)
@@ -91,7 +170,8 @@ main :: proc() {
 		defer fmt.println("\n======= execute example end =======")
 
 		if rc := sa.execute(db, "select 1"); rc != .Ok {
-			fmt.panicf("failed to execute query. result code {}", rc)
+			fmt.println(sqlite.errmsg(db))
+            fmt.panicf("failed to execute query. result code {}", rc)
 		}
 	}
 }
