@@ -10,7 +10,7 @@ import "core:log"
 import "core:slice"
 // import "core:strconv"
 import "core:strings"
-import "core:text/regex"
+// import "core:text/regex"
 
 Runtime_Config :: struct {
 	extra_runtime_checks: bool,

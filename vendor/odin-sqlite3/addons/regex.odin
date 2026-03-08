@@ -34,13 +34,13 @@ match_and_return_capture :: proc(pattern: string, str: string) -> (string, Regex
 
 @(test)
 match_and_return_capture_test__no_capture :: proc(t: ^testing.T) {
-	capture, err := match_and_return_capture(`\<(.*)\>`, "hello world")
+	_, err := match_and_return_capture(`\<(.*)\>`, "hello world")
 	testing.expect_value(t, err, Capture_Error.No_Capture)
 }
 
 @(test)
 match_and_return_capture_test__malformed_regex :: proc(t: ^testing.T) {
-	capture, err := match_and_return_capture(`?\<(.*)\>`, "<hello world>")
+	_, err := match_and_return_capture(`?\<(.*)\>`, "<hello world>")
 	testing.expect(t, err != nil)
 }
 
