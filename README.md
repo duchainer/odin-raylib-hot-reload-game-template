@@ -20,7 +20,7 @@ I used this kind of hot reloading while developing my game [CAT & ONION](https:/
 > - `exe` -> `bin`
 > - `dll` -> `dylib` (mac), `so` (linux)
 
-1. Run `build_hot_reload.bat` to create `game_hot_reload.exe` and `game.dll` (located in `build/hot_reload`). Note: It expects odin compiler to be part of your PATH environment variable.
+1. Run `build_hot_reload.bat` to create `game_hot_reload.exe` (located at the root of the project) and `game.dll` (located in `build/hot_reload`). Note: It expects odin compiler to be part of your PATH environment variable.
 2. Run `game_hot_reload.exe`, leave it running.
 3. Make changes to the gameplay code in `source/game.odin`. For example, change the line `rl.ClearBackground(rl.BLACK)` so that it instead uses `rl.BLUE`. Save the file.
 4. Run `build_hot_reload.bat`, it will recompile `game.dll`.
@@ -66,7 +66,7 @@ There's a wrapper for `read_entire_file` and `write_entire_file` from `core:os` 
 
 ### Web build troubleshooting
 
-See the README of the [Odin + Raylib on the web repository](https://github.com/karl-zylinski/odin-raylib-web) for troubleshooting steps.
+See the README of the [Odin + Raylib on the web repository](https://github.com/karl-zylinski/odin-raylib-web?tab=readme-ov-file#troubleshooting) for troubleshooting steps.
 
 ## Assets
 You can put assets such as textures, sounds and music in the `assets` folder. That folder will be copied when a release build is created and also integrated into the web build.
