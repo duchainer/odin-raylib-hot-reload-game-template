@@ -265,3 +265,9 @@ write_struct_field_from_statement :: proc(
 
 	return nil
 }
+
+on_fail_panic :: proc(db: ^sqlite3.Connection, rc: sqlite3.Result_Code){
+    if rc != .Ok {
+        fmt.panicf("failed to execute query. result code {}\n errmsg: {}", rc, sqlite3.errmsg(db))
+    }
+}
