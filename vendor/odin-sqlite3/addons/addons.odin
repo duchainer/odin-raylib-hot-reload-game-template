@@ -1,14 +1,14 @@
 package addons
 
 import sqlite3 ".."
-import "base:runtime"
+// import "base:runtime"
 import "core:c"
 import "core:fmt"
 import "core:log"
-import "core:mem"
-import "core:reflect"
+// import "core:mem"
+// import "core:reflect"
 import "core:slice"
-import "core:strconv"
+// import "core:strconv"
 import "core:strings"
 import "core:text/regex"
 
