@@ -41,6 +41,8 @@ import rl "vendor:raylib"
 
 import "core:hash/xxhash"
 import "core:mem"
+import sqlite "../vendor/odin-sqlite3/"
+import sa "../vendor/odin-sqlite3/addons/"
 
 
 PIXEL_WINDOW_HEIGHT :: 180
@@ -560,6 +562,7 @@ game_update :: proc() {
 
         i := g.current_session.frame_count
         g.commodino.frame_checksums[i] = frame_checksum
+        db_replace_commodino_struct(db, g.commodino)
     }
 }
 
@@ -575,11 +578,11 @@ game_init_window :: proc() {
 
 should_game_init: bool
 
-db_conn: DB_CONN
+db: ^sqlite.Connection
 @(export)
 game_init :: proc() {
     ok: bool
-    db_conn, ok = db_init("game_state.db")
+    db, ok = db_init("game_state.db")
     if !ok {
         fmt.eprintln("Failed to initialize database")
         return
@@ -693,7 +696,7 @@ game_should_run :: proc() -> bool {
 
 @(export)
 game_shutdown :: proc() {
-    db_close(db_conn)
+    db_close(db)
 	free(g)
 }
 
