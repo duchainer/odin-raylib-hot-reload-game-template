@@ -48,9 +48,7 @@ main :: proc() {
 	sa.config.extra_runtime_checks = true // does extra checks on enum values
 
 	db: ^sqlite.Connection
-	if rc := sqlite.open("./sample.sqlite", &db); rc != .Ok {
-		fmt.panicf("failed to open database. result code {}", rc)
-	}
+	sa.on_fail_panic(db, sqlite.open("./sample.sqlite", &db))
 
 	fmt.printfln("connected to database\n")
 	defer {
@@ -62,7 +60,7 @@ main :: proc() {
         fmt.println("======= drop table example begin =======\n")
         defer fmt.println("\n======= drop table example end =======")
 
-        if rc := sa.execute(
+        sa.on_fail_panic(db, sa.execute(
             db, 
             `DROP TABLE IF EXISTS my_albums`
             //        `CREATE TABLE IF NOT EXISTS people(
@@ -71,10 +69,7 @@ main :: proc() {
             // 	big_number DECIMAL DEFAULT 0,
             // 	name VARCHAR(30)
             // ) STRICT` 
-        ); rc != .Ok {
-            fmt.println(sqlite.errmsg(db))
-            fmt.panicf("failed to execute query. result code {}", rc)
-        }
+        ))
     }
         
     // create table example
@@ -82,7 +77,7 @@ main :: proc() {
 		fmt.println("======= create table example begin =======\n")
 		defer fmt.println("\n======= create table example end =======")
 
-		if rc := sa.execute(
+		sa.on_fail_panic(db, sa.execute(
             db, 
 			`CREATE TABLE IF NOT EXISTS my_albums (
                 AlbumId INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
@@ -96,42 +91,68 @@ main :: proc() {
 	// 	big_number DECIMAL DEFAULT 0,
 	// 	name VARCHAR(30)
 	// ) STRICT` 
-        ); rc != .Ok {
-
-			fmt.println(sqlite.errmsg(db))
-            fmt.panicf("failed to execute query. result code {}", rc)
-		}
+        ))
 
         
     }
-{
-		fmt.println("======= Insert example begin =======\n")
-		defer fmt.println("\n======= Insert example end =======")
+    {
+        fmt.println("======= Insert example begin =======\n")
+        defer fmt.println("\n======= Insert example end =======")
 
-		if rc := sa.execute(
+        sa.on_fail_panic(db, sa.execute(
             db, 
-			`INSERT INTO my_albums (
+            `INSERT INTO my_albums (
                 -- AlbumId,
                 Title,
                 ArtistId
-             ) VALUES (
-"Renagade",
-4
+            ) VALUES (
+            "Renagade",
+            4
             );
+        `
+        //        `CREATE TABLE IF NOT EXISTS people(
+        // 	id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+        // 	number INTEGER DEFAULT 0,
+        // 	big_number DECIMAL DEFAULT 0,
+        // 	name VARCHAR(30)
+        // ) STRICT` 
+        ))
+    }
+
+    {
+        fmt.println("======= Insert example begin =======\n")
+        defer fmt.println("\n======= Insert example end =======")
+
+        sa.on_fail_panic(db, sa.execute(
+            db, 
             `
-    //        `CREATE TABLE IF NOT EXISTS people(
-	// 	id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
-	// 	number INTEGER DEFAULT 0,
-	// 	big_number DECIMAL DEFAULT 0,
-	// 	name VARCHAR(30)
-	// ) STRICT` 
-        ); rc != .Ok {
+            BEGIN TRANSACTION;
+            `
+        ))
+        sa.on_fail_panic(db, sa.execute(
+            db, 
+            `
+            DELETE FROM my_albums;
+        `))
+        sa.on_fail_panic(db, sa.execute(
+            db, 
+            `
+            INSERT INTO my_albums (
+                -- AlbumId,
+                Title,
+                ArtistId
+            ) VALUES (
+                "NOT_RENAGADE",
+                4
+            );
+        `))
+        sa.on_fail_panic(db, sa.execute(
+            db, 
+            `
+            COMMIT TRANSACTION;
+            `
+        ))
 
-			fmt.println(sqlite.errmsg(db))
-            fmt.panicf("failed to execute query. result code {}", rc)
-		}
-
-        
     }
 
 
@@ -149,15 +170,12 @@ main :: proc() {
 			delete(albums)
 		}
 
-		if rc := sa.query(
+		sa.on_fail_panic(db, sa.query(
 			db,
 			&albums,
 			"select AlbumId, Title, ArtistId from my_albums where ArtistId <= ? limit ?",
 			{{1, i64(ArtistId.Styx)}, {2, i32(5)}},
-		); rc != .Ok {
-			fmt.println(sqlite.errmsg(db))
-            fmt.panicf("failed to execute query. result code {}", rc)
-		}
+		))
 
 		fmt.printfln("albums: %#v", albums)
 	}
@@ -169,9 +187,6 @@ main :: proc() {
 		fmt.println("\n======= execute example begin =======\n")
 		defer fmt.println("\n======= execute example end =======")
 
-		if rc := sa.execute(db, "select 1"); rc != .Ok {
-			fmt.println(sqlite.errmsg(db))
-            fmt.panicf("failed to execute query. result code {}", rc)
-		}
+		sa.on_fail_panic(db, sa.execute(db, "select 1"));
 	}
 }
