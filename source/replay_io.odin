@@ -1,6 +1,8 @@
 package game
 
-
+import "core:encoding/json"
+import "core:fmt"
+// import "core:mem"
 import sqlite "../vendor/odin-sqlite3"
 import sa "../vendor/odin-sqlite3/addons"
 
@@ -27,13 +29,22 @@ db_replace_commodino_struct :: proc(db: ^sqlite.Connection, commodino_struct: ^C
         `
         DELETE FROM commodino_structs;
     `))
-    sa.on_fail_panic(db, sa.execute(
-        db, 
-        `
-        INSERT INTO commodino_structs VALUES (?);
-        `, {commodino_struct},
-    ))
-    sa.on_fail_panic(db, sa.execute(db, "COMMIT TRANSACTION;"))
+    if json_data, err := json.marshal(commodino_struct^); err == nil{
+        sa.on_fail_panic(db, sa.execute(
+            db, 
+            `
+            INSERT INTO commodino_structs VALUES (?);
+            `, {{
+                0,
+                json_data,
+                // mem.any_to_bytes(commodino_struct^),
+            }},
+        ))
+        sa.on_fail_panic(db, sa.execute(db, "COMMIT TRANSACTION;"))
+    } else{
+        fmt.panicf("Failed to json.marshal commodino_struct: error: {}", ok)
+    }
+
     return true
 }
 
