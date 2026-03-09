@@ -128,15 +128,15 @@ prepare :: proc(
 
 		if param.value == nil {
 			sqlite3.bind_null(stmt^, idx) or_return
-		} else if v, ok := param.value.(i32); ok {
+		} else if v, ok1 := param.value.(i32); ok1 {
 			sqlite3.bind_int(stmt^, idx, c.int(v)) or_return
-		} else if v, ok := param.value.(i64); ok {
+		} else if v, ok2 := param.value.(i64); ok2 {
 			sqlite3.bind_int64(stmt^, idx, c.int64_t(v)) or_return
-		} else if v, ok := param.value.([]byte); ok {
+		} else if v, ok3 := param.value.([]byte); ok3 {
 			sqlite3.bind_blob64(stmt^, idx, slice.as_ptr(v), c.int64_t(len(v)), {behaviour = .Static}) or_return
-		} else if v, ok := param.value.(bool); ok {
+		} else if v, ok4 := param.value.(bool); ok4 {
 			sqlite3.bind_int(stmt^, idx, c.int(v ? 1 : 0)) or_return
-		} else if v, ok := param.value.(string); ok {
+		} else if v, ok5 := param.value.(string); ok5 {
 			// Sqlite treats our parameter as a "cstring" if we pass a negative length.
 			// Explicitly it's just a slice.
 			// https://sqlite.org/c3ref/bind_blob.html.

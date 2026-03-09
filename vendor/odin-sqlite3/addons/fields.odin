@@ -166,7 +166,7 @@ get_type_fields_test__missing_tag :: proc(t: ^testing.T) {
 		c: string `sqlite:"Foobar"`,
 	}
 
-	fields, err := get_type_fields(S)
+	_, err := get_type_fields(S)
 	testing.expect(t, err != nil)
 }
 
@@ -179,7 +179,7 @@ get_type_fields_test__malformed_tag :: proc(t: ^testing.T) {
 		c: string `sqlite:"Foobar"`,
 	}
 
-	fields, err := get_type_fields(S)
+	_, err := get_type_fields(S)
 	testing.expect(t, err != nil)
 }
 
@@ -191,6 +191,6 @@ get_type_fields_test__malformed_tag_missing_quote :: proc(t: ^testing.T) {
 		c: string `sqlite:"Foobar"`,
 	}
 
-	fields, err := get_type_fields(S)
+	_, err := get_type_fields(S)
 	testing.expect(t, err != nil)
 }
