@@ -61,7 +61,7 @@ Sheep :: struct {
 	state: SheepState,
 }
 
-MAX_FRAME_COUNT :: TARGET_FPS * 60 /*secs in minute*/ * 10 /* minutes */ // 60 /*minutes in hour*/ * 1
+MAX_FRAME_COUNT :: TARGET_FPS * 60 /*secs in minute*/ * 1 /* minutes */ // 60 /*minutes in hour*/ * 1
 
 
 UsedKeysEnum :: enum{
@@ -95,6 +95,18 @@ Session_Memory :: struct {
 	frame_count: int,
 	player_rect : rl.Rectangle,
 	sheeps : [1024]Sheep,
+	last_sheep_index: u32,
+	lava_height: f32,
+	lava_speed: f32,
+	last_sheep_spawn: f32,
+	count_sheep_sacrificed: u32,
+	sheep_time_rand_gen_state, sheep_dir_rand_gen_state : rand.Default_Random_State,
+}
+
+Session_Memory_Checksums :: struct {
+	frame_count: int,
+	player_rect : rl.Rectangle,
+	sheeps : u64,
 	last_sheep_index: u32,
 	lava_height: f32,
 	lava_speed: f32,
@@ -457,6 +469,21 @@ prevent_rng_call :: proc(data: rawptr, mode: runtime.Random_Generator_Mode, p: [
 update_ok : bool
 input_vec : rl.Vector2
 
+save_new_frame_checksum :: proc(frame_checksum: ^Session_Memory_Checksums, current_session: ^Session_Memory){
+    frame_checksum.frame_count = current_session.frame_count
+    frame_checksum.player_rect  = current_session.player_rect 
+    // Hash only the active slice of sheeps
+    active_sheeps := current_session.sheeps[:current_session.last_sheep_index + 1]
+    frame_checksum.sheeps = xxhash.XXH3_64_default(mem.byte_slice(&active_sheeps, size_of(active_sheeps)))
+    frame_checksum.last_sheep_index = current_session.last_sheep_index
+    frame_checksum.lava_height = current_session.lava_height
+    frame_checksum.lava_speed = current_session.lava_speed
+    frame_checksum.last_sheep_spawn = current_session.last_sheep_spawn
+    frame_checksum.count_sheep_sacrificed = current_session.count_sheep_sacrificed
+    frame_checksum.sheep_time_rand_gen_state = current_session.sheep_time_rand_gen_state
+    frame_checksum.sheep_dir_rand_gen_state = current_session.sheep_dir_rand_gen_state
+}
+
 @(export)
 game_update :: proc() {
     if should_game_init{
@@ -502,22 +529,13 @@ game_update :: proc() {
 
     _ :: mem
     _ :: xxhash
-    // frame_checksum := xxhash.XXH3_64_default(mem.byte_slice(&g.current_session, size_of(g.current_session)))
-    frame_checksum := g.current_session
+    frame_checksum : Session_Memory_Checksums
+    save_new_frame_checksum(&frame_checksum, &g.current_session)
+
+
     // // HACK figure out why we have an off-by-one recording vs replaying
     // //    Might be that we have frame_count be 0, but store on 1.. or something
     // frame_checksum.frame_count = 0
-
-    // // We don't care if the procecure is not the same pointer,
-    // // TODO Make sure that this has no effect on the actual random generated numbers
-    // // It shouldn't because gdb says that they both are `runtime::default_random_generator_proc` but still
-    // // (gdb) p g.current_session.sheep_time_rand_gen
-    // // $8 = {procedure = 0x7fff5bc47ca0 <runtime::default_random_generator_proc>, data = 0x7fffb3fff028 "\257\211Q\264\223a\022\3657\354\210\342)\\\027X\033\272*\242D\267\313k\257\272X\255!xcϠ|\304[\377\177"}
-    // // (gdb) p g.commodino.frame_checksums[71].sheep_time_rand_gen
-    // // $9 = {procedure = 0x7fffcb247ca0 <runtime::default_random_generator_proc>, data = 0x7fffb3fff028 "\257\211Q\264\223a\022\3657\354\210\342)\\\027X\033\272*\242D\267\313k\257\272X\255!xcϠ|\304[\377\177"}
-    // // 
-    // frame_checksum.sheep_time_rand_gen.procedure = nil
-    // frame_checksum.sheep_dir_rand_gen.procedure = nil
 
     if g.commodino.is_replaying{
         i := g.commodino.replaying_prev_frame_index+1
@@ -534,13 +552,13 @@ game_update :: proc() {
             g.commodino.delta_times[i], latest_delta_time/DRAW_EVERY_NTH_FRAME,
             g.commodino.delta_times[i] / latest_delta_time * DRAW_EVERY_NTH_FRAME)
 
-        config_diffs := diff_struct(Session_Memory, recorded_frame_checksum, frame_checksum)
+        config_diffs := diff_struct(Session_Memory_Checksums, recorded_frame_checksum, frame_checksum)
         defer delete(config_diffs)
         print_diffs(config_diffs)
 
         // if (current_frame_checksum != frame_checksum){
         if len(config_diffs) > 0{
-            commodino_assert_message = fmt.tprintf("Replay desync, check stdout")//: '%v', '%v'", g.commodino.frame_checksums[i], frame_checksum) 
+            commodino_assert_message = fmt.tprintf("Replay desync, check stdout: '%v', '%v'", g.commodino.frame_checksums[i], frame_checksum) 
             // breakpoint()
             // fmt.eprintln(commodino_assert_message)
             draw()
@@ -605,18 +623,8 @@ game_init :: proc() {
     // TODO MAYBE, reset most of Commodino
     g.commodino.frame_checksums = {}
 
-    frame_checksum := g.current_session
-    // // We don't care if the procecure is not the same pointer,
-    // // TODO Make sure that this has no effect on the actual random generated numbers
-    // // It shouldn't because gdb says that they both are `runtime::default_random_generator_proc` but still
-    // // (gdb) p g.current_session.sheep_time_rand_gen
-    // // $8 = {procedure = 0x7fff5bc47ca0 <runtime::default_random_generator_proc>, data = 0x7fffb3fff028 "\257\211Q\264\223a\022\3657\354\210\342)\\\027X\033\272*\242D\267\313k\257\272X\255!xcϠ|\304[\377\177"}
-    // // (gdb) p g.commodino.frame_checksums[71].sheep_time_rand_gen
-    // // $9 = {procedure = 0x7fffcb247ca0 <runtime::default_random_generator_proc>, data = 0x7fffb3fff028 "\257\211Q\264\223a\022\3657\354\210\342)\\\027X\033\272*\242D\267\313k\257\272X\255!xcϠ|\304[\377\177"}
-    // // 
-    // frame_checksum.sheep_time_rand_gen.procedure = nil
-    // frame_checksum.sheep_dir_rand_gen.procedure = nil
-
+    frame_checksum: Session_Memory_Checksums
+    save_new_frame_checksum(&frame_checksum, &g.current_session)
     g.commodino.frame_checksums[0] = frame_checksum
 
 	game_hot_reloaded(g, g.commodino.is_replaying)
@@ -792,7 +800,7 @@ CommodinoStruct ::struct {
     target_frame_index: int,
 
 	// +1, because we don't do anything to the 0th element, it is a null element
-    frame_checksums : [MAX_FRAME_COUNT+1]Session_Memory,
+    frame_checksums : [MAX_FRAME_COUNT+1]Session_Memory_Checksums,
 
     // random seeds for each system
     sheep_time_rand_gen_state_seed: u64,
