@@ -606,28 +606,40 @@ game_init :: proc() {
         return
     }
     // breakpoint()
-	update_ok = true // Allow getting the input right after init, as we can't have errors yet
-	g = new(Game_Memory)
+    
+    update_ok = true // Allow getting the input right after init, as we can't have errors yet
+    g = new(Game_Memory)
 
-	g^ = Game_Memory {
-		run = true,
+    g^ = Game_Memory {
+        run = true,
+        // You can put textures, sounds and music in the `assets` folder. Those
+        // files will be part any release or web build.
+    }
 
-		// You can put textures, sounds and music in the `assets` folder. Those
-		// files will be part any release or web build.
-	}
+    // Try to load commodino_struct from database
+    loaded := db_load_commodino_struct(db, &g.commodino)
+    if loaded {
+        fmt.println("Successfully loaded commodino_struct from database")
+        
+        // After loading, you may want to restore the random number generators
+        // from the loaded seeds
+        restore_recorded_session_rand_gen()
+    } else {
+        fmt.println("No saved commodino_struct found, starting fresh")
+        
+        // Initialize new session since we didn't load anything
+        restart_current_session_memory()
+        reset_current_session_rand_gen()
 
-	restart_current_session_memory()
-    reset_current_session_rand_gen()
-
-    // Reset frame_checksums
     // TODO MAYBE, reset most of Commodino
-    g.commodino.frame_checksums = {}
+        g.commodino.frame_checksums = {}
 
-    frame_checksum: Session_Memory_Checksums
-    save_new_frame_checksum(&frame_checksum, &g.current_session)
-    g.commodino.frame_checksums[0] = frame_checksum
+        frame_checksum: Session_Memory_Checksums
+        save_new_frame_checksum(&frame_checksum, &g.current_session)
+        g.commodino.frame_checksums[0] = frame_checksum
+    }
 
-	game_hot_reloaded(g, g.commodino.is_replaying)
+    game_hot_reloaded(g, g.commodino.is_replaying)
 }
 
 reset_current_session_rand_gen :: proc() {
