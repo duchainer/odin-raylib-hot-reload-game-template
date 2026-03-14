@@ -803,26 +803,25 @@ pos_from_rect :: proc(rect: rl.Rectangle) -> rl.Vector2{
 
 commodino_assert_message : string
 
-
-CommodinoStruct ::struct {
+CommodinoStruct :: struct {
+    // Only marshal up to recorded_input_events_count
 	// +1, because we don't do anything to the 0th element, it is a null element
-	recorded_input_events : [MAX_FRAME_COUNT+1]CachedInput,
-    recorded_input_events_count : int,
-    replaying_prev_frame_index: int,
-    target_frame_index: int,
-
+	recorded_input_events : [MAX_FRAME_COUNT+1]CachedInput `json:"input_events"`,
+    recorded_input_events_count : int `json:"count"`,
+    replaying_prev_frame_index: int `json:"replaying_prev_frame_index"`,
+    target_frame_index: int `json:"target_frame_index"`,
+    
+    // For checksums, you may want to use a slice to avoid marshaling the empty rest of the array
 	// +1, because we don't do anything to the 0th element, it is a null element
-    frame_checksums : [MAX_FRAME_COUNT+1]Session_Memory_Checksums,
+    frame_checksums : [MAX_FRAME_COUNT+1]Session_Memory_Checksums `json:"frame_checksums"`,
 
-    // random seeds for each system
-    sheep_time_rand_gen_state_seed: u64,
-    sheep_dir_rand_gen_state_seed: u64,
+    sheep_time_rand_gen_state_seed: u64 `json:"sheep_time_seed"`,
+    sheep_dir_rand_gen_state_seed: u64 `json:"sheep_dir_seed"`,
 
+    is_replaying: bool `json:"is_replaying"`,
+    is_dragging_playback_scrubber: bool `json:is_dragging_playback_scrubber`,
 
-    is_replaying: bool,
-    is_dragging_playback_scrubber: bool,
-
-    delta_times : [MAX_FRAME_COUNT+1]f32,
+    delta_times : [MAX_FRAME_COUNT+1]f32 `json:"delta_times"`,
 }
 
 SCRUBBER_HEIGHT :: 30.0
