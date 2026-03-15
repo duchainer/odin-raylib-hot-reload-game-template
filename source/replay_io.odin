@@ -1,8 +1,8 @@
 package game
 
-// import "core:encoding/json"
+import "core:encoding/json"
 import "core:fmt"
-import "core:mem"
+//import "core:mem"
 import sqlite "../vendor/odin-sqlite3"
 import sa "../vendor/odin-sqlite3/addons"
 
@@ -64,15 +64,19 @@ db_load_commodino_struct :: proc(db: ^sqlite.Connection, commodino_struct: ^Comm
             return false
         }
         
-        // Verify the blob size matches our struct size
-        expected_size := size_of(CommodinoStruct)
-        if int(blob_size) != expected_size {
-            fmt.eprintfln("Size mismatch: expected %d bytes, got %d bytes", expected_size, blob_size)
-            return false
-        }
+        blob_slice := ([^]byte)(blob_ptr)[:blob_size]
+        err := json.unmarshal(blob_slice, commodino_struct)
+        assert(err == nil)
+
+        // // Verify the blob size matches our struct size
+        // expected_size := size_of(CommodinoStruct)
+        // if int(blob_size) != expected_size {
+        //     fmt.eprintfln("Size mismatch: expected %d bytes, got %d bytes", expected_size, blob_size)
+        //     return false
+        // }
         
-        // Copy the blob data into our struct
-        mem.copy(commodino_struct, blob_ptr, expected_size)
+        // // Copy the blob data into our struct
+        // mem.copy(commodino_struct, blob_ptr, expected_size)
         
         return true
     } else if result == .Done {
@@ -102,7 +106,11 @@ db_replace_commodino_struct :: proc(db: ^sqlite.Connection, commodino_struct: ^C
     }
     
     // Convert struct to bytes
-    struct_bytes := mem.any_to_bytes(commodino_struct^)
+    // struct_bytes := mem.any_to_bytes(commodino_struct^)
+    struct_bytes, err := json.marshal(commodino_struct, allocator=context.temp_allocator)
+    if err != nil{
+        fmt.panicf("failed to serialize commodino_struct: {}", err)
+    }
     
     // Insert new record
     result = sa.execute(
