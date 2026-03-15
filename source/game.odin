@@ -213,6 +213,7 @@ input :: proc() -> (input: rl.Vector2){
             for key in rl_keys{
                 pressed = rl.IsKeyDown(key) || pressed
             }
+            g.commodino.recorded_input_events_count = min(MAX_FRAME_COUNT, g.commodino.recorded_input_events_count)
             g.commodino.recorded_input_events[g.commodino.recorded_input_events_count].keys[used_key] = {
                 pressed = pressed,
             }
