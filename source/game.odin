@@ -624,6 +624,7 @@ game_init :: proc() {
         // After loading, you may want to restore the random number generators
         // from the loaded seeds
         restore_recorded_session_rand_gen()
+        g.commodino.is_replaying = true
     } else {
         fmt.println("No saved commodino_struct found, starting fresh")
         
