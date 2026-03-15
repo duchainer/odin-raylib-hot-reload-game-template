@@ -38,6 +38,7 @@ CREATE TABLE IF NOT EXISTS commodino_structs (
     result = sqlite.exec(db, `
 CREATE TABLE IF NOT EXISTS recording_metadata (
     id BOOLEAN PRIMARY KEY,
+    commit_hash CHAR(40), -- fixed length of full commit hash
     commodino_struct_version INTEGER
 )`, nil, nil, nil)
     // TODO commodino_struct_version should auto-increment in some way.
