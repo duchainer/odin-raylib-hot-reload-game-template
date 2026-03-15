@@ -112,8 +112,7 @@ Session_Memory_Checksums :: struct {
 	lava_speed: f32,
 	last_sheep_spawn: f32,
 	count_sheep_sacrificed: u32,
-    // : rand.Default_Random_State.state,
-	sheep_time_rand_gen_state, sheep_dir_rand_gen_state: [1024]byte,
+	sheep_time_rand_gen_state, sheep_dir_rand_gen_state : rand.Default_Random_State,
 }
 
 g: ^Game_Memory
@@ -482,8 +481,8 @@ save_new_frame_checksum :: proc(frame_checksum: ^Session_Memory_Checksums, curre
     frame_checksum.lava_speed = current_session.lava_speed
     frame_checksum.last_sheep_spawn = current_session.last_sheep_spawn
     frame_checksum.count_sheep_sacrificed = current_session.count_sheep_sacrificed
-    frame_checksum.sheep_time_rand_gen_state = current_session.sheep_time_rand_gen_state._buf
-    frame_checksum.sheep_dir_rand_gen_state = current_session.sheep_dir_rand_gen_state._buf
+    frame_checksum.sheep_time_rand_gen_state = current_session.sheep_time_rand_gen_state
+    frame_checksum.sheep_dir_rand_gen_state = current_session.sheep_dir_rand_gen_state
 }
 
 @(export)
