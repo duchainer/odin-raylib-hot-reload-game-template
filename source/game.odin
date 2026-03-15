@@ -73,9 +73,6 @@ UsedKeysEnum :: enum{
 KeyState :: struct{
 	pressed : bool,
 }
-CachedInput :: struct {
-	keys : [UsedKeysEnum]KeyState,
-}
 
 
 Game_Memory :: struct {
@@ -103,17 +100,6 @@ Session_Memory :: struct {
 	sheep_time_rand_gen_state, sheep_dir_rand_gen_state : rand.Default_Random_State,
 }
 
-Session_Memory_Checksums :: struct {
-	frame_count: int,
-	player_rect : rl.Rectangle,
-	sheeps : u64,
-	last_sheep_index: u32,
-	lava_height: f32,
-	lava_speed: f32,
-	last_sheep_spawn: f32,
-	count_sheep_sacrificed: u32,
-	sheep_time_rand_gen_state, sheep_dir_rand_gen_state : rand.Default_Random_State,
-}
 
 g: ^Game_Memory
 // previous_g: ^Game_Memory
@@ -601,7 +587,7 @@ db: ^sqlite.Connection
 @(export)
 game_init :: proc() {
     ok: bool
-    db, ok = db_init("game_state.db")
+    db, ok = db_init("game_state.db", COMMODINO_STRUCT_VERSION)
     if !ok {
         fmt.eprintln("Failed to initialize database")
         return
@@ -805,6 +791,32 @@ pos_from_rect :: proc(rect: rl.Rectangle) -> rl.Vector2{
 
 commodino_assert_message : string
 
+// Have it distinct to avoid calling db_init with some other integer by accident
+Commodino_Struct_Version :: distinct i32
+
+// TODO NOTE Increment on each CommodinoStruct change
+// TODO NOTE Nested types too, like Session_Memory_Checksums
+COMMODINO_STRUCT_VERSION :: Commodino_Struct_Version(1)
+CachedInput :: struct {
+    // Might be a PITA to version if we keep adding new UsedKeys
+    // TODO(Raph)THINK Find a better way post-proof-of-concept to forward/backward compatible keystates
+    //  Might have to be an Enumerated Array of doubled capacity and static constant values for keys
+    //   Like dynamic arrays are (array, len, capacity)
+    //  NOTE Will also depend on the actual compression achievable in sqlite for streams of key states
+    //    So it might move to parallel arrays of [key][frame] instead of [frame][key]KeyState anyway
+	keys : [UsedKeysEnum]KeyState,
+}
+Session_Memory_Checksums :: struct {
+	frame_count: int,
+	player_rect : rl.Rectangle,
+	sheeps : u64,
+	last_sheep_index: u32,
+	lava_height: f32,
+	lava_speed: f32,
+	last_sheep_spawn: f32,
+	count_sheep_sacrificed: u32,
+	sheep_time_rand_gen_state, sheep_dir_rand_gen_state : rand.Default_Random_State,
+}
 CommodinoStruct :: struct {
     // Only marshal up to recorded_input_events_count
 	// +1, because we don't do anything to the 0th element, it is a null element

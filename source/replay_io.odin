@@ -6,7 +6,7 @@ import "core:fmt"
 import sqlite "../vendor/odin-sqlite3"
 import sa "../vendor/odin-sqlite3/addons"
 
-db_init :: proc(db_path: string) -> (db: ^sqlite.Connection, ok: bool) {
+db_init :: proc(db_path: string, commodino_struct_version: Commodino_Struct_Version,) -> (db: ^sqlite.Connection, ok: bool) {
     result := sqlite.open(cstring(raw_data(db_path)), &db)
     if result != .Ok {
         return db, false
@@ -30,6 +30,41 @@ CREATE TABLE IF NOT EXISTS commodino_structs (
     id BOOLEAN PRIMARY KEY,
     data BLOB
 )`, nil, nil, nil)
+    if result != .Ok {
+        return db, false
+    }
+
+    // Existing table creation logic 
+    result = sqlite.exec(db, `
+CREATE TABLE IF NOT EXISTS recording_metadata (
+    id BOOLEAN PRIMARY KEY,
+    commodino_struct_version INTEGER
+)`, nil, nil, nil)
+    // TODO commodino_struct_version should auto-increment in some way.
+    //   - MAYBE all the game recording should start either with:
+    //     - some recording, or game_state.db with recording_metadata
+    //     - asking about the commodino_struct_version?
+    //   - Or I could have the commodino_structs have the versionning on it, and increment manually in code
+    //     - That sound more straightforward and preventing of dumb mistakes:
+    //       - Because I will quickly see if I did wrong when a commit decrement that version instead ^^""
+    // Because I know that I'm using core:encoding/json for forward/backward compatibility,
+    // but versioning might also help for the branching on diverging behavior of data, maybe?
+    // Though I could retroactively add it with matching on the commit_hash
+    
+    if result != .Ok {
+        return db, false
+    }
+
+    commodino_struct_version := cast(i32)(commodino_struct_version)
+    sa.on_fail_panic(db, sa.execute(
+        db, 
+        "INSERT INTO recording_metadata (id, commodino_struct_version) VALUES (?, ?);",
+        {
+            {1, true},
+            {2, commodino_struct_version},
+        },
+    ))
+
 
     return db, (result == .Ok)
 }
@@ -138,7 +173,6 @@ db_replace_commodino_struct :: proc(db: ^sqlite.Connection, commodino_struct: Co
     
     // Periodic WAL checkpoint for better performance
     sa.on_fail_panic(db, sa.execute(db, "PRAGMA wal_checkpoint(PASSIVE);"))
-
     return true
 }
 
