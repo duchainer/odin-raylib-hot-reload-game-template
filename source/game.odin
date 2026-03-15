@@ -580,7 +580,7 @@ game_update :: proc() {
 
         i := g.current_session.frame_count
         g.commodino.frame_checksums[i] = frame_checksum
-        db_replace_commodino_struct(db, &g.commodino)
+        db_replace_commodino_struct(db, g.commodino)
     }
 }
 

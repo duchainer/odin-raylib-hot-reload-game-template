@@ -89,7 +89,7 @@ db_load_commodino_struct :: proc(db: ^sqlite.Connection, commodino_struct: ^Comm
     }
 }
 
-db_replace_commodino_struct :: proc(db: ^sqlite.Connection, commodino_struct: ^CommodinoStruct) -> (ok: bool) {
+db_replace_commodino_struct :: proc(db: ^sqlite.Connection, commodino_struct: CommodinoStruct) -> (ok: bool) {
     // Begin transaction
     result := sa.execute(db, "BEGIN TRANSACTION;")
     if result != .Ok {
