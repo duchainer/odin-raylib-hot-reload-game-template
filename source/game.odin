@@ -796,7 +796,7 @@ Commodino_Struct_Version :: distinct i32
 
 // TODO NOTE Increment on each CommodinoStruct change
 // TODO NOTE Nested types too, like Session_Memory_Checksums
-COMMODINO_STRUCT_VERSION :: Commodino_Struct_Version(2)
+COMMODINO_STRUCT_VERSION :: Commodino_Struct_Version(3)
 CachedInput :: struct {
     // Might be a PITA to version if we keep adding new UsedKeys
     // TODO(Raph)THINK Find a better way post-proof-of-concept to forward/backward compatible keystates
@@ -817,17 +817,20 @@ Session_Memory_Checksums :: struct {
 	count_sheep_sacrificed: u32,
 	sheep_time_rand_gen_state, sheep_dir_rand_gen_state : rand.Default_Random_State,
 }
+CommodinoStructInnerNonArrays :: struct{
+        recorded_input_events_count : int `json:"count"`,
+        replaying_prev_frame_index: int `json:"replaying_prev_frame_index"`,
+        target_frame_index: int `json:"target_frame_index"`,
+
+        sheep_time_rand_gen_state_seed: u64 `json:"sheep_time_seed"`,
+        sheep_dir_rand_gen_state_seed: u64 `json:"sheep_dir_seed"`,
+
+        is_replaying: bool `json:"is_replaying"`,
+        is_dragging_playback_scrubber: bool `json:is_dragging_playback_scrubber`,
+    }
+
 CommodinoStruct :: struct {
-    recorded_input_events_count : int `json:"count"`,
-    replaying_prev_frame_index: int `json:"replaying_prev_frame_index"`,
-    target_frame_index: int `json:"target_frame_index"`,
-
-    sheep_time_rand_gen_state_seed: u64 `json:"sheep_time_seed"`,
-    sheep_dir_rand_gen_state_seed: u64 `json:"sheep_dir_seed"`,
-
-    is_replaying: bool `json:"is_replaying"`,
-    is_dragging_playback_scrubber: bool `json:is_dragging_playback_scrubber`,
-
+    using inner_non_arrays : CommodinoStructInnerNonArrays,
     // NOTE using is not seen by json.marshall, so `using` is a breaking change of the COMMODINO_STRUCT_VERSION, you NEED to increment it
     using inner_arrays : CommodinoStructInnerArrays,
 }
