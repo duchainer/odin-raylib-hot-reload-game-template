@@ -1,7 +1,7 @@
 package game
 
 // For debugging traps
-import "core:sys/posix"
+import "core:intrinsics"
 
 // To allow debugging tests:
 //  1. add a call to breakpoint()
@@ -19,5 +19,5 @@ import "core:sys/posix"
 //   - `rwatch` break on any read
 //   - `awatch` break on any read or write
 breakpoint :: proc () {
-	posix.kill(posix.getpid(), .SIGTRAP)
+    intrinsics.debug_trap()
 }
