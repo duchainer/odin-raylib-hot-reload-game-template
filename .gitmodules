@@ -1,0 +1,3 @@
+[submodule "vendor/my-sqlite3-bindings/odin-c-bindgen"]
+    path = vendor/my-sqlite3-bindings/odin-c-bindgen
+    url = git@github.com:duchainer/odin-c-bindgen.git
