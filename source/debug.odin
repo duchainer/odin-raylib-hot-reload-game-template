@@ -1,7 +1,7 @@
 package game
 
 // For debugging traps
-import "core:intrinsics"
+import "base:intrinsics"
 
 // To allow debugging tests:
 //  1. add a call to breakpoint()
