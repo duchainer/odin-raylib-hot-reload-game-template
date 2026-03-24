@@ -256,7 +256,7 @@ db_update_commodino_struct :: proc(db: ^sqlite.Connection, commodino_struct: Com
         db, 
         "INSERT INTO recorded_input_events (id, key1, key2, key3) VALUES (?, ?, ?, ?);",
         {
-            {1, true},
+            {1, cast(i32)frame_index},
             {2, commodino_struct.recorded_input_events[frame_index].keys[UsedKeysEnum(0)].pressed},
             {3, commodino_struct.recorded_input_events[frame_index].keys[UsedKeysEnum(1)].pressed},
             {4, commodino_struct.recorded_input_events[frame_index].keys[UsedKeysEnum(2)].pressed},
@@ -279,7 +279,7 @@ db_update_commodino_struct :: proc(db: ^sqlite.Connection, commodino_struct: Com
         db, 
         "INSERT INTO delta_times (id, delta_time) VALUES (?, ?);",
         {
-            {1, true},
+            {1, cast(i32)frame_index},
             // NOTE For now, we cast f32 to f64 and back
             // TODO MAYBE, use sqlite bind_f32 if that exists
             {2, cast(f64)commodino_struct.delta_times[frame_index]},
@@ -313,7 +313,7 @@ db_update_commodino_struct :: proc(db: ^sqlite.Connection, commodino_struct: Com
         db, 
         "INSERT INTO frame_checksums (id, frame_count, player_rect_x, player_rect_y, sheeps, last_sheep_index, lava_height, lava_speed, last_sheep_spawn, count_sheep_sacrificed, sheep_time_rand_gen_state, sheep_dir_rand_gen_state) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);",
         {
-            {1, true},
+            {1, cast(i32)frame_index},
             // NOTE explicit cast from int to i32 for Query_Param_Value
             {2, cast(i32)commodino_struct.frame_checksums[frame_index].frame_count},
             {3, cast(f64)commodino_struct.frame_checksums[frame_index].player_rect.x },
