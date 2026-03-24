@@ -67,7 +67,47 @@ CREATE TABLE IF NOT EXISTS recording_metadata (
     ))
 
 
+
+
+    // CommodinoStructInnerArrays
+
     return db, (result == .Ok)
+}
+
+db_insert_initial_values :: proc(db: ^sqlite.Connection, commodino_struct: ^CommodinoStruct) -> (ok: bool) {
+    // I put the table creation here, because we should only call this proc once per-db,
+    //  And, worse case, it will just be a no-op, since we use "IF NOT EXISTS"
+
+
+    // CommodinoStructInnerNonArrays
+    sa.on_fail_panic(db, sa.execute(db, `
+CREATE TABLE IF NOT EXISTS commodino_struct_inner_non_arrays (
+        id BOOLEAN PRIMARY KEY
+        sheep_time_rand_gen_state_seed INTEGER,
+        sheep_dir_rand_gen_state_seed INTEGER,
+
+)
+`))
+        // -- Calculated
+        // --recorded_input_events_count : int `json:"count"`,
+        // -- runtime values for UI
+        // --replaying_prev_frame_index INTEGER,
+        // --target_frame_index INTEGER,
+        // --is_replaying: BOOLEAN `json:"is_replaying"`,
+        // --is_dragging_playback_scrubber: bool `json:is_dragging_playback_scrubber`,
+
+    sa.on_fail_panic(db, sa.execute(
+        db, 
+        "INSERT INTO commodino_struct_inner_non_arrays (id, sheep_time_rand_gen_state_seed, sheep_dir_rand_gen_state_seed) VALUES (?, ?, ?);",
+        {
+            {1, true},
+            // NOTE For now, we cast u64 to i64 and back
+            // TODO MAYBE, use sqlite bind_uint64 if that exists
+            {2, cast(i64)commodino_struct.sheep_time_rand_gen_state_seed},
+            {3, cast(i64)commodino_struct.sheep_dir_rand_gen_state_seed},
+        },
+    ))
+    return true
 }
 
 db_load_commodino_struct :: proc(db: ^sqlite.Connection, commodino_struct: ^CommodinoStruct) -> (ok: bool) {
@@ -125,7 +165,7 @@ db_load_commodino_struct :: proc(db: ^sqlite.Connection, commodino_struct: ^Comm
     }
 }
 
-db_replace_commodino_struct :: proc(db: ^sqlite.Connection, commodino_struct: CommodinoStruct) -> (ok: bool) {
+db_update_commodino_struct :: proc(db: ^sqlite.Connection, commodino_struct: CommodinoStruct) -> (ok: bool) {
     // Begin transaction
     result := sa.execute(db, "BEGIN TRANSACTION;")
     if result != .Ok {
@@ -133,33 +173,102 @@ db_replace_commodino_struct :: proc(db: ^sqlite.Connection, commodino_struct: Co
         return false
     }
     
-    // Delete existing record
-    result = sa.execute(db, "DELETE FROM commodino_structs;")
-    if result != .Ok {
-        fmt.eprintfln("Failed to delete existing records: %v", sqlite.errmsg(db))
-        sa.on_fail_panic(db, sa.execute(db, "ROLLBACK TRANSACTION;"))
-        return false
-    }
-    
-    // Convert struct to bytes
-    // struct_bytes := mem.any_to_bytes(commodino_struct^)
-    struct_bytes, err := json.marshal(commodino_struct, allocator=context.temp_allocator)
-    if err != nil{
-        fmt.panicf("failed to serialize commodino_struct: {}", err)
-    }
-    
+    frame_index := commodino_struct.recorded_input_events_count
+
+
+    // TODO Find more forward-compatible way to store recorded inputs
+    sa.on_fail_panic(db, sa.execute(db,`
+        CREATE TABLE IF NOT EXISTS recorded_input_events (
+                id BOOLEAN PRIMARY KEY,
+                key1 BOOLEAN,
+                key2 BOOLEAN,
+                key3 BOOLEAN
+        )
+    `))
+    // TODO Use loop instead of hardcoded values in keys[_]
+    //       Using len(USED_KEY_TO_RL_KEY) or something
+    // TODO Support when we have KeyState bigger than a single pressed:bool
     // Insert new record
     result = sa.execute(
         db, 
-        "INSERT INTO commodino_structs (id, data) VALUES (?, ?);",
+        "INSERT INTO recorded_input_events (id, data) VALUES (?, ?, ?, ?);",
         {
             {1, true},
-            {2, struct_bytes},
+            {2, commodino_struct.recorded_input_events[frame_index].keys[UsedKeysEnum(0)].pressed},
+            {3, commodino_struct.recorded_input_events[frame_index].keys[UsedKeysEnum(1)].pressed},
+            {4, commodino_struct.recorded_input_events[frame_index].keys[UsedKeysEnum(2)].pressed},
         },
     )
     
     if result != .Ok {
-        fmt.eprintfln("Failed to insert commodino_struct: %v", sqlite.errmsg(db))
+        fmt.eprintfln("Failed to insert recorded_input_events: %v", sqlite.errmsg(db))
+        sa.on_fail_panic(db, sa.execute(db, "ROLLBACK TRANSACTION;"))
+        return false
+    }
+
+    sa.on_fail_panic(db, sa.execute(db,`
+        CREATE TABLE IF NOT EXISTS delta_times (
+                id BOOLEAN PRIMARY KEY,
+                delta_time DOUBLE
+        )
+    `))
+    result = sa.execute(
+        db, 
+        "INSERT INTO delta_times(id, data) VALUES (?, ?);",
+        {
+            {1, true},
+            // NOTE For now, we cast f32 to f64 and back
+            // TODO MAYBE, use sqlite bind_f32 if that exists
+            {2, cast(f64)commodino_struct.delta_times[frame_index]},
+            // TODO MAYBE store float with hex value if needed, to prevent drifting like json's drift
+        },
+    )
+    
+    if result != .Ok {
+        fmt.eprintfln("Failed to insert delta_times: %v", sqlite.errmsg(db))
+        sa.on_fail_panic(db, sa.execute(db, "ROLLBACK TRANSACTION;"))
+        return false
+    }
+
+    sa.on_fail_panic(db, sa.execute(db,`
+        CREATE TABLE IF NOT EXISTS commodino_struct_inner_non_arrays (
+            id BOOLEAN PRIMARY KEY,
+            frame_count INTEGER,
+            player_rect_x  DOUBLE,
+            player_rect_y  DOUBLE,
+            sheeps  INTEGER,
+            last_sheep_index INTEGER,
+            lava_height DOUBLE,
+            lava_speed DOUBLE,
+            last_sheep_spawn DOUBLE,
+            count_sheep_sacrificed INTEGER,
+            sheep_time_rand_gen_state INTEGER,
+            sheep_dir_rand_gen_state  INTEGER
+        )
+    `))
+    result = sa.execute(
+        db, 
+        "INSERT INTO frame_checksums(id, data) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);",
+        {
+            {1, true},
+            // NOTE explicit cast from int to i32 for Query_Param_Value
+            {2, cast(i32)commodino_struct.frame_checksums[frame_index].frame_count},
+            {3, cast(f64)commodino_struct.frame_checksums[frame_index].player_rect.x },
+            {4, cast(f64)commodino_struct.frame_checksums[frame_index].player_rect.y },
+            {5, cast(i64)commodino_struct.frame_checksums[frame_index].sheeps },
+            // NOTE cast u32 to i32
+            {6, cast(i32)commodino_struct.frame_checksums[frame_index].last_sheep_index},
+            {7, cast(f64)commodino_struct.frame_checksums[frame_index].lava_height},
+            {8, cast(f64)commodino_struct.frame_checksums[frame_index].lava_speed},
+            {9, cast(f64)commodino_struct.frame_checksums[frame_index].last_sheep_spawn},
+            {10, cast(i32)commodino_struct.frame_checksums[frame_index].count_sheep_sacrificed},
+            {11, cast(i64)commodino_struct.frame_checksums[frame_index].sheep_time_rand_gen_state,},
+            {12, cast(i64)commodino_struct.frame_checksums[frame_index].sheep_dir_rand_gen_state },
+        },
+    )
+    
+    if result != .Ok {
+        fmt.eprintfln("Failed to insert frame_checksums: %v", sqlite.errmsg(db))
         sa.on_fail_panic(db, sa.execute(db, "ROLLBACK TRANSACTION;"))
         return false
     }
@@ -175,7 +284,7 @@ db_replace_commodino_struct :: proc(db: ^sqlite.Connection, commodino_struct: Co
     // Periodic WAL checkpoint for better performance
     sa.on_fail_panic(db, sa.execute(db, "PRAGMA wal_checkpoint(PASSIVE);"))
 
-    fmt.println("END db_replace_commodino_struct")
+    fmt.println("END db_update_commodino_struct")
     return true
 }
 

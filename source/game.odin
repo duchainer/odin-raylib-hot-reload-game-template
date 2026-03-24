@@ -467,8 +467,8 @@ save_new_frame_checksum :: proc(frame_checksum: ^Session_Memory_Checksums, curre
     frame_checksum.lava_speed = current_session.lava_speed
     frame_checksum.last_sheep_spawn = current_session.last_sheep_spawn
     frame_checksum.count_sheep_sacrificed = current_session.count_sheep_sacrificed
-    frame_checksum.sheep_time_rand_gen_state = current_session.sheep_time_rand_gen_state
-    frame_checksum.sheep_dir_rand_gen_state = current_session.sheep_dir_rand_gen_state
+    frame_checksum.sheep_time_rand_gen_state = xxhash.XXH3_64_default(mem.byte_slice(&current_session.sheep_time_rand_gen_state, size_of(current_session.sheep_time_rand_gen_state))) 
+    frame_checksum.sheep_dir_rand_gen_state = xxhash.XXH3_64_default(mem.byte_slice(&current_session.sheep_dir_rand_gen_state, size_of(current_session.sheep_dir_rand_gen_state))) 
 }
 
 @(export)
@@ -567,7 +567,7 @@ game_update :: proc() {
 
         i := g.current_session.frame_count
         g.commodino.frame_checksums[i] = frame_checksum
-        db_replace_commodino_struct(db, g.commodino)
+        db_update_commodino_struct(db, g.commodino)
     }
 }
 
@@ -618,6 +618,7 @@ game_init :: proc() {
         // Initialize new session since we didn't load anything
         restart_current_session_memory()
         reset_current_session_rand_gen()
+        db_insert_initial_values(db, &g.commodino)
 
     // TODO MAYBE, reset most of Commodino
         g.commodino.frame_checksums = {}
@@ -815,7 +816,7 @@ Session_Memory_Checksums :: struct {
 	lava_speed: f32,
 	last_sheep_spawn: f32,
 	count_sheep_sacrificed: u32,
-	sheep_time_rand_gen_state, sheep_dir_rand_gen_state : rand.Default_Random_State,
+	sheep_time_rand_gen_state, sheep_dir_rand_gen_state : u64,//rand.Default_Random_State,
 }
 CommodinoStructInnerNonArrays :: struct{
         recorded_input_events_count : int `json:"count"`,
