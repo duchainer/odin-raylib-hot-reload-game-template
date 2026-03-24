@@ -254,7 +254,7 @@ db_update_commodino_struct :: proc(db: ^sqlite.Connection, commodino_struct: Com
     // Insert new record
     result = sa.execute(
         db, 
-        "INSERT INTO recorded_input_events (id, data) VALUES (?, ?, ?, ?);",
+        "INSERT INTO recorded_input_events (id, key1, key2, key3) VALUES (?, ?, ?, ?);",
         {
             {1, true},
             {2, commodino_struct.recorded_input_events[frame_index].keys[UsedKeysEnum(0)].pressed},
@@ -277,7 +277,7 @@ db_update_commodino_struct :: proc(db: ^sqlite.Connection, commodino_struct: Com
     `))
     result = sa.execute(
         db, 
-        "INSERT INTO delta_times(id, data) VALUES (?, ?);",
+        "INSERT INTO delta_times (id, delta_time) VALUES (?, ?);",
         {
             {1, true},
             // NOTE For now, we cast f32 to f64 and back
@@ -294,7 +294,7 @@ db_update_commodino_struct :: proc(db: ^sqlite.Connection, commodino_struct: Com
     }
 
     sa.on_fail_panic(db, sa.execute(db,`
-        CREATE TABLE IF NOT EXISTS commodino_struct_inner_non_arrays (
+        CREATE TABLE IF NOT EXISTS frame_checksums (
             id BOOLEAN PRIMARY KEY,
             frame_count INTEGER,
             player_rect_x  DOUBLE,
@@ -311,7 +311,7 @@ db_update_commodino_struct :: proc(db: ^sqlite.Connection, commodino_struct: Com
     `))
     result = sa.execute(
         db, 
-        "INSERT INTO frame_checksums(id, data) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);",
+        "INSERT INTO frame_checksums (id, frame_count, player_rect_x, player_rect_y, sheeps, last_sheep_index, lava_height, lava_speed, last_sheep_spawn, count_sheep_sacrificed, sheep_time_rand_gen_state, sheep_dir_rand_gen_state) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);",
         {
             {1, true},
             // NOTE explicit cast from int to i32 for Query_Param_Value
