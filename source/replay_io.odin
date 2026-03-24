@@ -1,8 +1,6 @@
 package game
 
-import "core:encoding/json"
 import "core:fmt"
-//import "core:mem"
 import sqlite "../vendor/odin-sqlite3"
 import sa "../vendor/odin-sqlite3/addons"
 
@@ -82,10 +80,9 @@ db_insert_initial_values :: proc(db: ^sqlite.Connection, commodino_struct: ^Comm
     // CommodinoStructInnerNonArrays
     sa.on_fail_panic(db, sa.execute(db, `
 CREATE TABLE IF NOT EXISTS commodino_struct_inner_non_arrays (
-        id BOOLEAN PRIMARY KEY
+        id BOOLEAN PRIMARY KEY,
         sheep_time_rand_gen_state_seed INTEGER,
-        sheep_dir_rand_gen_state_seed INTEGER,
-
+        sheep_dir_rand_gen_state_seed INTEGER
 )
 `))
         // -- Calculated
@@ -113,56 +110,122 @@ CREATE TABLE IF NOT EXISTS commodino_struct_inner_non_arrays (
 db_load_commodino_struct :: proc(db: ^sqlite.Connection, commodino_struct: ^CommodinoStruct) -> (ok: bool) {
     stmt: ^sqlite.Statement
     
-    // Prepare the SELECT query
-    result := sqlite.prepare_v2(db, "SELECT data FROM commodino_structs WHERE id = ?", -1, &stmt, nil)
+    // Load the non-array fields (seeds)
+    result := sqlite.prepare_v2(db, "SELECT sheep_time_rand_gen_state_seed, sheep_dir_rand_gen_state_seed FROM commodino_struct_inner_non_arrays WHERE id = ?", -1, &stmt, nil)
     if result != .Ok {
-        fmt.eprintfln("Failed to prepare SELECT statement: %v", sqlite.errmsg(db))
+        fmt.eprintfln("Failed to prepare SELECT for inner_non_arrays: %v", sqlite.errmsg(db))
         return false
     }
     defer sqlite.finalize(stmt)
     
-    // Bind the id parameter (true/1)
     result = sqlite.bind_int(stmt, 1, 1)
     if result != .Ok {
         fmt.eprintfln("Failed to bind parameter: %v", sqlite.errmsg(db))
         return false
     }
     
-    // Execute and fetch the row
     result = sqlite.step(stmt)
     if result == .Row {
-        // Get the blob data
-        blob_ptr := sqlite.column_blob(stmt, 0)
-        blob_size := sqlite.column_bytes(stmt, 0)
-        
-        if blob_ptr == nil || blob_size == 0 {
-            fmt.eprintln("No data found or empty blob")
-            return false
-        }
-        
-        blob_slice := ([^]byte)(blob_ptr)[:blob_size]
-        err := json.unmarshal(blob_slice, commodino_struct)
-        assert(err == nil)
-
-        // // Verify the blob size matches our struct size
-        // expected_size := size_of(CommodinoStruct)
-        // if int(blob_size) != expected_size {
-        //     fmt.eprintfln("Size mismatch: expected %d bytes, got %d bytes", expected_size, blob_size)
-        //     return false
-        // }
-        
-        // // Copy the blob data into our struct
-        // mem.copy(commodino_struct, blob_ptr, expected_size)
-        
-        return true
+        // Load the seeds
+        commodino_struct.sheep_time_rand_gen_state_seed = cast(u64)sqlite.column_int64(stmt, 0)
+        commodino_struct.sheep_dir_rand_gen_state_seed = cast(u64)sqlite.column_int64(stmt, 1)
     } else if result == .Done {
-        // No rows found - this is okay, just means no saved state yet
-        fmt.println("No saved commodino_struct found in database")
+        fmt.println("No saved commodino_struct_inner_non_arrays found in database")
         return false
     } else {
-        fmt.eprintfln("Error stepping through query: %v", sqlite.errmsg(db))
+        fmt.eprintfln("Error loading inner_non_arrays: %v", sqlite.errmsg(db))
         return false
     }
+    
+    // Load all recorded_input_events
+    stmt2: ^sqlite.Statement
+    result = sqlite.prepare_v2(db, "SELECT id, key1, key2, key3 FROM recorded_input_events ORDER BY id", -1, &stmt2, nil)
+    if result != .Ok {
+        fmt.eprintfln("Failed to prepare SELECT for recorded_input_events: %v", sqlite.errmsg(db))
+        return false
+    }
+    defer sqlite.finalize(stmt2)
+    
+    frame_count : i32 = 0
+    for {
+        result = sqlite.step(stmt2)
+        if result == .Row {
+            frame_index := sqlite.column_int(stmt2, 0)
+            commodino_struct.recorded_input_events[frame_index].keys[UsedKeysEnum(0)].pressed = bool(sqlite.column_int(stmt2, 1))
+            commodino_struct.recorded_input_events[frame_index].keys[UsedKeysEnum(1)].pressed = bool(sqlite.column_int(stmt2, 2))
+            commodino_struct.recorded_input_events[frame_index].keys[UsedKeysEnum(2)].pressed = bool(sqlite.column_int(stmt2, 3))
+            frame_count = max(frame_count, frame_index)
+        } else if result == .Done {
+            break
+        } else {
+            fmt.eprintfln("Error loading recorded_input_events: %v", sqlite.errmsg(db))
+            return false
+        }
+    }
+    
+    // Load all delta_times
+    stmt3: ^sqlite.Statement
+    result = sqlite.prepare_v2(db, "SELECT id, delta_time FROM delta_times ORDER BY id", -1, &stmt3, nil)
+    if result != .Ok {
+        fmt.eprintfln("Failed to prepare SELECT for delta_times: %v", sqlite.errmsg(db))
+        return false
+    }
+    defer sqlite.finalize(stmt3)
+    
+    for {
+        result = sqlite.step(stmt3)
+        if result == .Row {
+            frame_index := sqlite.column_int(stmt3, 0)
+            commodino_struct.delta_times[frame_index] = cast(f32)sqlite.column_double(stmt3, 1)
+            frame_count = max(frame_count, frame_index)
+        } else if result == .Done {
+            break
+        } else {
+            fmt.eprintfln("Error loading delta_times: %v", sqlite.errmsg(db))
+            return false
+        }
+    }
+    
+    // Load all frame_checksums
+    stmt4: ^sqlite.Statement
+    result = sqlite.prepare_v2(db, `SELECT id, frame_count, player_rect_x, player_rect_y, sheeps, last_sheep_index, 
+                                      lava_height, lava_speed, last_sheep_spawn, count_sheep_sacrificed, 
+                                      sheep_time_rand_gen_state, sheep_dir_rand_gen_state 
+                                      FROM frame_checksums ORDER BY id`, -1, &stmt4, nil)
+    if result != .Ok {
+        fmt.eprintfln("Failed to prepare SELECT for frame_checksums: %v", sqlite.errmsg(db))
+        return false
+    }
+    defer sqlite.finalize(stmt4)
+    
+    for {
+        result = sqlite.step(stmt4)
+        if result == .Row {
+            frame_index := sqlite.column_int(stmt4, 0)
+            commodino_struct.frame_checksums[frame_index].frame_count = cast(int)sqlite.column_int(stmt4, 1)
+            commodino_struct.frame_checksums[frame_index].player_rect.x = cast(f32)sqlite.column_double(stmt4, 2)
+            commodino_struct.frame_checksums[frame_index].player_rect.y = cast(f32)sqlite.column_double(stmt4, 3)
+            commodino_struct.frame_checksums[frame_index].sheeps = cast(u64)sqlite.column_int64(stmt4, 4)
+            commodino_struct.frame_checksums[frame_index].last_sheep_index = cast(u32)sqlite.column_int(stmt4, 5)
+            commodino_struct.frame_checksums[frame_index].lava_height = cast(f32)sqlite.column_double(stmt4, 6)
+            commodino_struct.frame_checksums[frame_index].lava_speed = cast(f32)sqlite.column_double(stmt4, 7)
+            commodino_struct.frame_checksums[frame_index].last_sheep_spawn = cast(f32)sqlite.column_double(stmt4, 8)
+            commodino_struct.frame_checksums[frame_index].count_sheep_sacrificed = cast(u32)sqlite.column_int(stmt4, 9)
+            commodino_struct.frame_checksums[frame_index].sheep_time_rand_gen_state = cast(u64)sqlite.column_int64(stmt4, 10)
+            commodino_struct.frame_checksums[frame_index].sheep_dir_rand_gen_state = cast(u64)sqlite.column_int64(stmt4, 11)
+            frame_count = max(frame_count, frame_index)
+        } else if result == .Done {
+            break
+        } else {
+            fmt.eprintfln("Error loading frame_checksums: %v", sqlite.errmsg(db))
+            return false
+        }
+    }
+    
+    // Set the recorded_input_events_count based on what we loaded
+    commodino_struct.recorded_input_events_count = cast(int)frame_count
+    
+    return true
 }
 
 db_update_commodino_struct :: proc(db: ^sqlite.Connection, commodino_struct: CommodinoStruct) -> (ok: bool) {
