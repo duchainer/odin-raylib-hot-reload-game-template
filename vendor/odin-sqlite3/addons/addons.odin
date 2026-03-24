@@ -132,6 +132,8 @@ prepare :: proc(
 			sqlite3.bind_int(stmt^, idx, c.int(v)) or_return
 		} else if v, ok2 := param.value.(i64); ok2 {
 			sqlite3.bind_int64(stmt^, idx, c.int64_t(v)) or_return
+		} else if v, ok_f64 := param.value.(f64); ok_f64 {
+			sqlite3.bind_double(stmt^, idx, c.double(v)) or_return
 		} else if v, ok3 := param.value.([]byte); ok3 {
 			sqlite3.bind_blob64(stmt^, idx, slice.as_ptr(v), c.int64_t(len(v)), {behaviour = .Static}) or_return
 		} else if v, ok4 := param.value.(bool); ok4 {
