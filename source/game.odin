@@ -500,7 +500,7 @@ game_update :: proc() {
 	}
 	update_ok = update(input_vec)
 
-    DRAW_EVERY_NTH_FRAME :: 6
+    DRAW_EVERY_NTH_FRAME :: 500
 	// fmt.println(commodino_assert_message)
     if g.commodino.is_replaying{
         if g.commodino.replaying_prev_frame_index % DRAW_EVERY_NTH_FRAME == 0{
@@ -533,7 +533,7 @@ game_update :: proc() {
         // NOTE, rl.GetFrameTime() actually "Returns time in seconds for last frame drawn (delta time)", not from the last call to it
         //      So we multiply by the amount of skipped draw frames, to approximate the actual delta_time, of those updates and that one draw
         // TODO: Use rl.GetTime() and compare, instead, to have something closer to the delta_time
-        PRINT_REPLAY_SPEED :: false
+        PRINT_REPLAY_SPEED :: true
         when PRINT_REPLAY_SPEED {
             fmt.printfln(
                 "replaying frame[%d], delta_time: recorded(%.9f)/replaying(%.9f) = %.9f times faster",
