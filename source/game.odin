@@ -562,8 +562,6 @@ game_update :: proc() {
     """
     the 0-th index is free for game_init initial state
 `)
-        // HACK Way to get the frame_checksums to sync when matching, except for frame_count
-        frame_checksum.frame_count -= 1
 
         i := g.current_session.frame_count
         g.commodino.frame_checksums[i] = frame_checksum
