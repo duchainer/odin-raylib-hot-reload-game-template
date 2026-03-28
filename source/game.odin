@@ -460,8 +460,7 @@ save_new_frame_checksum :: proc(frame_checksum: ^Session_Memory_Checksums, curre
     frame_checksum.frame_count = current_session.frame_count
     frame_checksum.player_rect  = current_session.player_rect 
     // Hash only the active slice of sheeps
-    active_sheeps := current_session.sheeps[:current_session.last_sheep_index + 1]
-    frame_checksum.sheeps = xxhash.XXH3_64_default(mem.byte_slice(&active_sheeps, size_of(active_sheeps)))
+    frame_checksum.sheeps = xxhash.XXH3_64_default(mem.byte_slice(&current_session.sheeps[0], size_of(Sheep) * (current_session.last_sheep_index + 1)))
     frame_checksum.last_sheep_index = current_session.last_sheep_index
     frame_checksum.lava_height = current_session.lava_height
     frame_checksum.lava_speed = current_session.lava_speed
