@@ -533,12 +533,15 @@ game_update :: proc() {
         // NOTE, rl.GetFrameTime() actually "Returns time in seconds for last frame drawn (delta time)", not from the last call to it
         //      So we multiply by the amount of skipped draw frames, to approximate the actual delta_time, of those updates and that one draw
         // TODO: Use rl.GetTime() and compare, instead, to have something closer to the delta_time
-        fmt.printfln(
-            "replaying frame[%d], delta_time: recorded(%.9f)/replaying(%.9f) = %.9f times faster",
-            i,
-            g.commodino.delta_times[i], latest_delta_time/DRAW_EVERY_NTH_FRAME,
-            g.commodino.delta_times[i] / latest_delta_time * DRAW_EVERY_NTH_FRAME)
-
+        PRINT_REPLAY_SPEED :: false
+        when PRINT_REPLAY_SPEED {
+            fmt.printfln(
+                "replaying frame[%d], delta_time: recorded(%.9f)/replaying(%.9f) = %.9f times faster",
+                i,
+                g.commodino.delta_times[i], latest_delta_time/DRAW_EVERY_NTH_FRAME,
+                g.commodino.delta_times[i] / latest_delta_time * DRAW_EVERY_NTH_FRAME)
+        }
+        
         config_diffs := diff_struct(Session_Memory_Checksums, recorded_frame_checksum, frame_checksum)
         defer delete(config_diffs)
         print_on_no_diff :: false
