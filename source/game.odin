@@ -747,16 +747,32 @@ game_hot_reloaded :: proc(mem: rawptr, is_replaying: bool = false) {
 	// your global variables into pointers that point to something inside `g`.
 }
 
+// Currently, that continue playing, without replaying
+// TODO Make it also continue to record, but on a copy of the game_state.db
+// TODO LATER, have it on the same game_state.db, but allow storing a tree of states, instead of sequentially
 @(export)
 game_force_reload :: proc() -> bool {
 	return rl.IsKeyPressed(.F5)
 }
 
+// Currently, will restart the game fully:
+// - Will fetch recording and replay it
+// - Will replay (faster) at (DRAW_EVERY_NTH_FRAME times) speed, VS force_replay
+// TODO : Fix hot-reloading with record-and-replay,
+//   Seems game_force_reload and hot_reloading in general, fails to write
+//   to sqlite db: 
+//      Failed to begin transaction: out of memory
 @(export)
 game_force_restart :: proc() -> bool {
 	return rl.IsKeyPressed(.F6)
 }
 
+// Currently, will restart the game fully:
+// - Will fetch recording and replay it
+// - Will replay at (slower) normal speed VS force_restart
+// TODO fix this for force_replay:
+    // Found 1 difference(s) (recorded -> replayed):
+    //   frame_count: 83 -> 82
 @(export)
 game_force_replay :: proc() -> bool {
     // ret := g.current_session.frame_count > 10
