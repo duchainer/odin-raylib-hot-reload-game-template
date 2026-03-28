@@ -458,7 +458,8 @@ input_vec : rl.Vector2
 
 save_new_frame_checksum :: proc(frame_checksum: ^Session_Memory_Checksums, current_session: ^Session_Memory){
     frame_checksum.frame_count = current_session.frame_count
-    frame_checksum.player_rect  = current_session.player_rect 
+    frame_checksum.player_rect.x  = current_session.player_rect.x 
+    frame_checksum.player_rect.y  = current_session.player_rect.y 
     // Hash only the active slice of sheeps
     frame_checksum.sheeps = xxhash.XXH3_64_default(mem.byte_slice(&current_session.sheeps[0], size_of(Sheep) * (current_session.last_sheep_index + 1)))
     frame_checksum.last_sheep_index = current_session.last_sheep_index
