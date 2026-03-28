@@ -541,7 +541,8 @@ game_update :: proc() {
 
         config_diffs := diff_struct(Session_Memory_Checksums, recorded_frame_checksum, frame_checksum)
         defer delete(config_diffs)
-        print_diffs(config_diffs)
+        print_on_no_diff :: false
+        print_diffs(config_diffs, print_on_no_diff)
 
         // if (current_frame_checksum != frame_checksum){
         if len(config_diffs) > 0{

@@ -468,9 +468,11 @@ slice_to_string :: proc(v: any, info: reflect.Type_Info_Slice) -> string {
 }
 
 // Pretty print the differences
-print_diffs :: proc(diffs: [dynamic]Field_Diff) {
+print_diffs :: proc(diffs: [dynamic]Field_Diff, print_on_no_diff:=true) {
     if len(diffs) == 0 {
-        fmt.println("No differences found")
+        if print_on_no_diff {
+            fmt.println("No differences found")
+        }
         return
     }
     
