@@ -246,11 +246,11 @@ update :: proc(input: rl.Vector2) -> (ok:bool) {
         latest_delta_time = delta_time
         frame_index := g.commodino.replaying_prev_frame_index+1
         delta_time = g.commodino.delta_times[frame_index]
-        // assert(frame_index == 1 || delta_time > 0, fmt.tprintf("Unless we just started (1st frame), delta_time should be around 1/FPS, not zero"))
+        assert(frame_index == 1 || delta_time > 0, fmt.tprintf("Unless we just started (1st frame), delta_time should be around 1/FPS, not zero"))
     }else{
-        // frame_index := g.frame_count
-        // assert(frame_index == 1 || delta_time > 0, fmt.tprintf("Unless we just started (1st frame), delta_time should be around 1/FPS, not zero, frame_index: %v || delta_time: %v", frame_index, delta_time))
-        // g.commodino.delta_times[g.frame_count] = delta_time
+        frame_index := g.frame_count
+        assert(frame_index == 1 || delta_time > 0, fmt.tprintf("Unless we just started (1st frame), delta_time should be around 1/FPS, not zero"))
+        g.commodino.delta_times[g.frame_count] = delta_time
     }
 
 	player_speed :: 60.0
@@ -500,10 +500,10 @@ game_update :: proc() {
 	}
 	update_ok = update(input_vec)
 
-    DRAW_EVERY_NTH_FRAME :: 50
+    DRAW_EVERY_NTH_FRAME :: 500
 	// fmt.println(commodino_assert_message)
-    if true{ //g.commodino.is_replaying{
-        if g.frame_count % DRAW_EVERY_NTH_FRAME == 0{
+    if g.commodino.is_replaying{
+        if g.commodino.replaying_prev_frame_index % DRAW_EVERY_NTH_FRAME == 0{
             draw()
         }
     } else {
