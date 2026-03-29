@@ -86,7 +86,6 @@ Game_Memory :: struct {
 
 // TODO Use some fixed point math like fixedptc or libfixmath
 // TODO Replace f32 with fixed point values
-// TODO Check if we can have deterministic rand_gen or not
 
 Session_Memory :: struct {
 	frame_count: int,
