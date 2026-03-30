@@ -158,18 +158,6 @@ player_input_just_pressed :: proc(my_key: UsedKeysEnum) -> bool {
 	}
 }
 
-// TODO unify the player_input_*_just_pressed, giving the UsedKeysEnum.* instead, cuts down on plain repetition.
-player_input_enter_just_pressed:: proc() -> bool {
-	if g.commodino.is_replaying{
-		if g.commodino.recorded_input_events[g.commodino.replaying_prev_frame_index+1].keys[UsedKeysEnum.ENTER].pressed{
-			// just_pressed means : previous frame was not pressed
-			return !g.commodino.recorded_input_events[g.commodino.replaying_prev_frame_index].keys[UsedKeysEnum.ENTER].pressed
-		}
-		return false
-	} else {
-		return rl.IsKeyPressed(.ENTER)
-	}
-}
 
 input :: proc() -> (input: rl.Vector2){
 
