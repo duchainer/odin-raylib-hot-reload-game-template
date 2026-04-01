@@ -2,12 +2,12 @@
 set -eu
 
 # Make the script be callable from elsewhere than its own folder
-    SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-    pushd "$SCRIPT_DIR" > /dev/null || exit 1
+pushd "$SCRIPT_DIR" >/dev/null || exit 1
 
-    # Ensure popd runs on exit (success or failure)
-    trap 'popd > /dev/null' EXIT
+# Ensure popd runs on exit (success or failure)
+trap 'popd > /dev/null' EXIT
 
 # OUT_DIR is for everything except the exe. The exe needs to stay in root
 # folder so it sees the assets folder, without having to copy it.
@@ -39,6 +39,9 @@ case $(uname) in
     ;;
 esac
 
+# Metaprogramming
+odin run source/metaprogramming/
+
 # Build the game. Note that the game goes into $OUT_DIR while the exe stays in
 # the root folder.
 echo "Building game$DLL_EXT"
@@ -50,7 +53,7 @@ mv $OUT_DIR/game_tmp$DLL_EXT $OUT_DIR/game$DLL_EXT
 
 # If the executable is already running, then don't try to build and start it.
 # -f is there to make sure we match against full name, including .bin
-if pgrep -f $EXE > /dev/null; then
+if pgrep -f $EXE >/dev/null; then
     echo "Hot reloading..."
     exit 0
 fi

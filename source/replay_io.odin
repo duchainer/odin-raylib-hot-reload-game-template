@@ -1,5 +1,6 @@
 package game
 
+import "./generated"
 import "core:fmt"
 import sqlite "../vendor/odin-sqlite3"
 import sa "../vendor/odin-sqlite3/addons"
@@ -7,7 +8,7 @@ import sa "../vendor/odin-sqlite3/addons"
 db_init :: proc(db_path: string, commodino_struct_version: Commodino_Struct_Version,) -> (db: ^sqlite.Connection, ok: bool) {
     result := sqlite.open(cstring(raw_data(db_path)), &db)
     if result != .Ok {
-        return db, false
+        fmt.panicf("Result: %v", sqlite.errmsg(db))
     }
 
     // Enable WAL Mode
@@ -29,15 +30,15 @@ CREATE TABLE IF NOT EXISTS commodino_structs (
     data BLOB
 )`, nil, nil, nil)
     if result != .Ok {
-        return db, false
+        fmt.panicf("Result: %v", sqlite.errmsg(db))
     }
 
     // Existing table creation logic 
     result = sqlite.exec(db, `
 CREATE TABLE IF NOT EXISTS recording_metadata (
     id BOOLEAN PRIMARY KEY,
-    commit_hash CHAR(40), -- fixed length of full commit hash
-    commodino_struct_version INTEGER
+    commodino_struct_version INTEGER,
+    commit_hash CHAR(40) -- fixed length of full commit hash
 )`, nil, nil, nil)
     // TODO commodino_struct_version should auto-increment in some way.
     //   - MAYBE all the game recording should start either with:
@@ -51,16 +52,17 @@ CREATE TABLE IF NOT EXISTS recording_metadata (
     // Though I could retroactively add it with matching on the commit_hash
     
     if result != .Ok {
-        return db, false
+        fmt.panicf("Result: %v", sqlite.errmsg(db))
     }
 
     commodino_struct_version := cast(i32)(commodino_struct_version)
     sa.on_fail_panic(db, sa.execute(
         db, 
-        "INSERT INTO recording_metadata (id, commodino_struct_version) VALUES (?, ?);",
+        "INSERT INTO recording_metadata (id, commodino_struct_version, commit_hash) VALUES (?, ?, ?);",
         {
             {1, true},
             {2, commodino_struct_version},
+            {3, generated.COMMIT_HASH},
         },
     ))
 
