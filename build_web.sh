@@ -8,6 +8,9 @@ OUT_DIR="build/web"
 
 mkdir -p $OUT_DIR
 
+# Metaprogramming
+odin run source/metaprogramming/
+
 export EMSDK_QUIET=1
 [[ -f "$EMSCRIPTEN_SDK_DIR/emsdk_env.sh" ]] && . "$EMSCRIPTEN_SDK_DIR/emsdk_env.sh"
 

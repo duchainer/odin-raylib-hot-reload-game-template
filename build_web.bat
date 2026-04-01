@@ -6,6 +6,9 @@ set OUT_DIR=build\web
 
 if not exist %OUT_DIR% mkdir %OUT_DIR%
 
+:: Metaprogramming
+odin run source\metaprogramming\
+
 set EMSDK_QUIET=1
 call %EMSCRIPTEN_SDK_DIR%\emsdk_env.bat
 

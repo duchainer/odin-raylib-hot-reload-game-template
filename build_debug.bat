@@ -7,6 +7,9 @@ set OUT_DIR=build\debug
 
 if not exist %OUT_DIR% mkdir %OUT_DIR%
 
+:: Metaprogramming
+odin run source\metaprogramming\
+
 odin build source\main_release -out:%OUT_DIR%\game_debug.exe -strict-style -vet -debug
 IF %ERRORLEVEL% NEQ 0 exit /b 1
 
