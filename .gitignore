@@ -7,3 +7,4 @@ raylib.dll
 linux/**
 /vendor/odin-sqlite3/sqlite3.o
 vendor/odin-sqlite3/libsqlite.a
+source/generated/
