@@ -823,24 +823,6 @@ Session_Memory_Checksums :: struct {
 	count_sheep_sacrificed: u32,
 	sheep_time_rand_gen_state, sheep_dir_rand_gen_state : u64,//rand.Default_Random_State,
 }
-CommodinoStructInnerNonArrays :: struct{
-        recorded_input_events_count : int `json:"count"`,
-        replaying_prev_frame_index: int `json:"replaying_prev_frame_index"`,
-        target_frame_index: int `json:"target_frame_index"`,
-
-        sheep_time_rand_gen_state_seed: u64 `json:"sheep_time_seed"`,
-        sheep_dir_rand_gen_state_seed: u64 `json:"sheep_dir_seed"`,
-
-        is_replaying: bool `json:"is_replaying"`,
-        is_dragging_playback_scrubber: bool `json:is_dragging_playback_scrubber`,
-    }
-
-CommodinoStruct :: struct {
-    using inner_non_arrays : CommodinoStructInnerNonArrays,
-    // NOTE using is not seen by json.marshall, so `using` is a breaking change of the COMMODINO_STRUCT_VERSION, you NEED to increment it
-    using inner_arrays : CommodinoStructInnerArrays,
-}
-
 CommodinoStructInnerArrays :: struct {
     // Only marshal up to recorded_input_events_count
 	// +1, because we don't do anything to the 0th element, it is a null element
@@ -850,6 +832,24 @@ CommodinoStructInnerArrays :: struct {
     // For checksums, you may want to use a slice to avoid marshaling the empty rest of the array
 	// +1, because we don't do anything to the 0th element, it is a null element
     frame_checksums : [MAX_FRAME_COUNT+1]Session_Memory_Checksums `json:"frame_checksums"`,
+}
+
+CommodinoStruct :: struct {
+    using inner_non_arrays : CommodinoStructInnerNonArrays,
+    // NOTE using is not seen by json.marshall, so `using` is a breaking change of the COMMODINO_STRUCT_VERSION, you NEED to increment it
+    using inner_arrays : CommodinoStructInnerArrays,
+}
+
+CommodinoStructInnerNonArrays :: struct{
+    recorded_input_events_count : int `json:"count"`,
+    replaying_prev_frame_index: int `json:"replaying_prev_frame_index"`,
+    target_frame_index: int `json:"target_frame_index"`,
+
+    sheep_time_rand_gen_state_seed: u64 `json:"sheep_time_seed"`,
+    sheep_dir_rand_gen_state_seed: u64 `json:"sheep_dir_seed"`,
+
+    is_replaying: bool `json:"is_replaying"`,
+    is_dragging_playback_scrubber: bool `json:is_dragging_playback_scrubber`,
 }
 
 SCRUBBER_HEIGHT :: 30.0
