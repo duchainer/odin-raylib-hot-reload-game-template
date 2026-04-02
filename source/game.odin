@@ -576,7 +576,7 @@ db: ^sqlite.Connection
 @(export)
 game_init :: proc() {
     ok: bool
-    db, ok = db_init("game_state.db", COMMODINO_STRUCT_VERSION)
+    db, ok = db_init("game_state.db")
     if !ok {
         fmt.eprintln("Failed to initialize database")
         return
@@ -607,7 +607,7 @@ game_init :: proc() {
         // Initialize new session since we didn't load anything
         restart_current_session_memory()
         reset_current_session_rand_gen()
-        db_insert_initial_values(db, &g.commodino)
+        db_insert_initial_values(db, &g.commodino, COMMODINO_STRUCT_VERSION)
 
     // TODO MAYBE, reset most of Commodino
         g.commodino.frame_checksums = {}
