@@ -288,7 +288,6 @@ db_update_commodino_struct :: proc(db: ^sqlite.Connection, commodino_struct: Com
     // Periodic WAL checkpoint for better performance
     sa.on_fail_panic(db, sa.execute(db, "PRAGMA wal_checkpoint(PASSIVE);"))
 
-    // fmt.println("END db_update_commodino_struct")
     return true
 }
 
