@@ -59,11 +59,47 @@ db_init :: proc(db_path: string) -> (db: ^sqlite.Connection, ok: bool) {
         fmt.panicf("Result: %v", sqlite.errmsg(db))
     }
 
+    // TODO Finish doing the more forward-compatible way to store frame_data
+    // - We have to use the table schema on load to get all tthe fields and load them all,
+    // - then to have the remaining field at zero or default values
+    // - Than includes, the frame_checksums, the input events, AND the seeds
+    sa.on_fail_panic(db, sa.execute(db, fmt.tprintf(`
+    CREATE TABLE IF NOT EXISTS frame_data (
+        -- NOTE, it can't be used as a single with minimum-discontinuities sequential counter, because we can go back to a branch and continue doing input. So it WILL potentially bounce around
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+
+        -- TODO Properly populate and use that for our tree view of the splitting timeline
+        -- branch_id INTEGER,
+        -- game_frame_index INTEGER,
+        -- UNIQUE(game_frame_index, game_frame_index)
+
+        -- From frame_checksums
+        frame_count INTEGER,
+        player_rect_x REAL,
+        player_rect_y REAL,
+        sheeps INTEGER,
+        last_sheep_index INTEGER,
+        lava_height REAL,
+        lava_speed REAL,
+        last_sheep_spawn REAL,
+        count_sheep_sacrificed INTEGER,
+        sheep_time_rand_gen_state INTEGER,
+        sheep_dir_rand_gen_state INTEGER,
+
+        -- From delta_times
+        delta_time REAL,
+
+        -- From recorded_input_events
+        %v BOOLEAN
+    );`, strings.join(generated.input_key_field_names[:],
+        ` BOOLEAN,
+        `, context.temp_allocator))))
+
+
     return db, (result == .Ok)
 }
 
 db_insert_initial_values :: proc(db: ^sqlite.Connection, commodino_struct: ^types.CommodinoStruct, commodino_struct_version: types.Commodino_Struct_Version) -> (ok: bool) {
-
     sa.on_fail_panic(db, sa.execute(
         db, 
         "INSERT INTO recording_metadata (id, commodino_struct_version, commit_hash, sheep_time_rand_gen_state_seed, sheep_dir_rand_gen_state_seed)"+
@@ -78,6 +114,7 @@ db_insert_initial_values :: proc(db: ^sqlite.Connection, commodino_struct: ^type
             // TODO MAYBE, use sqlite bind_uint64 if that exists
         },
     ))
+
     return true
 }
 
@@ -192,43 +229,6 @@ db_update_commodino_struct :: proc(db: ^sqlite.Connection, commodino_struct: typ
     }
     
     frame_index := commodino_struct.recorded_input_events_count
-
-
-
-    create_frame_data_table_query := fmt.tprintf(`
-    CREATE TABLE IF NOT EXISTS frame_data (
-        -- NOTE, it can't be used as a single with minimum-discontinuities sequential counter, because we can go back to a branch and continue doing input. So it WILL potentially bounce around
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-
-        -- TODO Properly populate and use that for our tree view of the splitting timeline
-        -- branch_id INTEGER,
-        -- game_frame_index INTEGER,
-        -- UNIQUE(game_frame_index, game_frame_index)
-
-        -- From frame_checksums
-        frame_count INTEGER,
-        player_rect_x REAL,
-        player_rect_y REAL,
-        sheeps INTEGER,
-        last_sheep_index INTEGER,
-        lava_height REAL,
-        lava_speed REAL,
-        last_sheep_spawn REAL,
-        count_sheep_sacrificed INTEGER,
-        sheep_time_rand_gen_state INTEGER,
-        sheep_dir_rand_gen_state INTEGER,
-
-        -- From delta_times
-        delta_time REAL,
-
-        -- From recorded_input_events
-        %v BOOLEAN
-    );`, strings.join(generated.input_key_field_names[:],
-        ` BOOLEAN,
-        `, context.temp_allocator))
-    // fmt.println("create_frame_data_table_query: ", create_frame_data_table_query)
-    // TODO Find more forward-compatible way to store frame_data
-    sa.on_fail_panic(db, sa.execute(db, create_frame_data_table_query))
 
 
     result = sa.execute(
