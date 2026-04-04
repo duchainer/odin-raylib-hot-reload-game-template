@@ -39,13 +39,21 @@ case $(uname) in
     ;;
 esac
 
+rm -rf source/generated/
+set -e # Exit immediately if any command fails
 # Metaprogramming
-odin run source/metaprogramming/
+odin run source/metaprogramming/ || exit $?
+
+# Verify the generated file was actually created
+if [ ! -f "source/generated/generated_db.odin" ]; then
+    echo "ERROR: generated_db.odin was not created!" >&2
+    exit 1
+fi
 
 # Build the game. Note that the game goes into $OUT_DIR while the exe stays in
 # the root folder.
 echo "Building game$DLL_EXT"
-odin build source/ -extra-linker-flags:"$EXTRA_LINKER_FLAGS" -define:RAYLIB_SHARED=true -build-mode:dll -out:$OUT_DIR/game_tmp$DLL_EXT -strict-style -vet -debug -o:none
+odin build source/ -extra-linker-flags:"$EXTRA_LINKER_FLAGS" -define:RAYLIB_SHARED=true -build-mode:dll -out:$OUT_DIR/game_tmp$DLL_EXT -strict-style -vet -debug -o:none || exit $?
 
 # Need to use a temp file on Linux because it first writes an empty `game.so`,
 # which the game will load before it is actually fully written.
@@ -59,7 +67,7 @@ if pgrep -f $EXE >/dev/null; then
 fi
 
 echo "Building $EXE"
-odin build source/main_hot_reload -out:$EXE -strict-style -vet -debug
+odin build source/main_hot_reload -out:$EXE -strict-style -vet -debug || exit $?
 
 if [ $# -ge 1 ] && [ $1 == "run" ]; then
     echo "Running $EXE"

@@ -1,9 +1,11 @@
-package game
+package db
 
-import "./generated"
+import "core:strings"
+import "../generated"
 import "core:fmt"
-import sqlite "../vendor/odin-sqlite3"
-import sa "../vendor/odin-sqlite3/addons"
+import sqlite "../../vendor/odin-sqlite3"
+import sa "../../vendor/odin-sqlite3/addons"
+import "../types"
 
 db_init :: proc(db_path: string) -> (db: ^sqlite.Connection, ok: bool) {
     result := sqlite.open(cstring(raw_data(db_path)), &db)
@@ -60,7 +62,7 @@ db_init :: proc(db_path: string) -> (db: ^sqlite.Connection, ok: bool) {
     return db, (result == .Ok)
 }
 
-db_insert_initial_values :: proc(db: ^sqlite.Connection, commodino_struct: ^CommodinoStruct, commodino_struct_version: Commodino_Struct_Version) -> (ok: bool) {
+db_insert_initial_values :: proc(db: ^sqlite.Connection, commodino_struct: ^types.CommodinoStruct, commodino_struct_version: types.Commodino_Struct_Version) -> (ok: bool) {
 
     sa.on_fail_panic(db, sa.execute(
         db, 
@@ -79,7 +81,7 @@ db_insert_initial_values :: proc(db: ^sqlite.Connection, commodino_struct: ^Comm
     return true
 }
 
-db_load_commodino_struct :: proc(db: ^sqlite.Connection, commodino_struct: ^CommodinoStruct) -> (ok: bool) {
+db_load_commodino_struct :: proc(db: ^sqlite.Connection, commodino_struct: ^types.CommodinoStruct) -> (ok: bool) {
     // Load the non-array fields (seeds)
     {
         stmt: ^sqlite.Statement
@@ -132,7 +134,7 @@ db_load_commodino_struct :: proc(db: ^sqlite.Connection, commodino_struct: ^Comm
         delta_time,
 
         -- From recorded_input_events
-        key1, key2, key3
+        key_left, key_right, key_enter
         FROM frame_data ORDER BY id DESC`,
                                    -1, &stmt, nil)
         if result != .Ok {
@@ -161,9 +163,9 @@ db_load_commodino_struct :: proc(db: ^sqlite.Connection, commodino_struct: ^Comm
                 // From delta_times
                 commodino_struct.delta_times[frame_index] = cast(f32)sqlite.column_double(stmt, DB_OFFSET_DELTA_TIME+1)
                 // From recorded_input_events
-                commodino_struct.recorded_input_events[frame_index].keys[UsedKeysEnum(0)].pressed = bool(sqlite.column_int(stmt, DB_OFFSET_RECORDED_INPUT_EVENTS+1))
-                commodino_struct.recorded_input_events[frame_index].keys[UsedKeysEnum(1)].pressed = bool(sqlite.column_int(stmt, DB_OFFSET_RECORDED_INPUT_EVENTS+2))
-                commodino_struct.recorded_input_events[frame_index].keys[UsedKeysEnum(2)].pressed = bool(sqlite.column_int(stmt, DB_OFFSET_RECORDED_INPUT_EVENTS+3))
+                commodino_struct.recorded_input_events[frame_index].keys[types.UsedKeysEnum(0)].pressed = bool(sqlite.column_int(stmt, DB_OFFSET_RECORDED_INPUT_EVENTS+1))
+                commodino_struct.recorded_input_events[frame_index].keys[types.UsedKeysEnum(1)].pressed = bool(sqlite.column_int(stmt, DB_OFFSET_RECORDED_INPUT_EVENTS+2))
+                commodino_struct.recorded_input_events[frame_index].keys[types.UsedKeysEnum(2)].pressed = bool(sqlite.column_int(stmt, DB_OFFSET_RECORDED_INPUT_EVENTS+3))
 
                 frame_count = max(frame_count, frame_index)
             } else if result == .Done {
@@ -181,7 +183,7 @@ db_load_commodino_struct :: proc(db: ^sqlite.Connection, commodino_struct: ^Comm
     return true
 }
 
-db_update_commodino_struct :: proc(db: ^sqlite.Connection, commodino_struct: CommodinoStruct) -> (ok: bool) {
+db_update_commodino_struct :: proc(db: ^sqlite.Connection, commodino_struct: types.CommodinoStruct) -> (ok: bool) {
     // Begin transaction
     result := sa.execute(db, "BEGIN TRANSACTION;")
     if result != .Ok {
@@ -192,8 +194,8 @@ db_update_commodino_struct :: proc(db: ^sqlite.Connection, commodino_struct: Com
     frame_index := commodino_struct.recorded_input_events_count
 
 
-    // TODO Find more forward-compatible way to store frame_data
-    sa.on_fail_panic(db, sa.execute(db,`
+
+    create_frame_data_table_query := fmt.tprintf(`
     CREATE TABLE IF NOT EXISTS frame_data (
         -- NOTE, it can't be used as a single with minimum-discontinuities sequential counter, because we can go back to a branch and continue doing input. So it WILL potentially bounce around
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -220,14 +222,18 @@ db_update_commodino_struct :: proc(db: ^sqlite.Connection, commodino_struct: Com
         delta_time REAL,
 
         -- From recorded_input_events
-        key1 BOOLEAN,
-        key2 BOOLEAN,
-        key3 BOOLEAN
-    );`))
+        %v BOOLEAN
+    );`, strings.join(generated.input_key_field_names[:],
+        ` BOOLEAN,
+        `))
+    fmt.println("create_frame_data_table_query: ", create_frame_data_table_query)
+    // TODO Find more forward-compatible way to store frame_data
+    sa.on_fail_panic(db, sa.execute(db, create_frame_data_table_query))
+
 
     result = sa.execute(
         db, 
-        `INSERT INTO frame_data (-- id, -- it auto-increments, so let's make use that, for that meta_frame_index
+        fmt.tprintf(`INSERT INTO frame_data (-- id, -- it auto-increments, so let's make use that, for that meta_frame_index
         -- From frame_checksums
         frame_count, player_rect_x, player_rect_y, sheeps, last_sheep_index, 
         lava_height, lava_speed, last_sheep_spawn, count_sheep_sacrificed, 
@@ -237,8 +243,8 @@ db_update_commodino_struct :: proc(db: ^sqlite.Connection, commodino_struct: Com
         delta_time,
 
         -- From recorded_input_events
-        key1, key2, key3
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);`,
+        %v
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);`, generated.recorded_input_events_joined_keys),
         {
             // {1, cast(i32)frame_index},
 
@@ -263,9 +269,9 @@ db_update_commodino_struct :: proc(db: ^sqlite.Connection, commodino_struct: Com
             {DB_OFFSET_DELTA_TIME+1, cast(f64)commodino_struct.delta_times[frame_index]},
 
             // -- From recorded_input_events
-            {DB_OFFSET_RECORDED_INPUT_EVENTS+1, commodino_struct.recorded_input_events[frame_index].keys[UsedKeysEnum(0)].pressed},
-            {DB_OFFSET_RECORDED_INPUT_EVENTS+2, commodino_struct.recorded_input_events[frame_index].keys[UsedKeysEnum(1)].pressed},
-            {DB_OFFSET_RECORDED_INPUT_EVENTS+3, commodino_struct.recorded_input_events[frame_index].keys[UsedKeysEnum(2)].pressed},
+            {DB_OFFSET_RECORDED_INPUT_EVENTS+1, commodino_struct.recorded_input_events[frame_index].keys[types.UsedKeysEnum(0)].pressed},
+            {DB_OFFSET_RECORDED_INPUT_EVENTS+2, commodino_struct.recorded_input_events[frame_index].keys[types.UsedKeysEnum(1)].pressed},
+            {DB_OFFSET_RECORDED_INPUT_EVENTS+3, commodino_struct.recorded_input_events[frame_index].keys[types.UsedKeysEnum(2)].pressed},
 
             // TODO MAYBE store float with hex value if needed, to prevent drifting like json's drift
         },

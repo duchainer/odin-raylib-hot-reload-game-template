@@ -44,6 +44,9 @@ import "core:mem"
 import sqlite "../vendor/odin-sqlite3/"
 // import sa "../vendor/odin-sqlite3/addons/"
 
+import "./db"
+import "./types"
+
 
 PIXEL_WINDOW_HEIGHT :: 180
 
@@ -61,23 +64,9 @@ Sheep :: struct {
 	state: SheepState,
 }
 
-MAX_FRAME_COUNT :: TARGET_FPS * 60 /*secs in minute*/ * 1 /* minutes */ // 60 /*minutes in hour*/ * 1
-
-
-UsedKeysEnum :: enum{
-	LEFT,
-	RIGHT,
-	ENTER,
-}
-
-KeyState :: struct{
-	pressed : bool,
-}
-
-
 Game_Memory :: struct {
 	run: bool,
-	commodino : CommodinoStruct,
+	commodino : types.CommodinoStruct,
 	using current_session : Session_Memory,
 	sheep_time_rand_gen, sheep_dir_rand_gen : runtime.Random_Generator,
 	// recording_session: Session_Memory,
@@ -119,13 +108,13 @@ ui_camera :: proc() -> rl.Camera2D {
 		zoom = f32(rl.GetScreenHeight())/PIXEL_WINDOW_HEIGHT,
 	}
 }
-USED_KEY_TO_RL_KEY : [UsedKeysEnum][2]rl.KeyboardKey= {
+USED_KEY_TO_RL_KEY : [types.UsedKeysEnum][2]rl.KeyboardKey= {
         .LEFT =  { .LEFT, .A },
         .RIGHT = { .RIGHT, .D },
         .ENTER = { .ENTER, .KEY_NULL },
 }
 
-player_input_down :: proc(my_key: UsedKeysEnum) -> bool {
+player_input_down :: proc(my_key: types.UsedKeysEnum) -> bool {
 	if g.commodino.is_replaying{
 		return g.commodino.recorded_input_events[g.commodino.replaying_prev_frame_index+1].keys[my_key].pressed
 	} else {
@@ -138,7 +127,7 @@ player_input_down :: proc(my_key: UsedKeysEnum) -> bool {
 	}
 }
 
-player_input_just_pressed :: proc(my_key: UsedKeysEnum) -> bool {
+player_input_just_pressed :: proc(my_key: types.UsedKeysEnum) -> bool {
 	if g.commodino.is_replaying{
 		if g.commodino.recorded_input_events[g.commodino.replaying_prev_frame_index+1].keys[my_key].pressed{
             return !g.commodino.recorded_input_events[g.commodino.replaying_prev_frame_index].keys[my_key].pressed
@@ -173,7 +162,7 @@ input :: proc() -> (input: rl.Vector2){
         //     .ENTER = { pressed = rl.IsKeyDown(.ENTER) },
         // }
         // if we have : 
-        // USED_KEY_TO_RL_KEY : [UsedKeysEnum][2]rl.KeyboardKey= {
+        // USED_KEY_TO_RL_KEY : [types.UsedKeysEnum][2]rl.KeyboardKey= {
         //         .LEFT =  { .LEFT, .A },
         //         .RIGHT = { .RIGHT, .D },
         //         .ENTER = { .ENTER, .KEY_NULL },
@@ -186,7 +175,7 @@ input :: proc() -> (input: rl.Vector2){
             for key in rl_keys{
                 pressed = rl.IsKeyDown(key) || pressed
             }
-            g.commodino.recorded_input_events_count = min(MAX_FRAME_COUNT, g.commodino.recorded_input_events_count)
+            g.commodino.recorded_input_events_count = min(types.MAX_FRAME_COUNT, g.commodino.recorded_input_events_count)
             g.commodino.recorded_input_events[g.commodino.recorded_input_events_count].keys[used_key] = {
                 pressed = pressed,
             }
@@ -443,7 +432,7 @@ prevent_rng_call :: proc(data: rawptr, mode: runtime.Random_Generator_Mode, p: [
 update_ok : bool
 input_vec : rl.Vector2
 
-save_new_frame_checksum :: proc(frame_checksum: ^Session_Memory_Checksums, current_session: ^Session_Memory){
+save_new_frame_checksum :: proc(frame_checksum: ^types.Session_Memory_Checksums, current_session: ^Session_Memory){
     frame_checksum.frame_count = current_session.frame_count
     frame_checksum.player_rect.x  = current_session.player_rect.x 
     frame_checksum.player_rect.y  = current_session.player_rect.y 
@@ -503,7 +492,7 @@ game_update :: proc() {
 
     _ :: mem
     _ :: xxhash
-    frame_checksum : Session_Memory_Checksums
+    frame_checksum : types.Session_Memory_Checksums
     save_new_frame_checksum(&frame_checksum, &g.current_session)
 
 
@@ -529,7 +518,7 @@ game_update :: proc() {
                 g.commodino.delta_times[i] / latest_delta_time * DRAW_EVERY_NTH_FRAME)
         }
         
-        config_diffs := diff_struct(Session_Memory_Checksums, recorded_frame_checksum, frame_checksum)
+        config_diffs := diff_struct(types.Session_Memory_Checksums, recorded_frame_checksum, frame_checksum)
         defer delete(config_diffs)
         print_on_no_diff :: false
         print_diffs(config_diffs, print_on_no_diff)
@@ -556,27 +545,26 @@ game_update :: proc() {
 
         i := g.current_session.frame_count
         g.commodino.frame_checksums[i] = frame_checksum
-        db_update_commodino_struct(db, g.commodino)
+        db.db_update_commodino_struct(db_conn, g.commodino)
     }
 }
 
-TARGET_FPS :: 30
 @(export)
 game_init_window :: proc() {
 	rl.SetConfigFlags({.WINDOW_RESIZABLE, .VSYNC_HINT})
 	rl.InitWindow(1500, 900, "Odin + Raylib + Hot Reload template!")
 	rl.SetWindowPosition(200, 200)
-	rl.SetTargetFPS(TARGET_FPS)
+	rl.SetTargetFPS(types.TARGET_FPS)
 	rl.SetExitKey(nil)
 }
 
 should_game_init: bool
 
-db: ^sqlite.Connection
+db_conn: ^sqlite.Connection
 @(export)
 game_init :: proc() {
     ok: bool
-    db, ok = db_init("game_state.db")
+    db_conn, ok = db.db_init("game_state.db")
     if !ok {
         fmt.eprintln("Failed to initialize database")
         return
@@ -593,7 +581,7 @@ game_init :: proc() {
     }
 
     // Try to load commodino_struct from database
-    loaded := db_load_commodino_struct(db, &g.commodino)
+    loaded := db.db_load_commodino_struct(db_conn, &g.commodino)
     if loaded {
         fmt.println("Successfully loaded commodino_struct from database")
         
@@ -607,12 +595,12 @@ game_init :: proc() {
         // Initialize new session since we didn't load anything
         restart_current_session_memory()
         reset_current_session_rand_gen()
-        db_insert_initial_values(db, &g.commodino, COMMODINO_STRUCT_VERSION)
+        db.db_insert_initial_values(db_conn, &g.commodino, types.COMMODINO_STRUCT_VERSION)
 
     // TODO MAYBE, reset most of Commodino
         g.commodino.frame_checksums = {}
 
-        frame_checksum: Session_Memory_Checksums
+        frame_checksum: types.Session_Memory_Checksums
         save_new_frame_checksum(&frame_checksum, &g.current_session)
         g.commodino.frame_checksums[0] = frame_checksum
     }
@@ -694,7 +682,7 @@ game_should_run :: proc() -> bool {
 
 @(export)
 game_shutdown :: proc() {
-    db_close(db)
+    db.db_close(db_conn)
 	free(g)
 }
 
@@ -796,61 +784,3 @@ pos_from_rect :: proc(rect: rl.Rectangle) -> rl.Vector2{
 //
 
 commodino_assert_message : string
-
-// Have it distinct to avoid calling db_init with some other integer by accident
-Commodino_Struct_Version :: distinct i32
-
-// TODO NOTE Increment on each CommodinoStruct change
-// TODO NOTE Nested types too, like Session_Memory_Checksums
-COMMODINO_STRUCT_VERSION :: Commodino_Struct_Version(3)
-CachedInput :: struct {
-    // Might be a PITA to version if we keep adding new UsedKeys
-    // TODO(Raph)THINK Find a better way post-proof-of-concept to forward/backward compatible keystates
-    //  Might have to be an Enumerated Array of doubled capacity and static constant values for keys
-    //   Like dynamic arrays are (array, len, capacity)
-    //  NOTE Will also depend on the actual compression achievable in sqlite for streams of key states
-    //    So it might move to parallel arrays of [key][frame] instead of [frame][key]KeyState anyway
-	keys : [UsedKeysEnum]KeyState,
-}
-Session_Memory_Checksums :: struct {
-	frame_count: int,
-	player_rect : rl.Rectangle,
-	sheeps : u64,
-	last_sheep_index: u32,
-	lava_height: f32,
-	lava_speed: f32,
-	last_sheep_spawn: f32,
-	count_sheep_sacrificed: u32,
-	sheep_time_rand_gen_state, sheep_dir_rand_gen_state : u64,//rand.Default_Random_State,
-}
-CommodinoStructInnerArrays :: struct {
-    // Only marshal up to recorded_input_events_count
-	// +1, because we don't do anything to the 0th element, it is a null element
-	recorded_input_events : [MAX_FRAME_COUNT+1]CachedInput `json:"input_events"`,
-    delta_times : [MAX_FRAME_COUNT+1]f32 `json:"delta_times"`,
-
-    // For checksums, you may want to use a slice to avoid marshaling the empty rest of the array
-	// +1, because we don't do anything to the 0th element, it is a null element
-    frame_checksums : [MAX_FRAME_COUNT+1]Session_Memory_Checksums `json:"frame_checksums"`,
-}
-
-CommodinoStruct :: struct {
-    using inner_non_arrays : CommodinoStructInnerNonArrays,
-    // NOTE using is not seen by json.marshall, so `using` is a breaking change of the COMMODINO_STRUCT_VERSION, you NEED to increment it
-    using inner_arrays : CommodinoStructInnerArrays,
-}
-
-CommodinoStructInnerNonArrays :: struct{
-    recorded_input_events_count : int `json:"count"`,
-    replaying_prev_frame_index: int `json:"replaying_prev_frame_index"`,
-    target_frame_index: int `json:"target_frame_index"`,
-
-    sheep_time_rand_gen_state_seed: u64 `json:"sheep_time_seed"`,
-    sheep_dir_rand_gen_state_seed: u64 `json:"sheep_dir_seed"`,
-
-    is_replaying: bool `json:"is_replaying"`,
-    is_dragging_playback_scrubber: bool `json:is_dragging_playback_scrubber`,
-}
-
-SCRUBBER_HEIGHT :: 30.0
-SCRUBBER_PADDING :: 5.0
