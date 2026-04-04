@@ -225,8 +225,8 @@ db_update_commodino_struct :: proc(db: ^sqlite.Connection, commodino_struct: typ
         %v BOOLEAN
     );`, strings.join(generated.input_key_field_names[:],
         ` BOOLEAN,
-        `))
-    fmt.println("create_frame_data_table_query: ", create_frame_data_table_query)
+        `, context.temp_allocator))
+    // fmt.println("create_frame_data_table_query: ", create_frame_data_table_query)
     // TODO Find more forward-compatible way to store frame_data
     sa.on_fail_panic(db, sa.execute(db, create_frame_data_table_query))
 
