@@ -91,7 +91,8 @@ db_init :: proc(db_path: string) -> (db: ^sqlite.Connection, ok: bool) {
 
         -- From recorded_input_events
         %v BOOLEAN
-    );`, strings.join(generated.input_key_field_names[:],
+    );`, // TODO NEXT strings.join(generated.frame_checksums_field_names[:],
+        strings.join(generated.input_key_field_names[:],
         ` BOOLEAN,
         `, context.temp_allocator))))
 
