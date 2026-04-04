@@ -44,7 +44,7 @@ package generated
     fmt.sbprint(&buf, FILE_HEADER)
     fmt.sbprintf(&buf, "\nCOMMIT_HASH :: \"%v\"", commit_hash)
     fmt.sbprintf(&buf, "\nrecorded_input_events_joined_keys : string = \"%v\"\n", recorded_input_events_joined_keys)
-    fmt.sbprintf(&buf, "input_key_field_names: [%v]string = {{%v}}\n", len(types.UsedKeysEnum), strings.join(input_key_field_names[:], ", "))
+    fmt.sbprintf(&buf, "input_key_field_names: [%v]string = {{\"%v\"}}\n", len(types.UsedKeysEnum), strings.join(input_key_field_names[:], "\", \""))
     content := strings.to_string(buf)
 
     if write_err := os.write_entire_file("source/generated/generated_db.odin", transmute([]byte)content); write_err != nil {
