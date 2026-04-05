@@ -44,8 +44,8 @@ import "core:mem"
 import sqlite "../vendor/odin-sqlite3/"
 // import sa "../vendor/odin-sqlite3/addons/"
 
-import "./db"
 import "./types"
+
 
 
 PIXEL_WINDOW_HEIGHT :: 180
@@ -545,7 +545,7 @@ game_update :: proc() {
 
         i := g.current_session.frame_count
         g.commodino.frame_checksums[i] = frame_checksum
-        db.db_update_commodino_struct(db_conn, g.commodino)
+        db_update_commodino_struct(db_conn, g.commodino)
     }
 }
 
@@ -564,7 +564,7 @@ db_conn: ^sqlite.Connection
 @(export)
 game_init :: proc() {
     ok: bool
-    db_conn, ok = db.db_init("game_state.db")
+    db_conn, ok = db_init("game_state.db")
     if !ok {
         fmt.eprintln("Failed to initialize database")
         return
@@ -581,7 +581,7 @@ game_init :: proc() {
     }
 
     // Try to load commodino_struct from database
-    loaded := db.db_load_commodino_struct(db_conn, &g.commodino)
+    loaded := db_load_commodino_struct(db_conn, &g.commodino)
     if loaded {
         fmt.println("Successfully loaded commodino_struct from database")
         
@@ -595,7 +595,7 @@ game_init :: proc() {
         // Initialize new session since we didn't load anything
         restart_current_session_memory()
         reset_current_session_rand_gen()
-        db.db_insert_initial_values(db_conn, &g.commodino, types.COMMODINO_STRUCT_VERSION)
+        db_insert_initial_values(db_conn, &g.commodino, types.COMMODINO_STRUCT_VERSION)
 
     // TODO MAYBE, reset most of Commodino
         g.commodino.frame_checksums = {}
@@ -682,7 +682,7 @@ game_should_run :: proc() -> bool {
 
 @(export)
 game_shutdown :: proc() {
-    db.db_close(db_conn)
+    db_close(db_conn)
 	free(g)
 }
 

@@ -1,11 +1,11 @@
-package db
+package game
 
 import "core:strings"
-import "../generated"
+import "./generated"
 import "core:fmt"
-import sqlite "../../vendor/odin-sqlite3"
-import sa "../../vendor/odin-sqlite3/addons"
-import "../types"
+import sqlite "./../vendor/odin-sqlite3"
+import sa "./../vendor/odin-sqlite3/addons"
+import "./types"
 
 db_init :: proc(db_path: string) -> (db: ^sqlite.Connection, ok: bool) {
     result := sqlite.open(cstring(raw_data(db_path)), &db)

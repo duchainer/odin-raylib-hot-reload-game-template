@@ -1,4 +1,4 @@
-package db
+package game
 
 DB_OFFSET_FRAME_CHECKSUMS :: 0
 DB_OFFSET_DELTA_TIME :: 11
