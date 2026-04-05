@@ -111,7 +111,6 @@ ui_camera :: proc() -> rl.Camera2D {
 USED_KEY_TO_RL_KEY : [types.UsedKeysEnum][2]rl.KeyboardKey= {
         .LEFT =  { .LEFT, .A },
         .RIGHT = { .RIGHT, .D },
-        .SPACE = { .SPACE, .KEY_NULL },
         .ENTER = { .ENTER, .KEY_NULL },
 }
 

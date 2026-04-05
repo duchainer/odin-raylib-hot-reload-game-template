@@ -1,7 +1,6 @@
 package types
 
 UsedKeysEnum :: enum{
-    SPACE,
 	LEFT,
 	RIGHT,
 	ENTER,
