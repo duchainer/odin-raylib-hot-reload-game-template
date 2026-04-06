@@ -702,6 +702,7 @@ game_should_run :: proc() -> bool {
 @(export)
 game_shutdown :: proc() {
     db_close(db_conn)
+    fmt.println("size_of(g^): ", size_of(g^))
 	free(g)
 }
 
