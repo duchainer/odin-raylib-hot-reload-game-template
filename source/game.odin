@@ -184,7 +184,7 @@ input :: proc() -> (input: rl.Vector2){
 
 
 	if player_input_just_pressed(.ENTER){
-		should_game_init = true
+		should_restart_game = true
 	}
 
 	if g.lava_height >= VOLCANO_HEIGHT{
@@ -449,10 +449,29 @@ save_new_frame_checksum :: proc(frame_checksum: ^types.Session_Memory_Checksums,
 
 @(export)
 game_update :: proc() {
-    if should_game_init{
+    // TODO Check if it is actually useful to record the restart on the same game_state.db
+    // It is an implicit branch-off, but I'm not yet sure of the utility of it, unless we also did do a code change
+    //  Since we reset all the game data from the game start
+    if should_restart_game{
+        // We keep appending to the recording
+
+        // Copy pointer to Game_Memory
+        old_g := g
+
+        // re create a new Game_Memory, set to g
         game_init()
-        should_game_init = false
+
+        // We restore the commodino stuff
+        g.commodino = old_g.commodino
+        // We allow continuing to append to the commodino lists
+        g.frame_count = old_g.frame_count
+
+        // game_init does not free the old_g
+        free(old_g)
+
+        should_restart_game = false
     }
+
 	// Prevent calling the context.random_generator,
 	// instead we want our system-specifig rng
 	context.random_generator = runtime.Random_Generator{
@@ -558,7 +577,7 @@ game_init_window :: proc() {
 	rl.SetExitKey(nil)
 }
 
-should_game_init: bool
+should_restart_game: bool
 
 db_conn: ^sqlite.Connection
 @(export)
