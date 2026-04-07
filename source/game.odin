@@ -544,7 +544,7 @@ game_update :: proc() {
             }
         }
 
-        REPLAY_TIMING_EVERY_NTH_FRAME :: 100
+        REPLAY_TIMING_EVERY_NTH_FRAME :: 5000
         when REPLAY_TIMING {
             if g.commodino.replaying_prev_frame_index % REPLAY_TIMING_EVERY_NTH_FRAME == 0 || g.commodino.replaying_prev_frame_index >= g.commodino.recorded_input_events_count-1 {
                 wall_clock_ns := time.duration_nanoseconds(time.since(batch_start_time))
