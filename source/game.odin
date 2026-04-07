@@ -46,7 +46,7 @@ import sqlite "../vendor/odin-sqlite3/"
 
 import "./types"
 
-REPLAY_TIMING :: false
+REPLAY_TIMING :: true
 _ :: time
 
 
@@ -150,11 +150,19 @@ player_input_just_pressed :: proc(my_key: types.UsedKeysEnum) -> bool {
 }
 
 replay_frame_prev_input_keys : [types.UsedKeysEnum]bool
-replay_timing : struct {
-    db_load_ns : i64,
-    input_ns   : i64,
-    update_ns  : i64,
-    frames     : int,
+when REPLAY_TIMING {
+    replay_timing : struct {
+        db_load_ns : i64,
+        input_ns   : i64,
+        update_ns  : i64,
+        frames     : int,
+    }
+    batch_recorded_delta_ns : i64
+    batch_start_time : time.Time
+    batch_frame_count : int
+    total_recorded_delta_ns : i64
+    total_wall_clock_ns : i64
+    replay_start_time : time.Time
 }
 
 input :: proc() -> (input: rl.Vector2){
@@ -491,7 +499,7 @@ game_update :: proc() {
         replay_timing.frames += 1
     }
 
-    DRAW_EVERY_NTH_FRAME :: 1000
+    DRAW_EVERY_NTH_FRAME :: 5000
 	// fmt.println(commodino_assert_message)
     if g.commodino.is_replaying{
         if g.commodino.replaying_prev_frame_index % DRAW_EVERY_NTH_FRAME == 0{
@@ -530,31 +538,36 @@ game_update :: proc() {
         if next_frame != {} {
             replay_frame_prev_input_keys = replay_frame.input_keys
             replay_frame = next_frame
+            when REPLAY_TIMING {
+                batch_recorded_delta_ns += i64(replay_frame.delta_time * 1e9)
+                batch_frame_count += 1
+            }
         }
 
-        PRINT_REPLAY_SPEED :: true
-        when PRINT_REPLAY_SPEED {
-            if g.commodino.replaying_prev_frame_index % DRAW_EVERY_NTH_FRAME == 0{
-                when REPLAY_TIMING {
-                    fmt.printfln(
-                        "replaying frame[%d], delta_time: recorded(%.9f)/replaying(%.9f) = %.9f times faster | db_load=%.3fms input=%.3fms update=%.3fms total=%.3fms",
-                        i,
-                        replay_frame.delta_time, latest_delta_time/DRAW_EVERY_NTH_FRAME,
-                        replay_frame.delta_time / latest_delta_time * DRAW_EVERY_NTH_FRAME,
-                        f64(replay_timing.db_load_ns) / 1e6,
-                        f64(replay_timing.input_ns) / 1e6,
-                        f64(replay_timing.update_ns) / 1e6,
-                        f64(replay_timing.db_load_ns + replay_timing.input_ns + replay_timing.update_ns) / 1e6)
-                    replay_timing = {}
-                } else {
-                    fmt.printfln(
-                        "replaying frame[%d], delta_time: recorded(%.9f)/replaying(%.9f) = %.9f times faster",
-                        i,
-                        replay_frame.delta_time, latest_delta_time/DRAW_EVERY_NTH_FRAME,
-                        replay_frame.delta_time / latest_delta_time * DRAW_EVERY_NTH_FRAME)
-                }
-            }                
-        }
+        REPLAY_TIMING_EVERY_NTH_FRAME :: 100
+        when REPLAY_TIMING {
+            if g.commodino.replaying_prev_frame_index % REPLAY_TIMING_EVERY_NTH_FRAME == 0 || g.commodino.replaying_prev_frame_index >= g.commodino.recorded_input_events_count-1 {
+                wall_clock_ns := time.duration_nanoseconds(time.since(batch_start_time))
+                total_wall_clock_ns += wall_clock_ns
+                total_recorded_delta_ns += batch_recorded_delta_ns
+                game_speed := f64(batch_recorded_delta_ns) / f64(wall_clock_ns)
+                total_game_speed := f64(total_recorded_delta_ns) / f64(total_wall_clock_ns)
+                fmt.printfln(
+                    "replaying frame[%d] (batch of %d frames), batch_speed=%.3fx | total_speed=%.3fx | wall_time=%.3fs game_time=%.3fs | db_load=%.3fms input=%.3fms update=%.3fms total=%.3fms",
+                    i, batch_frame_count,
+                    game_speed, total_game_speed,
+                    f64(total_wall_clock_ns) / 1e9,
+                    f64(total_recorded_delta_ns) / 1e9,
+                    f64(replay_timing.db_load_ns) / 1e6,
+                    f64(replay_timing.input_ns) / 1e6,
+                    f64(replay_timing.update_ns) / 1e6,
+                    f64(replay_timing.db_load_ns + replay_timing.input_ns + replay_timing.update_ns) / 1e6)
+                replay_timing = {}
+                batch_recorded_delta_ns = 0
+                batch_start_time = time.now()
+                batch_frame_count = 0
+            }
+        }                
         
         CHECK_EVERY_NTH_FRAME :: 500
         VERIFY_CHECKSUMS :: false
@@ -692,6 +705,14 @@ game_init :: proc() {
             fmt.eprintln("Failed to load first replay frame")
         }
         replay_frame_prev_input_keys = {}
+        when REPLAY_TIMING {
+            batch_start_time = time.now()
+            batch_recorded_delta_ns = 0
+            batch_frame_count = 0
+            total_recorded_delta_ns = 0
+            total_wall_clock_ns = 0
+            replay_start_time = time.now()
+        }
     } else {
         fmt.println("No saved commodino_struct found, starting fresh")
         restart_current_session_memory()
@@ -822,6 +843,14 @@ game_hot_reloaded :: proc(mem: rawptr, mode: types.Hot_Reload_Mode) {
 		g.replay_stmt = db_prepare_replay_stmt(g.db_conn)
 		replay_frame, _ = db_load_replay_frame_stmt(g.replay_stmt, 1)
 		replay_frame_prev_input_keys = {}
+		when REPLAY_TIMING {
+			batch_start_time = time.now()
+			batch_recorded_delta_ns = 0
+			batch_frame_count = 0
+			total_recorded_delta_ns = 0
+			total_wall_clock_ns = 0
+			replay_start_time = time.now()
+		}
 
 	case .FORCE_REPLAY:
 		// Full restart: load recording and replay it at normal speed
@@ -833,6 +862,14 @@ game_hot_reloaded :: proc(mem: rawptr, mode: types.Hot_Reload_Mode) {
 		g.replay_stmt = db_prepare_replay_stmt(g.db_conn)
 		replay_frame, _ = db_load_replay_frame_stmt(g.replay_stmt, 1)
 		replay_frame_prev_input_keys = {}
+		when REPLAY_TIMING {
+			batch_start_time = time.now()
+			batch_recorded_delta_ns = 0
+			batch_frame_count = 0
+			total_recorded_delta_ns = 0
+			total_wall_clock_ns = 0
+			replay_start_time = time.now()
+		}
 	}
 }
 
