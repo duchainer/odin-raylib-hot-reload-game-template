@@ -267,6 +267,7 @@ foreign sqlite {
 	prepare :: proc "c" (db: ^Connection, sql: cstring, n_bytes: c.int, statement: ^^Statement, tail: ^^cstring) -> Result_Code ---
 	prepare_v2 :: proc "c" (db: ^Connection, sql: cstring, n_bytes: c.int, statement: ^^Statement, tail: ^^cstring) -> Result_Code ---
 	step :: proc "c" (statement: ^Statement) -> Result_Code ---
+	reset :: proc "c" (statement: ^Statement) -> Result_Code ---
 	finalize :: proc "c" (statememt: ^Statement) -> Result_Code ---
 	exec :: proc "c" (db: ^Connection, sql: cstring, cb: proc "c" (ctx: rawptr, argc: c.int, argv: [^]cstring, col_names: [^]cstring) -> c.int, ctx: rawptr, err: ^cstring) -> Result_Code ---
 	changes :: proc "c" (db: ^Connection) -> c.int ---

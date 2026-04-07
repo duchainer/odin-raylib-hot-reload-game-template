@@ -136,8 +136,7 @@ db_load_commodino_struct :: proc(db: ^sqlite.Connection, commodino_struct: ^type
     return true
 }
 
-db_load_replay_frame :: proc(db: ^sqlite.Connection, frame_index: int) -> (frame: types.Replay_Frame, ok: bool) {
-    stmt: ^sqlite.Statement
+db_prepare_replay_stmt :: proc(db: ^sqlite.Connection) -> (stmt: ^sqlite.Statement) {
     result := sqlite.prepare_v2(db, `SELECT
         frame_count, player_rect_x, player_rect_y, sheeps, last_sheep_index,
         lava_height, lava_speed, last_sheep_spawn, count_sheep_sacrificed,
@@ -150,17 +149,27 @@ db_load_replay_frame :: proc(db: ^sqlite.Connection, frame_index: int) -> (frame
         key_left, key_right, key_enter
         FROM frame_data WHERE id = ?`, -1, &stmt, nil)
     if result != .Ok {
-        fmt.eprintfln("Failed to prepare SELECT for frame %d: %v", frame_index, sqlite.errmsg(db))
+        fmt.eprintfln("Failed to prepare replay statement: %v", sqlite.errmsg(db))
+        stmt = nil
+    }
+    return
+}
+
+db_load_replay_frame_stmt :: proc(stmt: ^sqlite.Statement, frame_index: int) -> (frame: types.Replay_Frame, ok: bool) {
+    if stmt == nil {
+        fmt.eprintln("Replay statement is nil")
         return
     }
-    defer sqlite.finalize(stmt)
-    
-    result = sqlite.bind_int(stmt, 1, cast(i32)frame_index)
+
+    // TODO defer sqlite.finalize(stmt) even on crashes?
+
+    sqlite.reset(stmt)
+    result := sqlite.bind_int(stmt, 1, cast(i32)frame_index)
     if result != .Ok {
-        fmt.eprintfln("Failed to bind frame_index %d: %v", frame_index, sqlite.errmsg(db))
+        fmt.eprintfln("Failed to bind frame_index %d: %v", frame_index, sqlite.errmsg(stmt))
         return
     }
-    
+
     result = sqlite.step(stmt)
     if result == .Row {
         coli32 :: sqlite.column_int
@@ -186,10 +195,16 @@ db_load_replay_frame :: proc(db: ^sqlite.Connection, frame_index: int) -> (frame
     } else if result == .Done {
         fmt.eprintfln("Frame %d not found in database", frame_index)
     } else {
-        fmt.eprintfln("Error loading frame %d: %v", frame_index, sqlite.errmsg(db))
+        fmt.eprintfln("Error loading frame %d: %v", frame_index, sqlite.errmsg(stmt))
     }
-    
+
     return
+}
+
+db_load_replay_frame :: proc(db: ^sqlite.Connection, frame_index: int) -> (frame: types.Replay_Frame, ok: bool) {
+    stmt := db_prepare_replay_stmt(db)
+    defer sqlite.finalize(stmt)
+    return db_load_replay_frame_stmt(stmt, frame_index)
 }
 
 db_save_frame :: proc(db: ^sqlite.Connection, frame_index: int, delta_time: f32, input_keys: [types.UsedKeysEnum]bool, checksum: types.Session_Memory_Checksums) -> (ok: bool) {

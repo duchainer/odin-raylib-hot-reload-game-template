@@ -69,6 +69,7 @@ Game_Memory :: struct {
 	using current_session : Session_Memory,
 	sheep_time_rand_gen, sheep_dir_rand_gen : runtime.Random_Generator,
 	db_conn: ^sqlite.Connection,
+	replay_stmt: ^sqlite.Statement,
 }
 
 // TODO Use some fixed point math like fixedptc or libfixmath
@@ -500,7 +501,7 @@ game_update :: proc() {
 
         recorded_frame_checksum := replay_frame.checksum
 
-        next_frame, loaded := db_load_replay_frame(g.db_conn, i+1)
+        next_frame, loaded := db_load_replay_frame_stmt(g.replay_stmt, i+1)
         if loaded {
             replay_frame_prev_input_keys = replay_frame.input_keys
             replay_frame = next_frame
@@ -578,7 +579,8 @@ game_init :: proc() {
         restore_recorded_session_rand_gen()
         g.commodino.is_replaying = true
 
-        replay_frame, ok = db_load_replay_frame(g.db_conn, 1)
+        g.replay_stmt = db_prepare_replay_stmt(g.db_conn)
+        replay_frame, ok = db_load_replay_frame_stmt(g.replay_stmt, 1)
         if !ok {
             fmt.eprintln("Failed to load first replay frame")
         }
@@ -666,8 +668,13 @@ game_should_run :: proc() -> bool {
 
 @(export)
 game_shutdown :: proc() {
-    if g != nil && g.db_conn != nil {
-        db_close(g.db_conn)
+    if g != nil {
+        if g.replay_stmt != nil {
+            sqlite.finalize(g.replay_stmt)
+        }
+        if g.db_conn != nil {
+            db_close(g.db_conn)
+        }
     }
     fmt.println("size_of(g^): ", size_of(g^))
 	free(g)
@@ -697,6 +704,7 @@ game_hot_reloaded :: proc(mem: rawptr, mode: types.Hot_Reload_Mode) {
 		// Normal hot-reload: preserve everything, just restore the pointer
 		// is_replaying stays as it was in the loaded commodino
         // Nothing, no restart or replay to setup
+
 	case .FORCE_RESTART:
 		// Full restart: load recording and replay it, fast (skip draws)
 		g.commodino.is_replaying = true
@@ -704,7 +712,8 @@ game_hot_reloaded :: proc(mem: rawptr, mode: types.Hot_Reload_Mode) {
 		restore_recorded_session_rand_gen()
 		g.commodino.replaying_prev_frame_index = 0
 
-		replay_frame, _ = db_load_replay_frame(g.db_conn, 1)
+		g.replay_stmt = db_prepare_replay_stmt(g.db_conn)
+		replay_frame, _ = db_load_replay_frame_stmt(g.replay_stmt, 1)
 		replay_frame_prev_input_keys = {}
 
 	case .FORCE_REPLAY:
@@ -714,7 +723,8 @@ game_hot_reloaded :: proc(mem: rawptr, mode: types.Hot_Reload_Mode) {
 		restore_recorded_session_rand_gen()
 		g.commodino.replaying_prev_frame_index = 0
 
-		replay_frame, _ = db_load_replay_frame(g.db_conn, 1)
+		g.replay_stmt = db_prepare_replay_stmt(g.db_conn)
+		replay_frame, _ = db_load_replay_frame_stmt(g.replay_stmt, 1)
 		replay_frame_prev_input_keys = {}
 	}
 }
