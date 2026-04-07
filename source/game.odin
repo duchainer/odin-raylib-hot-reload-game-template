@@ -453,7 +453,7 @@ game_update :: proc() {
     // It is an implicit branch-off, but I'm not yet sure of the utility of it, unless we also did do a code change
     //  Since we reset all the game data from the game start
     if should_restart_game{
-        // We keep appending to the recording
+        // We keep appending to the recording, after restart
 
         // Copy pointer to Game_Memory
         old_g := g
