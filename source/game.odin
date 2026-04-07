@@ -476,7 +476,7 @@ game_update :: proc() {
 	}
 	update_ok = update(input_vec)
 
-    DRAW_EVERY_NTH_FRAME :: 500
+    DRAW_EVERY_NTH_FRAME :: 1000
 	// fmt.println(commodino_assert_message)
     if g.commodino.is_replaying{
         if g.commodino.replaying_prev_frame_index % DRAW_EVERY_NTH_FRAME == 0{
