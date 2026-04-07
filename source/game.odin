@@ -414,12 +414,7 @@ save_new_frame_checksum :: proc(frame_checksum: ^types.Session_Memory_Checksums,
     frame_checksum.count_sheep_sacrificed = current_session.count_sheep_sacrificed
     frame_checksum.sheep_time_rand_gen_state = xxhash.XXH3_64_default(mem.byte_slice(&current_session.sheep_time_rand_gen_state, size_of(current_session.sheep_time_rand_gen_state))) 
     frame_checksum.sheep_dir_rand_gen_state = xxhash.XXH3_64_default(mem.byte_slice(&current_session.sheep_dir_rand_gen_state, size_of(current_session.sheep_dir_rand_gen_state))) 
-
-    // Use a fixed buffer to avoid per-frame allocation
-    sheep_hash_buf : [1024 * size_of(Sheep)]u8
-    sheep_bytes := mem.byte_slice(&current_session.sheeps[0], size_of(Sheep) * int(current_session.last_sheep_index + 1))
-    copy(sheep_hash_buf[:], sheep_bytes)
-    frame_checksum.sheeps = xxhash.XXH3_64_default(sheep_hash_buf[:size_of(Sheep) * int(current_session.last_sheep_index + 1)])
+    frame_checksum.sheeps = xxhash.XXH3_64_default(mem.byte_slice(&current_session.sheeps[0], size_of(Sheep) * int(current_session.last_sheep_index + 1)))
 }
 
 restart_game :: proc(mode: types.Hot_Reload_Mode) {
