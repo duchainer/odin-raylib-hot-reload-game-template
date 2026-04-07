@@ -482,16 +482,21 @@ game_update :: proc() {
     _ :: mem
     _ :: xxhash
     frame_checksum : types.Session_Memory_Checksums
-    if !g.commodino.is_replaying {
-        save_new_frame_checksum(&frame_checksum, &g.current_session)
-    }
+    save_new_frame_checksum(&frame_checksum, &g.current_session)
 
 
     if g.commodino.is_replaying{
+        i := g.commodino.replaying_prev_frame_index+1
+
+        next_frame, loaded := db_load_replay_frame_stmt(g.replay_stmt, i+1)
+        if loaded {
+            replay_frame_prev_input_keys = replay_frame.input_keys
+            replay_frame = next_frame
+        }
+
         PRINT_REPLAY_SPEED :: true
         when PRINT_REPLAY_SPEED {
             if g.commodino.replaying_prev_frame_index % DRAW_EVERY_NTH_FRAME == 0{
-                i := g.commodino.replaying_prev_frame_index+1
                 fmt.printfln(
                     "replaying frame[%d], delta_time: recorded(%.9f)/replaying(%.9f) = %.9f times faster",
                     i,
@@ -505,15 +510,73 @@ game_update :: proc() {
         when VERIFY_CHECKSUMS {
             if g.commodino.replaying_prev_frame_index % CHECK_EVERY_NTH_FRAME == 0 {
                 save_new_frame_checksum(&frame_checksum, &g.current_session)
-                recorded_frame_checksum := replay_frame.checksum
-                config_diffs := diff_struct(types.Session_Memory_Checksums, recorded_frame_checksum, frame_checksum)
+                recorded_frame, _ := db_load_replay_frame(g.db_conn, i)
+                config_diffs := diff_struct(types.Session_Memory_Checksums, recorded_frame.checksum, frame_checksum)
                 defer delete(config_diffs)
                 print_on_no_diff :: false
                 print_diffs(config_diffs, print_on_no_diff)
 
                 if len(config_diffs) > 0{
-                    commodino_assert_message = fmt.tprintf("Replay desync at frame %v, check stdout: '%v', '%v'", g.commodino.replaying_prev_frame_index+1, recorded_frame_checksum, frame_checksum) 
+                    commodino_assert_message = fmt.tprintf("Replay desync at frame %v, bisecting from frame 1...", i)
                     fmt.eprintln(commodino_assert_message)
+
+                    saved_session := g.current_session
+                    saved_rng_time := g.sheep_time_rand_gen_state
+                    saved_rng_dir := g.sheep_dir_rand_gen_state
+                    saved_frame_count := g.frame_count
+
+                    restart_current_session_memory()
+                    restore_recorded_session_rand_gen()
+
+                    bisect_replay_frame : types.Replay_Frame
+                    bisect_replay_frame, _ = db_load_replay_frame(g.db_conn, 1)
+                    bisect_prev_input_keys : [types.UsedKeysEnum]bool
+
+                    bisect_found := false
+                    for bf := 1; bf <= g.commodino.replaying_prev_frame_index + 1; bf += 1 {
+                        if bf > 1 {
+                            next_bf, bisect_loaded := db_load_replay_frame(g.db_conn, bf)
+                            if bisect_loaded {
+                                bisect_prev_input_keys = bisect_replay_frame.input_keys
+                                bisect_replay_frame = next_bf
+                            }
+                        }
+
+                        replay_frame = bisect_replay_frame
+                        replay_frame_prev_input_keys = bisect_prev_input_keys
+
+                        latest_delta_time = rl.GetFrameTime()
+                        dt := replay_frame.delta_time
+                        if dt <= 0 { dt = 1.0 / f32(types.TARGET_FPS) }
+
+                        g.frame_count += 1
+                        input_vec = input()
+                        _ = update(input_vec)
+
+                        bisect_checksum : types.Session_Memory_Checksums
+                        save_new_frame_checksum(&bisect_checksum, &g.current_session)
+                        bisect_recorded, _ := db_load_replay_frame(g.db_conn, bf)
+                        bisect_diffs := diff_struct(types.Session_Memory_Checksums, bisect_recorded.checksum, bisect_checksum)
+                        defer delete(bisect_diffs)
+                        if len(bisect_diffs) > 0{
+                            fmt.eprintfln("First desync at frame %d", bf)
+                            print_diffs(bisect_diffs, true)
+                            bisect_found = true
+                            break
+                        }
+                    }
+
+                    g.current_session = saved_session
+                    g.sheep_time_rand_gen_state = saved_rng_time
+                    g.sheep_dir_rand_gen_state = saved_rng_dir
+                    g.frame_count = saved_frame_count
+                    g.sheep_time_rand_gen = rand.default_random_generator(&g.sheep_time_rand_gen_state)
+                    g.sheep_dir_rand_gen = rand.default_random_generator(&g.sheep_dir_rand_gen_state)
+
+                    if !bisect_found {
+                        fmt.eprintln("Bisect: no divergence found")
+                    }
+
                     draw()
                 }
             }
