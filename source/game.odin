@@ -150,7 +150,7 @@ input :: proc() -> (input: rl.Vector2){
 
     if g.commodino.is_replaying{
         
-    } else {
+    } else if g.lava_height < VOLCANO_HEIGHT && g.commodino.recorded_input_events_count < types.MAX_FRAME_COUNT {
         g.commodino.recorded_input_events_count += 1
 
         // NOTE That for loop, it is equivalent to this:
@@ -173,7 +173,6 @@ input :: proc() -> (input: rl.Vector2){
             for key in rl_keys{
                 pressed = rl.IsKeyDown(key) || pressed
             }
-            g.commodino.recorded_input_events_count = min(types.MAX_FRAME_COUNT, g.commodino.recorded_input_events_count)
             g.commodino.recorded_input_events[g.commodino.recorded_input_events_count].keys[used_key] = {
                 pressed = pressed,
             }
@@ -446,21 +445,20 @@ save_new_frame_checksum :: proc(frame_checksum: ^types.Session_Memory_Checksums,
 }
 
 restart_game :: proc(mode: types.Hot_Reload_Mode) {
-	old_commodino := g.commodino
-	old_db_conn := g.db_conn
-	old_frame_count := g.frame_count
-
-	free(g)
+	old_g := g
 
 	g = new(Game_Memory)
 	g^ = Game_Memory {
 		run = true,
-		db_conn = old_db_conn,
-		commodino = old_commodino,
-		frame_count = old_frame_count,
+		db_conn = old_g.db_conn,
+		commodino = old_g.commodino,
+		frame_count = old_g.frame_count,
 	}
 
 	update_ok = true
+
+	free(old_g)
+
 	game_hot_reloaded(g, mode)
 }
 
@@ -482,8 +480,11 @@ game_update :: proc() {
         if g.commodino.replaying_prev_frame_index >= g.commodino.recorded_input_events_count{
             if commodino_assert_message == ""{
                 commodino_assert_message = "End of replay"    
-            } 
-	        draw()
+            }
+            fmt.println("commodino_assert_message: ", commodino_assert_message)
+            fmt.println("replaying_prev_frame_index: ", g.commodino.replaying_prev_frame_index)
+            fmt.println("recorded_input_events_count: ", g.commodino.recorded_input_events_count)
+ 	        draw()
             return
         }
     }
@@ -498,6 +499,8 @@ game_update :: proc() {
 	// fmt.println(commodino_assert_message)
     if g.commodino.is_replaying{
         if g.commodino.replaying_prev_frame_index % DRAW_EVERY_NTH_FRAME == 0{
+            fmt.printfln("DEBUG replay draw: frame=%d, player_rect=%v, last_sheep_index=%d, lava_height=%.1f", 
+                g.commodino.replaying_prev_frame_index, g.player_rect, g.last_sheep_index, g.lava_height)
             draw()
         }
     } else {
@@ -523,10 +526,6 @@ game_update :: proc() {
 
         recorded_frame_checksum := g.commodino.frame_checksums[i]
 
-        // FOR FUN/PERF, to see how quickly we run our replays,
-        // NOTE, rl.GetFrameTime() actually "Returns time in seconds for last frame drawn (delta time)", not from the last call to it
-        //      So we multiply by the amount of skipped draw frames, to approximate the actual delta_time, of those updates and that one draw
-        // TODO: Use rl.GetTime() and compare, instead, to have something closer to the delta_time
         PRINT_REPLAY_SPEED :: true
         when PRINT_REPLAY_SPEED {
             fmt.printfln(
@@ -541,11 +540,9 @@ game_update :: proc() {
         print_on_no_diff :: false
         print_diffs(config_diffs, print_on_no_diff)
 
-        // if (current_frame_checksum != frame_checksum){
         if len(config_diffs) > 0{
             commodino_assert_message = fmt.tprintf("Replay desync, check stdout: '%v', '%v'", g.commodino.frame_checksums[i], frame_checksum) 
-            // breakpoint()
-            // fmt.eprintln(commodino_assert_message)
+            fmt.eprintln(commodino_assert_message)
             draw()
         }
         g.commodino.replaying_prev_frame_index += 1
@@ -598,6 +595,7 @@ game_init :: proc() {
     loaded := db_load_commodino_struct(g.db_conn, &g.commodino)
     if loaded {
         fmt.println("Successfully loaded commodino_struct from database")
+        restart_current_session_memory()
         restore_recorded_session_rand_gen()
         g.commodino.is_replaying = true
     } else {
@@ -611,6 +609,13 @@ game_init :: proc() {
         g.commodino.frame_checksums[0] = frame_checksum
     }
     game_hot_reloaded(g, .HOT_RELOAD)
+
+    fmt.println("DEBUG game_init: g.player_rect = ", g.player_rect)
+    fmt.println("DEBUG game_init: g.last_sheep_index = ", g.last_sheep_index)
+    fmt.println("DEBUG game_init: g.sheeps[1] = ", g.sheeps[1])
+    fmt.println("DEBUG game_init: g.commodino.is_replaying = ", g.commodino.is_replaying)
+    fmt.println("DEBUG game_init: g.commodino.recorded_input_events_count = ", g.commodino.recorded_input_events_count)
+    fmt.println("DEBUG game_init: g.commodino.replaying_prev_frame_index = ", g.commodino.replaying_prev_frame_index)
 }
 
 reset_current_session_rand_gen :: proc() {
