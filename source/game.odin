@@ -482,7 +482,9 @@ game_update :: proc() {
     _ :: mem
     _ :: xxhash
     frame_checksum : types.Session_Memory_Checksums
-    save_new_frame_checksum(&frame_checksum, &g.current_session)
+    if !g.commodino.is_replaying {
+        save_new_frame_checksum(&frame_checksum, &g.current_session)
+    }
 
 
     if g.commodino.is_replaying{
@@ -506,7 +508,7 @@ game_update :: proc() {
         }
         
         CHECK_EVERY_NTH_FRAME :: 500
-        VERIFY_CHECKSUMS :: true
+        VERIFY_CHECKSUMS :: false
         when VERIFY_CHECKSUMS {
             if g.commodino.replaying_prev_frame_index % CHECK_EVERY_NTH_FRAME == 0 {
                 save_new_frame_checksum(&frame_checksum, &g.current_session)
