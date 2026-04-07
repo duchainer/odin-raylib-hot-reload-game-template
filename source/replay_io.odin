@@ -33,7 +33,6 @@ db_init :: proc(db_path: string) -> (db: ^sqlite.Connection, ok: bool) {
             commodino_struct_version INTEGER,
             commit_hash CHAR(40), -- fixed length of full commit hash
             -- rand_gen seeds
-            commit_hash CHAR(40),
             sheep_time_rand_gen_state_seed INTEGER,
             sheep_dir_rand_gen_state_seed INTEGER,
             recorded_input_events_count INTEGER DEFAULT 0
@@ -286,7 +285,7 @@ db_save_frame :: proc(db: ^sqlite.Connection, frame_index: int, delta_time: f32,
     
     result = sa.execute(
         db, 
-        fmt.tprintf(`INSERT INTO frame_data (-- id, -- it auto-increments, so let's make use that, for that meta_frame_index
+        fmt.tprintf(`INSERT INTO frame_data (id, -- it auto-increments, so let's make use that, for that meta_frame_index
         -- From frame_checksums
         frame_count, player_rect_x, player_rect_y, sheeps, last_sheep_index,
         lava_height, lava_speed, last_sheep_spawn, count_sheep_sacrificed,
