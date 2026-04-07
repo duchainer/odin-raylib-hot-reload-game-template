@@ -48,7 +48,7 @@ Game_API :: struct {
 	shutdown_window: proc(),
 	memory: proc() -> rawptr,
 	memory_size: proc() -> int,
-	hot_reloaded: proc(mem: rawptr, is_replaying: bool),
+	hot_reloaded: proc(mem: rawptr, mode: int),
 	force_reload: proc() -> bool,
 	force_restart: proc() -> bool,
 	force_replay: proc() -> bool,
@@ -154,7 +154,7 @@ main :: proc() {
 			new_game_api, new_game_api_ok := load_game_api(game_api_version)
 
 			if new_game_api_ok {
-				force_restart = force_restart || game_api.memory_size() != new_game_api.memory_size()
+				force_restart = force_restart || force_replay || game_api.memory_size() != new_game_api.memory_size()
 
 				if !force_restart {
 					// This does the normal hot reload
@@ -168,7 +168,7 @@ main :: proc() {
 
 
 					game_api = new_game_api
-					game_api.hot_reloaded(game_memory, force_replay)
+					game_api.hot_reloaded(game_memory, 0) // 0 = .HOT_RELOAD
 				} else {
 					// This does a full reset. That's basically like opening and
 					// closing the game, without having to restart the executable.
@@ -187,7 +187,17 @@ main :: proc() {
 					clear(&old_game_apis)
 					unload_game_api(&game_api)
 					game_api = new_game_api
+
+					// Determine which restart mode to use
+					restart_mode: int
+					if force_replay {
+						restart_mode = 2 // .FORCE_REPLAY - normal speed
+					} else {
+						restart_mode = 1 // .FORCE_RESTART - fast replay
+					}
+
 					game_api.init()
+					game_api.hot_reloaded(game_api.memory(), restart_mode)
 				}
 
 				game_api_version += 1

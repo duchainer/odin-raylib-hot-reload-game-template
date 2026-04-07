@@ -69,3 +69,9 @@ CommodinoStructInnerNonArrays :: struct{
 
 SCRUBBER_HEIGHT :: 30.0
 SCRUBBER_PADDING :: 5.0
+
+Hot_Reload_Mode :: enum{
+	HOT_RELOAD,
+	FORCE_RESTART,
+	FORCE_REPLAY,
+}
