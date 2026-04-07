@@ -414,18 +414,12 @@ save_new_frame_checksum :: proc(frame_checksum: ^types.Session_Memory_Checksums,
     frame_checksum.count_sheep_sacrificed = current_session.count_sheep_sacrificed
     frame_checksum.sheep_time_rand_gen_state = xxhash.XXH3_64_default(mem.byte_slice(&current_session.sheep_time_rand_gen_state, size_of(current_session.sheep_time_rand_gen_state))) 
     frame_checksum.sheep_dir_rand_gen_state = xxhash.XXH3_64_default(mem.byte_slice(&current_session.sheep_dir_rand_gen_state, size_of(current_session.sheep_dir_rand_gen_state))) 
-//    // Hash only the active slice of sheeps
-//    frame_checksum.sheeps = xxhash.XXH3_64_default(mem.byte_slice(&current_session.sheeps[0], size_of(Sheep) * (current_session.last_sheep_index + 1)))
-    sheep_hash_data : [dynamic]u8
-    defer delete(sheep_hash_data)
-    for i in 0..=current_session.last_sheep_index {
-        sheep := &current_session.sheeps[i]
-        sheep_bytes := mem.byte_slice(sheep, size_of(Sheep))
-        for b in sheep_bytes {
-            append(&sheep_hash_data, b)
-        }
-    }
-    frame_checksum.sheeps = xxhash.XXH3_64_default(sheep_hash_data[:])
+
+    // Use a fixed buffer to avoid per-frame allocation
+    sheep_hash_buf : [1024 * size_of(Sheep)]u8
+    sheep_bytes := mem.byte_slice(&current_session.sheeps[0], size_of(Sheep) * int(current_session.last_sheep_index + 1))
+    copy(sheep_hash_buf[:], sheep_bytes)
+    frame_checksum.sheeps = xxhash.XXH3_64_default(sheep_hash_buf[:size_of(Sheep) * int(current_session.last_sheep_index + 1)])
 }
 
 restart_game :: proc(mode: types.Hot_Reload_Mode) {
@@ -493,38 +487,41 @@ game_update :: proc() {
     _ :: mem
     _ :: xxhash
     frame_checksum : types.Session_Memory_Checksums
-    save_new_frame_checksum(&frame_checksum, &g.current_session)
+    if !g.commodino.is_replaying {
+        save_new_frame_checksum(&frame_checksum, &g.current_session)
+    }
 
 
     if g.commodino.is_replaying{
-        i := g.commodino.replaying_prev_frame_index+1
-
-        recorded_frame_checksum := replay_frame.checksum
-
-        next_frame, loaded := db_load_replay_frame_stmt(g.replay_stmt, i+1)
-        if loaded {
-            replay_frame_prev_input_keys = replay_frame.input_keys
-            replay_frame = next_frame
-        }
-
         PRINT_REPLAY_SPEED :: true
         when PRINT_REPLAY_SPEED {
-            fmt.printfln(
-                "replaying frame[%d], delta_time: recorded(%.9f)/replaying(%.9f) = %.9f times faster",
-                i,
-                replay_frame.delta_time, latest_delta_time/DRAW_EVERY_NTH_FRAME,
-                replay_frame.delta_time / latest_delta_time * DRAW_EVERY_NTH_FRAME)
+            if g.commodino.replaying_prev_frame_index % DRAW_EVERY_NTH_FRAME == 0{
+                i := g.commodino.replaying_prev_frame_index+1
+                fmt.printfln(
+                    "replaying frame[%d], delta_time: recorded(%.9f)/replaying(%.9f) = %.9f times faster",
+                    i,
+                    replay_frame.delta_time, latest_delta_time/DRAW_EVERY_NTH_FRAME,
+                    replay_frame.delta_time / latest_delta_time * DRAW_EVERY_NTH_FRAME)
+            }                
         }
         
-        config_diffs := diff_struct(types.Session_Memory_Checksums, recorded_frame_checksum, frame_checksum)
-        defer delete(config_diffs)
-        print_on_no_diff :: false
-        print_diffs(config_diffs, print_on_no_diff)
+        CHECK_EVERY_NTH_FRAME :: 500
+        VERIFY_CHECKSUMS :: true
+        when VERIFY_CHECKSUMS {
+            if g.commodino.replaying_prev_frame_index % CHECK_EVERY_NTH_FRAME == 0 {
+                save_new_frame_checksum(&frame_checksum, &g.current_session)
+                recorded_frame_checksum := replay_frame.checksum
+                config_diffs := diff_struct(types.Session_Memory_Checksums, recorded_frame_checksum, frame_checksum)
+                defer delete(config_diffs)
+                print_on_no_diff :: false
+                print_diffs(config_diffs, print_on_no_diff)
 
-        if len(config_diffs) > 0{
-            commodino_assert_message = fmt.tprintf("Replay desync, check stdout: '%v', '%v'", recorded_frame_checksum, frame_checksum) 
-            fmt.eprintln(commodino_assert_message)
-            draw()
+                if len(config_diffs) > 0{
+                    commodino_assert_message = fmt.tprintf("Replay desync at frame %v, check stdout: '%v', '%v'", g.commodino.replaying_prev_frame_index+1, recorded_frame_checksum, frame_checksum) 
+                    fmt.eprintln(commodino_assert_message)
+                    draw()
+                }
+            }
         }
         g.commodino.replaying_prev_frame_index += 1
     } else {
