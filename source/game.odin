@@ -88,7 +88,6 @@ Session_Memory :: struct {
 
 
 g: ^Game_Memory
-// previous_g: ^Game_Memory
 
 game_camera :: proc() -> rl.Camera2D {
 	w := f32(rl.GetScreenWidth())
@@ -96,7 +95,6 @@ game_camera :: proc() -> rl.Camera2D {
 
 	return {
 		zoom = h/PIXEL_WINDOW_HEIGHT/2.5,
-		// target = pos_from_rect(g.player_rect),
 		offset = { w/2 , h/2 +200 },
 	}
 }
@@ -112,9 +110,11 @@ USED_KEY_TO_RL_KEY : [types.UsedKeysEnum][2]rl.KeyboardKey= {
         .ENTER = { .ENTER, .KEY_NULL },
 }
 
+replay_frame : types.Replay_Frame
+
 player_input_down :: proc(my_key: types.UsedKeysEnum) -> bool {
 	if g.commodino.is_replaying{
-		return g.commodino.recorded_input_events[g.commodino.replaying_prev_frame_index+1].keys[my_key].pressed
+		return replay_frame.input_keys[my_key]
 	} else {
         for key in USED_KEY_TO_RL_KEY[my_key] {
             if rl.IsKeyDown(key){
@@ -127,16 +127,12 @@ player_input_down :: proc(my_key: types.UsedKeysEnum) -> bool {
 
 player_input_just_pressed :: proc(my_key: types.UsedKeysEnum) -> bool {
 	if g.commodino.is_replaying{
-		if g.commodino.recorded_input_events[g.commodino.replaying_prev_frame_index+1].keys[my_key].pressed{
-            return !g.commodino.recorded_input_events[g.commodino.replaying_prev_frame_index].keys[my_key].pressed
+		if replay_frame.input_keys[my_key]{
+            return !replay_frame_prev_input_keys[my_key]
         }
         return false
 	} else {
         for key in USED_KEY_TO_RL_KEY[my_key] {
-            //  NOTE There is one single effect of that for when we have 2 raylib keys to the same used_key
-            //  If you were to frame perfect alternate keys being just pressed, you could have multiple frames of that key being "just_pressed"
-            //  But It shouldn't be an issue, I think.
-            //  Worse case, it will become some speedrun trick or something
             if rl.IsKeyPressed(key){
                 return true
             }
@@ -145,37 +141,21 @@ player_input_just_pressed :: proc(my_key: types.UsedKeysEnum) -> bool {
 	}
 }
 
+replay_frame_prev_input_keys : [types.UsedKeysEnum]bool
 
 input :: proc() -> (input: rl.Vector2){
 
     if g.commodino.is_replaying{
-        
-    } else if g.lava_height < VOLCANO_HEIGHT && g.commodino.recorded_input_events_count < types.MAX_FRAME_COUNT {
+        replay_frame_prev_input_keys = replay_frame.input_keys
+    } else if g.lava_height < VOLCANO_HEIGHT {
         g.commodino.recorded_input_events_count += 1
 
-        // NOTE That for loop, it is equivalent to this:
-        // g.commodino.recorded_input_events[g.commodino.recorded_input_events_count].keys = {
-        //     .LEFT =  { pressed = rl.IsKeyDown(.LEFT) || rl.IsKeyDown(.A) },
-        //     .RIGHT = { pressed = rl.IsKeyDown(.RIGHT) || rl.IsKeyDown(.D) },
-        //     .ENTER = { pressed = rl.IsKeyDown(.ENTER) },
-        // }
-        // if we have : 
-        // USED_KEY_TO_RL_KEY : [types.UsedKeysEnum][2]rl.KeyboardKey= {
-        //         .LEFT =  { .LEFT, .A },
-        //         .RIGHT = { .RIGHT, .D },
-        //         .ENTER = { .ENTER, .KEY_NULL },
-        // }
-        // 
         for rl_keys, used_key in USED_KEY_TO_RL_KEY {
-			// fmt.println(used_key, rl_keys)
-            // m : [2]rl.KeyboardKey = rl_keys
             pressed: bool
             for key in rl_keys{
                 pressed = rl.IsKeyDown(key) || pressed
             }
-            g.commodino.recorded_input_events[g.commodino.recorded_input_events_count].keys[used_key] = {
-                pressed = pressed,
-            }
+            recorded_input_keys[used_key] = pressed
         }
     }
 
@@ -189,13 +169,6 @@ input :: proc() -> (input: rl.Vector2){
 	}
 
 
-	// if rl.IsKeyDown(.UP) || rl.IsKeyDown(.W) {
-	// 	input.y -= 1
-	// }
-	// if rl.IsKeyDown(.DOWN) || rl.IsKeyDown(.S) {
-	// 	input.y += 1
-	// }
-
 	if player_input_down(.LEFT) {
 		input.x -= 1
 	}
@@ -208,6 +181,7 @@ input :: proc() -> (input: rl.Vector2){
 }
 
 latest_delta_time: f32
+recorded_input_keys : [types.UsedKeysEnum]bool
 
 SHEEP_LAVA_WORTH :: 75
 update :: proc(input: rl.Vector2) -> (ok:bool) {
@@ -217,13 +191,17 @@ update :: proc(input: rl.Vector2) -> (ok:bool) {
     delta_time : f32 = rl.GetFrameTime()
     if g.commodino.is_replaying{
         latest_delta_time = delta_time
-        frame_index := g.commodino.replaying_prev_frame_index+1
-        delta_time = g.commodino.delta_times[frame_index]
-        assert(frame_index == 1 || delta_time > 0, fmt.tprintf("Unless we just started (1st frame), delta_time should be around 1/FPS, not zero"))
+        delta_time = replay_frame.delta_time
+        if delta_time <= 0 {
+            delta_time = 1.0 / f32(types.TARGET_FPS)
+        }
     }else{
         frame_index := g.frame_count
         assert(frame_index == 1 || delta_time > 0, fmt.tprintf("Unless we just started (1st frame), delta_time should be around 1/FPS, not zero"))
-        g.commodino.delta_times[g.frame_count] = delta_time
+        if frame_index == 1 && delta_time <= 0 {
+            delta_time = 1.0 / f32(types.TARGET_FPS)
+        }
+        recorded_delta_time = delta_time
     }
 
 	player_speed :: 60.0
@@ -248,12 +226,6 @@ update :: proc(input: rl.Vector2) -> (ok:bool) {
 		g.last_sheep_spawn = 0
 	}
 	g.last_sheep_spawn += 1
-	// commodino_assert_message = fmt.tprintf("test?")
-
-	// if g.last_sheep_spawn > 10{
-	// 	commodino_assert_message = fmt.tprintf("Too much sheeps, expected less than 10, instead got %v", g.last_sheep_spawn)
-	// 	return false // assert failed in update
-	// }
 
 	SHEEP_SPEED :: 35.0
 	SHEEP_INITIAL_JUMP_SPEED :: -60.0
@@ -428,13 +400,12 @@ prevent_rng_call :: proc(data: rawptr, mode: runtime.Random_Generator_Mode, p: [
 
 update_ok : bool
 input_vec : rl.Vector2
+recorded_delta_time : f32
 
 save_new_frame_checksum :: proc(frame_checksum: ^types.Session_Memory_Checksums, current_session: ^Session_Memory){
     frame_checksum.frame_count = current_session.frame_count
     frame_checksum.player_rect.x  = current_session.player_rect.x 
     frame_checksum.player_rect.y  = current_session.player_rect.y 
-    // Hash only the active slice of sheeps
-    frame_checksum.sheeps = xxhash.XXH3_64_default(mem.byte_slice(&current_session.sheeps[0], size_of(Sheep) * (current_session.last_sheep_index + 1)))
     frame_checksum.last_sheep_index = current_session.last_sheep_index
     frame_checksum.lava_height = current_session.lava_height
     frame_checksum.lava_speed = current_session.lava_speed
@@ -442,6 +413,18 @@ save_new_frame_checksum :: proc(frame_checksum: ^types.Session_Memory_Checksums,
     frame_checksum.count_sheep_sacrificed = current_session.count_sheep_sacrificed
     frame_checksum.sheep_time_rand_gen_state = xxhash.XXH3_64_default(mem.byte_slice(&current_session.sheep_time_rand_gen_state, size_of(current_session.sheep_time_rand_gen_state))) 
     frame_checksum.sheep_dir_rand_gen_state = xxhash.XXH3_64_default(mem.byte_slice(&current_session.sheep_dir_rand_gen_state, size_of(current_session.sheep_dir_rand_gen_state))) 
+//    // Hash only the active slice of sheeps
+//    frame_checksum.sheeps = xxhash.XXH3_64_default(mem.byte_slice(&current_session.sheeps[0], size_of(Sheep) * (current_session.last_sheep_index + 1)))
+    sheep_hash_data : [dynamic]u8
+    defer delete(sheep_hash_data)
+    for i in 0..=current_session.last_sheep_index {
+        sheep := &current_session.sheeps[i]
+        sheep_bytes := mem.byte_slice(sheep, size_of(Sheep))
+        for b in sheep_bytes {
+            append(&sheep_hash_data, b)
+        }
+    }
+    frame_checksum.sheeps = xxhash.XXH3_64_default(sheep_hash_data[:])
 }
 
 restart_game :: proc(mode: types.Hot_Reload_Mode) {
@@ -479,12 +462,9 @@ game_update :: proc() {
     if g.commodino.is_replaying{
         if g.commodino.replaying_prev_frame_index >= g.commodino.recorded_input_events_count{
             if commodino_assert_message == ""{
-                commodino_assert_message = "End of replay"    
+                commodino_assert_message = "End of replay"
             }
-            fmt.println("commodino_assert_message: ", commodino_assert_message)
-            fmt.println("replaying_prev_frame_index: ", g.commodino.replaying_prev_frame_index)
-            fmt.println("recorded_input_events_count: ", g.commodino.recorded_input_events_count)
- 	        draw()
+            draw()
             return
         }
     }
@@ -499,8 +479,6 @@ game_update :: proc() {
 	// fmt.println(commodino_assert_message)
     if g.commodino.is_replaying{
         if g.commodino.replaying_prev_frame_index % DRAW_EVERY_NTH_FRAME == 0{
-            fmt.printfln("DEBUG replay draw: frame=%d, player_rect=%v, last_sheep_index=%d, lava_height=%.1f", 
-                g.commodino.replaying_prev_frame_index, g.player_rect, g.last_sheep_index, g.lava_height)
             draw()
         }
     } else {
@@ -517,22 +495,24 @@ game_update :: proc() {
     save_new_frame_checksum(&frame_checksum, &g.current_session)
 
 
-    // // HACK figure out why we have an off-by-one recording vs replaying
-    // //    Might be that we have frame_count be 0, but store on 1.. or something
-    // frame_checksum.frame_count = 0
-
     if g.commodino.is_replaying{
         i := g.commodino.replaying_prev_frame_index+1
 
-        recorded_frame_checksum := g.commodino.frame_checksums[i]
+        recorded_frame_checksum := replay_frame.checksum
+
+        next_frame, loaded := db_load_replay_frame(g.db_conn, i+1)
+        if loaded {
+            replay_frame_prev_input_keys = replay_frame.input_keys
+            replay_frame = next_frame
+        }
 
         PRINT_REPLAY_SPEED :: true
         when PRINT_REPLAY_SPEED {
             fmt.printfln(
                 "replaying frame[%d], delta_time: recorded(%.9f)/replaying(%.9f) = %.9f times faster",
                 i,
-                g.commodino.delta_times[i], latest_delta_time/DRAW_EVERY_NTH_FRAME,
-                g.commodino.delta_times[i] / latest_delta_time * DRAW_EVERY_NTH_FRAME)
+                replay_frame.delta_time, latest_delta_time/DRAW_EVERY_NTH_FRAME,
+                replay_frame.delta_time / latest_delta_time * DRAW_EVERY_NTH_FRAME)
         }
         
         config_diffs := diff_struct(types.Session_Memory_Checksums, recorded_frame_checksum, frame_checksum)
@@ -541,7 +521,7 @@ game_update :: proc() {
         print_diffs(config_diffs, print_on_no_diff)
 
         if len(config_diffs) > 0{
-            commodino_assert_message = fmt.tprintf("Replay desync, check stdout: '%v', '%v'", g.commodino.frame_checksums[i], frame_checksum) 
+            commodino_assert_message = fmt.tprintf("Replay desync, check stdout: '%v', '%v'", recorded_frame_checksum, frame_checksum) 
             fmt.eprintln(commodino_assert_message)
             draw()
         }
@@ -559,8 +539,7 @@ game_update :: proc() {
 `)
 
         i := g.current_session.frame_count
-        g.commodino.frame_checksums[i] = frame_checksum
-        db_update_commodino_struct(g.db_conn, g.commodino)
+        db_save_frame(g.db_conn, i, recorded_delta_time, recorded_input_keys, frame_checksum)
     }
 }
 
@@ -598,24 +577,19 @@ game_init :: proc() {
         restart_current_session_memory()
         restore_recorded_session_rand_gen()
         g.commodino.is_replaying = true
+
+        replay_frame, ok = db_load_replay_frame(g.db_conn, 1)
+        if !ok {
+            fmt.eprintln("Failed to load first replay frame")
+        }
+        replay_frame_prev_input_keys = {}
     } else {
         fmt.println("No saved commodino_struct found, starting fresh")
         restart_current_session_memory()
         reset_current_session_rand_gen()
         db_insert_initial_values(g.db_conn, &g.commodino, types.COMMODINO_STRUCT_VERSION)
-        g.commodino.frame_checksums = {}
-        frame_checksum: types.Session_Memory_Checksums
-        save_new_frame_checksum(&frame_checksum, &g.current_session)
-        g.commodino.frame_checksums[0] = frame_checksum
     }
     game_hot_reloaded(g, .HOT_RELOAD)
-
-    fmt.println("DEBUG game_init: g.player_rect = ", g.player_rect)
-    fmt.println("DEBUG game_init: g.last_sheep_index = ", g.last_sheep_index)
-    fmt.println("DEBUG game_init: g.sheeps[1] = ", g.sheeps[1])
-    fmt.println("DEBUG game_init: g.commodino.is_replaying = ", g.commodino.is_replaying)
-    fmt.println("DEBUG game_init: g.commodino.recorded_input_events_count = ", g.commodino.recorded_input_events_count)
-    fmt.println("DEBUG game_init: g.commodino.replaying_prev_frame_index = ", g.commodino.replaying_prev_frame_index)
 }
 
 reset_current_session_rand_gen :: proc() {
@@ -722,7 +696,7 @@ game_hot_reloaded :: proc(mem: rawptr, mode: types.Hot_Reload_Mode) {
 	case .HOT_RELOAD:
 		// Normal hot-reload: preserve everything, just restore the pointer
 		// is_replaying stays as it was in the loaded commodino
-
+        // Nothing, no restart or replay to setup
 	case .FORCE_RESTART:
 		// Full restart: load recording and replay it, fast (skip draws)
 		g.commodino.is_replaying = true
@@ -730,15 +704,22 @@ game_hot_reloaded :: proc(mem: rawptr, mode: types.Hot_Reload_Mode) {
 		restore_recorded_session_rand_gen()
 		g.commodino.replaying_prev_frame_index = 0
 
+		replay_frame, _ = db_load_replay_frame(g.db_conn, 1)
+		replay_frame_prev_input_keys = {}
+
 	case .FORCE_REPLAY:
 		// Full restart: load recording and replay it at normal speed
 		g.commodino.is_replaying = true
 		restart_current_session_memory()
 		restore_recorded_session_rand_gen()
 		g.commodino.replaying_prev_frame_index = 0
+
+		replay_frame, _ = db_load_replay_frame(g.db_conn, 1)
+		replay_frame_prev_input_keys = {}
 	}
 }
 
+// TODO CHECK IF WE CAN GET RID OF THOSE TODOS for game_force_*() procedures
 // Currently, that continue playing, without replaying
 // TODO Make it also continue to record, but on a copy of the game_state.db
 // TODO LATER, have it on the same game_state.db, but allow storing a tree of states, instead of sequentially
@@ -767,8 +748,6 @@ game_force_restart :: proc() -> bool {
     //   frame_count: 83 -> 82
 @(export)
 game_force_replay :: proc() -> bool {
-    // ret := g.current_session.frame_count > 10
-    // g.current_session.frame_count = 0
 	return rl.IsKeyPressed(.F10)
 }
 
