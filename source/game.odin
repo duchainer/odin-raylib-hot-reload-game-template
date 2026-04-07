@@ -42,7 +42,6 @@ import rl "vendor:raylib"
 import "core:hash/xxhash"
 import "core:mem"
 import sqlite "../vendor/odin-sqlite3/"
-// import sa "../vendor/odin-sqlite3/addons/"
 
 import "./types"
 
@@ -69,8 +68,7 @@ Game_Memory :: struct {
 	commodino : types.CommodinoStruct,
 	using current_session : Session_Memory,
 	sheep_time_rand_gen, sheep_dir_rand_gen : runtime.Random_Generator,
-	// recording_session: Session_Memory,
-
+	db_conn: ^sqlite.Connection,
 }
 
 // TODO Use some fixed point math like fixedptc or libfixmath
@@ -447,28 +445,29 @@ save_new_frame_checksum :: proc(frame_checksum: ^types.Session_Memory_Checksums,
     frame_checksum.sheep_dir_rand_gen_state = xxhash.XXH3_64_default(mem.byte_slice(&current_session.sheep_dir_rand_gen_state, size_of(current_session.sheep_dir_rand_gen_state))) 
 }
 
+restart_game :: proc(mode: types.Hot_Reload_Mode) {
+	old_commodino := g.commodino
+	old_db_conn := g.db_conn
+	old_frame_count := g.frame_count
+
+	free(g)
+
+	g = new(Game_Memory)
+	g^ = Game_Memory {
+		run = true,
+		db_conn = old_db_conn,
+		commodino = old_commodino,
+		frame_count = old_frame_count,
+	}
+
+	update_ok = true
+	game_hot_reloaded(g, mode)
+}
+
 @(export)
 game_update :: proc() {
-    // TODO Check if it is actually useful to record the restart on the same game_state.db
-    // It is an implicit branch-off, but I'm not yet sure of the utility of it, unless we also did do a code change
-    //  Since we reset all the game data from the game start
     if should_restart_game{
-        // We keep appending to the recording, after restart
-
-        // Copy pointer to Game_Memory
-        old_g := g
-
-        // re create a new Game_Memory, set to g
-        game_init()
-
-        // We restore the commodino stuff
-        g.commodino = old_g.commodino
-        // We allow continuing to append to the commodino lists
-        g.frame_count = old_g.frame_count
-
-        // game_init does not free the old_g
-        free(old_g)
-
+        restart_game(.HOT_RELOAD)
         should_restart_game = false
     }
 
@@ -564,7 +563,7 @@ game_update :: proc() {
 
         i := g.current_session.frame_count
         g.commodino.frame_checksums[i] = frame_checksum
-        db_update_commodino_struct(db_conn, g.commodino)
+        db_update_commodino_struct(g.db_conn, g.commodino)
     }
 }
 
@@ -579,52 +578,39 @@ game_init_window :: proc() {
 
 should_restart_game: bool
 
-db_conn: ^sqlite.Connection
 @(export)
 game_init :: proc() {
     ok: bool
-    db_conn, ok = db_init("game_state.db")
-    if !ok {
-        fmt.eprintln("Failed to initialize database")
-        return
-    }
-    // breakpoint()
-    
-    update_ok = true // Allow getting the input right after init, as we can't have errors yet
     g = new(Game_Memory)
-
     g^ = Game_Memory {
         run = true,
-        // You can put textures, sounds and music in the `assets` folder. Those
-        // files will be part any release or web build.
     }
 
-    // Try to load commodino_struct from database
-    loaded := db_load_commodino_struct(db_conn, &g.commodino)
+    g.db_conn, ok = db_init("game_state.db")
+    if !ok {
+        fmt.eprintln("Failed to initialize database")
+        free(g)
+        g = nil
+        return
+    }
+
+    update_ok = true
+    loaded := db_load_commodino_struct(g.db_conn, &g.commodino)
     if loaded {
         fmt.println("Successfully loaded commodino_struct from database")
-        
-        // After loading, you may want to restore the random number generators
-        // from the loaded seeds
         restore_recorded_session_rand_gen()
         g.commodino.is_replaying = true
     } else {
         fmt.println("No saved commodino_struct found, starting fresh")
-        
-        // Initialize new session since we didn't load anything
         restart_current_session_memory()
         reset_current_session_rand_gen()
-        db_insert_initial_values(db_conn, &g.commodino, types.COMMODINO_STRUCT_VERSION)
-
-    // TODO MAYBE, reset most of Commodino
+        db_insert_initial_values(g.db_conn, &g.commodino, types.COMMODINO_STRUCT_VERSION)
         g.commodino.frame_checksums = {}
-
         frame_checksum: types.Session_Memory_Checksums
         save_new_frame_checksum(&frame_checksum, &g.current_session)
         g.commodino.frame_checksums[0] = frame_checksum
     }
-
-    game_hot_reloaded(g, g.commodino.is_replaying)
+    game_hot_reloaded(g, .HOT_RELOAD)
 }
 
 reset_current_session_rand_gen :: proc() {
@@ -701,7 +687,9 @@ game_should_run :: proc() -> bool {
 
 @(export)
 game_shutdown :: proc() {
-    db_close(db_conn)
+    if g != nil && g.db_conn != nil {
+        db_close(g.db_conn)
+    }
     fmt.println("size_of(g^): ", size_of(g^))
 	free(g)
 }
@@ -722,24 +710,28 @@ game_memory_size :: proc() -> int {
 }
 
 @(export)
-game_hot_reloaded :: proc(mem: rawptr, is_replaying: bool = false) {
+game_hot_reloaded :: proc(mem: rawptr, mode: types.Hot_Reload_Mode) {
 	g = (^Game_Memory)(mem)
-	g.commodino.is_replaying = is_replaying
-	if g.commodino.is_replaying{
-		// Restart the game
+
+	switch mode {
+	case .HOT_RELOAD:
+		// Normal hot-reload: preserve everything, just restore the pointer
+		// is_replaying stays as it was in the loaded commodino
+
+	case .FORCE_RESTART:
+		// Full restart: load recording and replay it, fast (skip draws)
+		g.commodino.is_replaying = true
 		restart_current_session_memory()
+		restore_recorded_session_rand_gen()
+		g.commodino.replaying_prev_frame_index = 0
 
-        // To set the recorded seeds into new random generators
-        restore_recorded_session_rand_gen()
-
-		// We start counting from 0, check always this and next frame_index
+	case .FORCE_REPLAY:
+		// Full restart: load recording and replay it at normal speed
+		g.commodino.is_replaying = true
+		restart_current_session_memory()
+		restore_recorded_session_rand_gen()
 		g.commodino.replaying_prev_frame_index = 0
 	}
-
-
-
-	// Here you can also set your own global variables. A good idea is to make
-	// your global variables into pointers that point to something inside `g`.
 }
 
 // Currently, that continue playing, without replaying
