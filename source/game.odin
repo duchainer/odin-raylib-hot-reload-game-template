@@ -38,12 +38,16 @@ import "core:math/rand"
 import "base:runtime"
 import "core:math/linalg"
 import rl "vendor:raylib"
+import "core:time"
 
 import "core:hash/xxhash"
 import "core:mem"
 import sqlite "../vendor/odin-sqlite3/"
 
 import "./types"
+
+REPLAY_TIMING :: false
+_ :: time
 
 
 
@@ -70,6 +74,9 @@ Game_Memory :: struct {
 	sheep_time_rand_gen, sheep_dir_rand_gen : runtime.Random_Generator,
 	db_conn: ^sqlite.Connection,
 	replay_stmt: ^sqlite.Statement,
+	replay_batch_stmt: ^sqlite.Statement,
+	replay_batch: types.Replay_Frame_Batch,
+	replay_batch_idx: int,
 }
 
 // TODO Use some fixed point math like fixedptc or libfixmath
@@ -143,6 +150,12 @@ player_input_just_pressed :: proc(my_key: types.UsedKeysEnum) -> bool {
 }
 
 replay_frame_prev_input_keys : [types.UsedKeysEnum]bool
+replay_timing : struct {
+    db_load_ns : i64,
+    input_ns   : i64,
+    update_ns  : i64,
+    frames     : int,
+}
 
 input :: proc() -> (input: rl.Vector2){
 
@@ -460,10 +473,23 @@ game_update :: proc() {
     }
 
 	if update_ok {
+        when REPLAY_TIMING {
+            t_input := time.now()
+        }
 		input_vec = input()
+        when REPLAY_TIMING {
+            replay_timing.input_ns += time.duration_nanoseconds(time.since(t_input))
+        }
 	    g.frame_count += 1
 	}
+    when REPLAY_TIMING {
+        t_update := time.now()
+    }
 	update_ok = update(input_vec)
+    when REPLAY_TIMING {
+        replay_timing.update_ns += time.duration_nanoseconds(time.since(t_update))
+        replay_timing.frames += 1
+    }
 
     DRAW_EVERY_NTH_FRAME :: 1000
 	// fmt.println(commodino_assert_message)
@@ -476,8 +502,10 @@ game_update :: proc() {
     }
 
 
-	// Everything on tracking allocator is valid until end-of-frame.
-	free_all(context.temp_allocator)
+    // Everything on tracking allocator is valid until end-of-frame.
+    if !g.commodino.is_replaying {
+        free_all(context.temp_allocator)
+    }
 
     _ :: mem
     _ :: xxhash
@@ -490,8 +518,16 @@ game_update :: proc() {
     if g.commodino.is_replaying{
         i := g.commodino.replaying_prev_frame_index+1
 
-        next_frame, loaded := db_load_replay_frame_stmt(g.replay_stmt, i+1)
-        if loaded {
+        batch_idx := i - g.replay_batch.offset
+        if batch_idx < 0 || batch_idx >= g.replay_batch.count {
+            db_load_replay_frame_batch(g.replay_batch_stmt, &g.replay_batch, i)
+            g.replay_batch_idx = 0
+            batch_idx = 0
+        }
+        next_frame := g.replay_batch.frames[batch_idx]
+        g.replay_batch_idx = batch_idx + 1
+
+        if next_frame != {} {
             replay_frame_prev_input_keys = replay_frame.input_keys
             replay_frame = next_frame
         }
@@ -499,11 +535,24 @@ game_update :: proc() {
         PRINT_REPLAY_SPEED :: true
         when PRINT_REPLAY_SPEED {
             if g.commodino.replaying_prev_frame_index % DRAW_EVERY_NTH_FRAME == 0{
-                fmt.printfln(
-                    "replaying frame[%d], delta_time: recorded(%.9f)/replaying(%.9f) = %.9f times faster",
-                    i,
-                    replay_frame.delta_time, latest_delta_time/DRAW_EVERY_NTH_FRAME,
-                    replay_frame.delta_time / latest_delta_time * DRAW_EVERY_NTH_FRAME)
+                when REPLAY_TIMING {
+                    fmt.printfln(
+                        "replaying frame[%d], delta_time: recorded(%.9f)/replaying(%.9f) = %.9f times faster | db_load=%.3fms input=%.3fms update=%.3fms total=%.3fms",
+                        i,
+                        replay_frame.delta_time, latest_delta_time/DRAW_EVERY_NTH_FRAME,
+                        replay_frame.delta_time / latest_delta_time * DRAW_EVERY_NTH_FRAME,
+                        f64(replay_timing.db_load_ns) / 1e6,
+                        f64(replay_timing.input_ns) / 1e6,
+                        f64(replay_timing.update_ns) / 1e6,
+                        f64(replay_timing.db_load_ns + replay_timing.input_ns + replay_timing.update_ns) / 1e6)
+                    replay_timing = {}
+                } else {
+                    fmt.printfln(
+                        "replaying frame[%d], delta_time: recorded(%.9f)/replaying(%.9f) = %.9f times faster",
+                        i,
+                        replay_frame.delta_time, latest_delta_time/DRAW_EVERY_NTH_FRAME,
+                        replay_frame.delta_time / latest_delta_time * DRAW_EVERY_NTH_FRAME)
+                }
             }                
         }
         
@@ -637,6 +686,7 @@ game_init :: proc() {
         g.commodino.is_replaying = true
 
         g.replay_stmt = db_prepare_replay_stmt(g.db_conn)
+        g.replay_batch_stmt = db_prepare_replay_batch_stmt(g.db_conn)
         replay_frame, ok = db_load_replay_frame_stmt(g.replay_stmt, 1)
         if !ok {
             fmt.eprintln("Failed to load first replay frame")

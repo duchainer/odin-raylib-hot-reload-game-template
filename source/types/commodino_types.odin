@@ -56,3 +56,11 @@ Hot_Reload_Mode :: enum{
 	FORCE_RESTART,
 	FORCE_REPLAY,
 }
+
+REPLAY_BATCH_SIZE :: 256
+
+Replay_Frame_Batch :: struct {
+	frames : [REPLAY_BATCH_SIZE]Replay_Frame,
+	count  : int,
+	offset : int, // first frame index in this batch
+}

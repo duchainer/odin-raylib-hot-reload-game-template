@@ -155,6 +155,76 @@ db_prepare_replay_stmt :: proc(db: ^sqlite.Connection) -> (stmt: ^sqlite.Stateme
     return
 }
 
+db_prepare_replay_batch_stmt :: proc(db: ^sqlite.Connection) -> (stmt: ^sqlite.Statement) {
+    result := sqlite.prepare_v2(db, `SELECT
+        frame_count, player_rect_x, player_rect_y, sheeps, last_sheep_index,
+        lava_height, lava_speed, last_sheep_spawn, count_sheep_sacrificed,
+        sheep_time_rand_gen_state, sheep_dir_rand_gen_state,
+        delta_time,
+        key_left, key_right, key_enter
+        FROM frame_data WHERE id >= ? ORDER BY id ASC LIMIT ?`, -1, &stmt, nil)
+    if result != .Ok {
+        fmt.eprintfln("Failed to prepare replay batch statement: %v", sqlite.errmsg(db))
+        stmt = nil
+    }
+    return
+}
+
+db_load_replay_frame_batch :: proc(stmt: ^sqlite.Statement, batch: ^types.Replay_Frame_Batch, start_frame: int) -> (ok: bool) {
+    if stmt == nil {
+        fmt.eprintln("Replay batch statement is nil")
+        return
+    }
+
+    sqlite.reset(stmt)
+    result := sqlite.bind_int(stmt, 1, cast(i32)start_frame)
+    if result != .Ok {
+        fmt.eprintfln("Failed to bind start_frame %d: %v", start_frame, sqlite.errmsg(stmt))
+        return
+    }
+    result = sqlite.bind_int(stmt, 2, types.REPLAY_BATCH_SIZE)
+    if result != .Ok {
+        fmt.eprintfln("Failed to bind batch size: %v", sqlite.errmsg(stmt))
+        return
+    }
+
+    batch.count = 0
+    batch.offset = start_frame
+    coli32 :: sqlite.column_int
+    coli64 :: sqlite.column_int64
+    colf64 :: sqlite.column_double
+
+    for {
+        result = sqlite.step(stmt)
+        if result != .Row {
+            break
+        }
+        idx := batch.count
+        batch.frames[idx].checksum.frame_count = cast(int)coli32(stmt, 0)
+        batch.frames[idx].checksum.player_rect.x = cast(f32)colf64(stmt, 1)
+        batch.frames[idx].checksum.player_rect.y = cast(f32)colf64(stmt, 2)
+        batch.frames[idx].checksum.sheeps = cast(u64)coli64(stmt, 3)
+        batch.frames[idx].checksum.last_sheep_index = cast(u32)coli32(stmt, 4)
+        batch.frames[idx].checksum.lava_height = cast(f32)colf64(stmt, 5)
+        batch.frames[idx].checksum.lava_speed = cast(f32)colf64(stmt, 6)
+        batch.frames[idx].checksum.last_sheep_spawn = cast(f32)colf64(stmt, 7)
+        batch.frames[idx].checksum.count_sheep_sacrificed = cast(u32)coli32(stmt, 8)
+        batch.frames[idx].checksum.sheep_time_rand_gen_state = cast(u64)coli64(stmt, 9)
+        batch.frames[idx].checksum.sheep_dir_rand_gen_state = cast(u64)coli64(stmt, 10)
+        batch.frames[idx].delta_time = cast(f32)colf64(stmt, 11)
+        batch.frames[idx].input_keys[types.UsedKeysEnum(0)] = bool(coli32(stmt, 12))
+        batch.frames[idx].input_keys[types.UsedKeysEnum(1)] = bool(coli32(stmt, 13))
+        batch.frames[idx].input_keys[types.UsedKeysEnum(2)] = bool(coli32(stmt, 14))
+        batch.count += 1
+        if batch.count >= types.REPLAY_BATCH_SIZE {
+            break
+        }
+    }
+
+    ok = batch.count > 0
+    return
+}
+
 db_load_replay_frame_stmt :: proc(stmt: ^sqlite.Statement, frame_index: int) -> (frame: types.Replay_Frame, ok: bool) {
     if stmt == nil {
         fmt.eprintln("Replay statement is nil")
