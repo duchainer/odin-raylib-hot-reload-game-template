@@ -242,6 +242,23 @@ update :: proc(input: rl.Vector2) -> (ok:bool) {
 	g.player_rect.x = max(g.player_rect.x, LEFT_HOLE_START_X)
 	g.player_rect.x = min(g.player_rect.x, RIGHT_HOLE_START_X-g.player_rect.width)
 
+	// Host: apply client input to player 2
+	if g.player_index == 0 && g.net_state.connected {
+		client_keys := g.net_state.client_input_keys
+		client_input: rl.Vector2
+		if (client_keys & 1) != 0 {  // LEFT
+			client_input.x -= 1
+		}
+		if (client_keys & 2) != 0 {  // RIGHT
+			client_input.x += 1
+		}
+		client_input = linalg.normalize0(client_input)
+		g.player2_rect.x += client_input.x * delta_time * player_speed
+		g.player2_rect.y += client_input.y * delta_time * player_speed
+		g.player2_rect.x = max(g.player2_rect.x, LEFT_HOLE_START_X)
+		g.player2_rect.x = min(g.player2_rect.x, RIGHT_HOLE_START_X-g.player2_rect.width)
+	}
+
 
 	percent_lava_on_max := g.lava_height / VOLCANO_HEIGHT
 	g.lava_height += g.lava_speed * (1.1 - percent_lava_on_max)
@@ -489,13 +506,12 @@ game_update :: proc() {
             if header == MULTIPLAYER_MSG_INPUT {
                 client_keys, client_checksum, client_frame := recv_input_sync(payload)
                 fmt.println("Host: client input keys=", client_keys, " frame=", client_frame)
-                // TODO: Handle client inputs in game logic (apply to player2)
-                _ = client_keys
+                // Store client input for use in game update
+                g.net_state.client_input_keys = client_keys
                 _ = client_checksum
             }
             // Compute local checksum for verification
             local_checksum := compute_game_checksum(
-                g.current_session.frame_count,
                 g.current_session.player_rect,
                 g.current_session.last_sheep_index,
                 g.current_session.lava_height,
@@ -514,7 +530,6 @@ game_update :: proc() {
         if g.player_index == 1 {
             // Compute local checksum before applying any remote updates
             local_checksum := compute_game_checksum(
-                g.current_session.frame_count,
                 g.current_session.player_rect,
                 g.current_session.last_sheep_index,
                 g.current_session.lava_height,
@@ -541,8 +556,8 @@ game_update :: proc() {
                 // Verify each checksum component - if different, we've desynced!
                 if !checksums_equal(local_checksum, remote_checksum) {
                     fmt.println("!!! DESYNC DETECTED !!!")
-                    fmt.println("  local:  frame_count=", local_checksum.frame_count, " player_rect=", local_checksum.player_rect)
-                    fmt.println("  remote: frame_count=", remote_checksum.frame_count, " player_rect=", remote_checksum.player_rect)
+                    fmt.println("  local:  player_rect=", local_checksum.player_rect, " sheep=", local_checksum.sheep_state)
+                    fmt.println("  remote: player_rect=", remote_checksum.player_rect, " sheep=", remote_checksum.sheep_state)
                     fmt.println("  frame=", frame_count)
                 }
             }
