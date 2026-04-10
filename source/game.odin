@@ -528,7 +528,7 @@ game_update :: proc() {
 
         batch_idx := i - g.replay_batch.offset
         if batch_idx < 0 || batch_idx >= g.replay_batch.count {
-            db_load_replay_frame_batch(g.replay_batch_stmt, &g.replay_batch, i)
+            db_load_replay_frame_batch(g.replay_batch_stmt, &g.replay_batch, g.commodino.instance_id, i)
             g.replay_batch_idx = 0
             batch_idx = 0
         }
@@ -574,7 +574,7 @@ game_update :: proc() {
         when VERIFY_CHECKSUMS {
             if g.commodino.replaying_prev_frame_index % CHECK_EVERY_NTH_FRAME == 0 {
                 save_new_frame_checksum(&frame_checksum, &g.current_session)
-                recorded_frame, _ := db_load_replay_frame(g.db_conn, i)
+                recorded_frame, _ := db_load_replay_frame(g.db_conn, g.commodino.instance_id, i)
                 config_diffs := diff_struct(types.Session_Memory_Checksums, recorded_frame.checksum, frame_checksum)
                 defer delete(config_diffs)
                 print_on_no_diff :: false
@@ -593,13 +593,13 @@ game_update :: proc() {
                     restore_recorded_session_rand_gen()
 
                     bisect_replay_frame : types.Replay_Frame
-                    bisect_replay_frame, _ = db_load_replay_frame(g.db_conn, 1)
+                    bisect_replay_frame, _ = db_load_replay_frame(g.db_conn, g.commodino.instance_id, 1)
                     bisect_prev_input_keys : [types.UsedKeysEnum]bool
 
                     bisect_found := false
                     for bf := 1; bf <= g.commodino.replaying_prev_frame_index + 1; bf += 1 {
                         if bf > 1 {
-                            next_bf, bisect_loaded := db_load_replay_frame(g.db_conn, bf)
+                            next_bf, bisect_loaded := db_load_replay_frame(g.db_conn, g.commodino.instance_id, bf)
                             if bisect_loaded {
                                 bisect_prev_input_keys = bisect_replay_frame.input_keys
                                 bisect_replay_frame = next_bf
@@ -619,7 +619,7 @@ game_update :: proc() {
 
                         bisect_checksum : types.Session_Memory_Checksums
                         save_new_frame_checksum(&bisect_checksum, &g.current_session)
-                        bisect_recorded, _ := db_load_replay_frame(g.db_conn, bf)
+                        bisect_recorded, _ := db_load_replay_frame(g.db_conn, g.commodino.instance_id, bf)
                         bisect_diffs := diff_struct(types.Session_Memory_Checksums, bisect_recorded.checksum, bisect_checksum)
                         defer delete(bisect_diffs)
                         if len(bisect_diffs) > 0{
@@ -659,7 +659,7 @@ game_update :: proc() {
 `)
 
         i := g.current_session.frame_count
-        db_save_frame(g.db_conn, i, recorded_delta_time, recorded_input_keys, frame_checksum)
+        db_save_frame(g.db_conn, g.commodino.instance_id, i, recorded_delta_time, recorded_input_keys, 0, frame_checksum)
     }
 }
 
@@ -700,7 +700,7 @@ game_init :: proc() {
 
         g.replay_stmt = db_prepare_replay_stmt(g.db_conn)
         g.replay_batch_stmt = db_prepare_replay_batch_stmt(g.db_conn)
-        replay_frame, ok = db_load_replay_frame_stmt(g.replay_stmt, 1)
+        replay_frame, ok = db_load_replay_frame_stmt(g.replay_stmt, g.commodino.instance_id, 1)
         if !ok {
             fmt.eprintln("Failed to load first replay frame")
         }
@@ -723,6 +723,15 @@ game_init :: proc() {
 }
 
 reset_current_session_rand_gen :: proc() {
+    // Generate instance_id and game_session_id using timestamp_nanoseconds + random
+    // This uses 60+ bits of timestamp + 64 bits of randomness, ensuring uniqueness
+    // across machines and instances without coordination
+    timestamp_ns := time.time_to_unix_nano(time.now())
+    random_part := rand.uint64()
+    
+    g.commodino.instance_id = cast(i64)(cast(u64)timestamp_ns + random_part)
+    g.commodino.game_session_id = g.commodino.instance_id  // Host: game_session_id = instance_id
+
     sheep_time_rand_gen_state_seed := rand.uint64()
     g.commodino.sheep_time_rand_gen_state_seed = sheep_time_rand_gen_state_seed
 
@@ -841,7 +850,7 @@ game_hot_reloaded :: proc(mem: rawptr, mode: types.Hot_Reload_Mode) {
 		g.commodino.replaying_prev_frame_index = 0
 
 		g.replay_stmt = db_prepare_replay_stmt(g.db_conn)
-		replay_frame, _ = db_load_replay_frame_stmt(g.replay_stmt, 1)
+		replay_frame, _ = db_load_replay_frame_stmt(g.replay_stmt, g.commodino.instance_id, 1)
 		replay_frame_prev_input_keys = {}
 		when REPLAY_TIMING {
 			batch_start_time = time.now()
@@ -860,7 +869,7 @@ game_hot_reloaded :: proc(mem: rawptr, mode: types.Hot_Reload_Mode) {
 		g.commodino.replaying_prev_frame_index = 0
 
 		g.replay_stmt = db_prepare_replay_stmt(g.db_conn)
-		replay_frame, _ = db_load_replay_frame_stmt(g.replay_stmt, 1)
+		replay_frame, _ = db_load_replay_frame_stmt(g.replay_stmt, g.commodino.instance_id, 1)
 		replay_frame_prev_input_keys = {}
 		when REPLAY_TIMING {
 			batch_start_time = time.now()

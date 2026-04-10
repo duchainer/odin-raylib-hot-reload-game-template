@@ -14,7 +14,7 @@ Commodino_Struct_Version :: distinct i32
 
 // TODO NOTE Increment on each CommodinoStruct change
 // TODO NOTE Nested types too, like Session_Memory_Checksums
-COMMODINO_STRUCT_VERSION :: Commodino_Struct_Version(4)
+COMMODINO_STRUCT_VERSION :: Commodino_Struct_Version(5)
 KeyState :: struct{
 	pressed : bool,
 }
@@ -34,9 +34,13 @@ Replay_Frame :: struct {
 	input_keys : [UsedKeysEnum]bool,
 	delta_time : f32,
 	checksum   : Session_Memory_Checksums,
+	source_instance_id : i64, // 0 = self, >0 = remote origin
 }
 
 CommodinoStruct :: struct {
+	instance_id : i64 `json:"instance_id"`,      // timestamp_nanoseconds: 60+ bits, stored as i64
+	game_session_id : i64 `json:"game_session_id"`, // timestamp_nanoseconds from host
+
 	recorded_input_events_count : int `json:"count"`,
 	replaying_prev_frame_index: int `json:"replaying_prev_frame_index"`,
 	target_frame_index: int `json:"target_frame_index"`,
