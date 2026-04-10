@@ -39,6 +39,7 @@ import "base:runtime"
 import "core:math/linalg"
 import rl "vendor:raylib"
 import "core:time"
+import "core:os"
 
 import "core:hash/xxhash"
 import "core:mem"
@@ -77,14 +78,18 @@ Game_Memory :: struct {
 	replay_batch_stmt: ^sqlite.Statement,
 	replay_batch: types.Replay_Frame_Batch,
 	replay_batch_idx: int,
+	player_index: int, // 0 = player 1 (host), 1 = player 2 (client)
 }
 
 // TODO Use some fixed point math like fixedptc or libfixmath
 // TODO Replace f32 with fixed point values
 
+MAX_PLAYERS :: 2
+
 Session_Memory :: struct {
 	frame_count: int,
 	player_rect : rl.Rectangle,
+	player2_rect : rl.Rectangle, // Second player (host at right, client at left)
 	sheeps : [1024]Sheep,
 	last_sheep_index: u32,
 	lava_height: f32,
@@ -674,12 +679,42 @@ game_init_window :: proc() {
 
 should_restart_game: bool
 
+get_mode_from_args :: proc() -> int {
+    // Check environment variable or use default
+    // 0 = none, 1 = host, 2 = client
+    env_mode := os.get_env_alloc("MULTIPLAYER_MODE", context.temp_allocator)
+    if env_mode == "host" {
+        return 1
+    }
+    if env_mode == "client" {
+        return 2
+    }
+    return 0
+}
+
+get_host_arg :: proc() -> string {
+    return os.get_env_alloc("MULTIPLAYER_HOST", context.temp_allocator)
+}
+
 @(export)
 game_init :: proc() {
     ok: bool
     g = new(Game_Memory)
     g^ = Game_Memory {
         run = true,
+    }
+
+    // Set up player index based on mode
+    game_mode := get_mode_from_args()
+    if game_mode == 1 {
+        fmt.println("=== Starting as HOST ===")
+        g.player_index = 0
+    } else if game_mode == 2 {
+        host_addr := get_host_arg()
+        fmt.println("=== Starting as CLIENT, connecting to:", host_addr, "===")
+        g.player_index = 1
+    } else {
+        fmt.println("=== Single player mode ===")
     }
 
     g.db_conn, ok = db_init("game_state.db")
@@ -787,6 +822,8 @@ restart_current_session_memory :: proc(){
 
 	g.player_rect = {230, 0, 10, 15}
 	g.player_rect.y = -f32(g.player_rect.height)
+	g.player2_rect = {-230, 0, 10, 15}
+	g.player2_rect.y = -f32(g.player2_rect.height)
 
 	g.lava_height = VOLCANO_HEIGHT/3.5
 	g.lava_speed = 0.25
