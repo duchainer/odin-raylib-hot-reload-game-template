@@ -877,6 +877,7 @@ get_host_arg :: proc() -> string {
     return host
 }
 
+// TODO Make that be a string of inputs, and use it for the LLM checks
 get_test_input :: proc() -> int {
     // For testing: read MULTIPLAYER_TEST_INPUT env var (0 or 1)
     input_str := os.get_env_alloc("MULTIPLAYER_TEST_INPUT", context.temp_allocator)
@@ -908,6 +909,7 @@ game_init :: proc() {
 
     // Set up player index based on mode
     game_mode := get_mode_from_args()
+    // TODO use the enum key instead of plain numbers
     if game_mode == 1 {
         fmt.println("=== Starting as HOST ===")
         g.player_index = 0

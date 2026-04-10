@@ -30,6 +30,8 @@ GAME_DLL_PATH :: GAME_DLL_DIR + "game" + DLL_EXT
 
 instance_id: string
 
+// TODO convert the os.get_pid to string in a better way than fmt.tprintf
+// TODO See if we can stay quite close to the upstream hot-reload repo code, and not fork too much this file
 get_instance_id :: proc() -> string {
 	return fmt.tprintf("%d", os.get_pid())
 }
