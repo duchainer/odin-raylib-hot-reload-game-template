@@ -143,6 +143,7 @@ recv_init_sync :: proc(data: []u8) -> Init_Sync_Data {
 
 Game_Checksum :: struct {
 	player_rect: u64,
+	player2_rect: u64,
 	sheep_state: u64,
 	lava_state: u64,
 	rng_state: u64,
@@ -150,6 +151,7 @@ Game_Checksum :: struct {
 
 compute_game_checksum :: proc(
 	player_rect: rl.Rectangle, 
+	player2_rect: rl.Rectangle, 
 	last_sheep_index: u32, 
 	lava_height: f32, 
 	lava_speed: f32, 
@@ -162,6 +164,7 @@ compute_game_checksum :: proc(
 ) -> Game_Checksum {
 	// Need local copies for taking addresses
 	pr := player_rect
+	p2r := player2_rect
 	lsi := last_sheep_index
 	lh := lava_height
 	ls := lava_speed
@@ -184,6 +187,7 @@ compute_game_checksum :: proc(
 	
 	return Game_Checksum{
 		player_rect = xxhash.XXH3_64_default(mem.byte_slice(&pr, size_of(rl.Rectangle))),
+		player2_rect = xxhash.XXH3_64_default(mem.byte_slice(&p2r, size_of(rl.Rectangle))),
 		sheep_state = sheep_hash,
 		lava_state = lava_hash,
 		rng_state = xxhash.XXH3_64_default(mem.byte_slice(&sts, size_of(u64))) +
@@ -193,6 +197,7 @@ compute_game_checksum :: proc(
 
 checksums_equal :: proc(a: Game_Checksum, b: Game_Checksum) -> bool {
 	return a.player_rect == b.player_rect &&
+	       a.player2_rect == b.player2_rect &&
 	       a.sheep_state == b.sheep_state &&
 	       a.lava_state == b.lava_state &&
 	       a.rng_state == b.rng_state

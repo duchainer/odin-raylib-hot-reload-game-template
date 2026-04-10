@@ -536,6 +536,7 @@ game_update :: proc() {
             // Compute local checksum for verification
             local_checksum := compute_game_checksum(
                 g.current_session.player_rect,
+                g.current_session.player2_rect,
                 g.current_session.last_sheep_index,
                 g.current_session.lava_height,
                 g.current_session.lava_speed,
@@ -564,6 +565,7 @@ game_update :: proc() {
                     snapshot, ok := recv_snapshot(payload)
                     if ok {
                         fmt.println("Received snapshot: frame=", snapshot.frame_count)
+                        g.frame_count = int(snapshot.frame_count)
                         g.current_session.frame_count = int(snapshot.frame_count)
                         g.current_session.player_rect = snapshot.player_rect
                         g.current_session.player2_rect = snapshot.player2_rect
@@ -589,6 +591,7 @@ game_update :: proc() {
             // Compute local checksum before applying any remote updates
             local_checksum := compute_game_checksum(
                 g.current_session.player_rect,
+                g.current_session.player2_rect,
                 g.current_session.last_sheep_index,
                 g.current_session.lava_height,
                 g.current_session.lava_speed,
@@ -614,10 +617,20 @@ game_update :: proc() {
                 g.net_state.received_input_keys = host_input_keys
                 // Verify each checksum component - if different, we've desynced!
                 if !checksums_equal(local_checksum, remote_checksum) {
+                    desync_player_rect := local_checksum.player_rect != remote_checksum.player_rect
+                    desync_player2_rect := local_checksum.player2_rect != remote_checksum.player2_rect
+                    desync_sheep := local_checksum.sheep_state != remote_checksum.sheep_state
+                    
+                    if desync_player_rect || desync_player2_rect {
+                        fmt.println("!!! CRITICAL DESYNC - PLAYERS NOT SYNCED !!!")
+                    }
                     fmt.println("!!! DESYNC DETECTED !!!")
-                    fmt.println("  local:  player_rect=", local_checksum.player_rect, " sheep=", local_checksum.sheep_state)
-                    fmt.println("  remote: player_rect=", remote_checksum.player_rect, " sheep=", remote_checksum.sheep_state)
+                    fmt.println("  player_rect match:", !desync_player_rect, "  player2_rect match:", !desync_player2_rect, "  sheep match:", !desync_sheep)
+                    fmt.println("  local:  player_rect=", local_checksum.player_rect, " player2_rect=", local_checksum.player2_rect, " sheep=", local_checksum.sheep_state)
+                    fmt.println("  remote: player_rect=", remote_checksum.player_rect, " player2_rect=", remote_checksum.player2_rect, " sheep=", remote_checksum.sheep_state)
                     fmt.println("  frame=", frame_count)
+                    // Request snapshot from host to resync
+                    // For now, just mark as needing resync
                 }
             }
         }
