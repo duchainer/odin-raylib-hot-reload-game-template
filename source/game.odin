@@ -474,6 +474,87 @@ game_update :: proc() {
             fmt.println("*** CLIENT ACCEPTED! ***")
         }
     }
+
+    // Network sync - input-based with checksum verification for deterministic rollback
+    if g.net_state.connected {
+        // Host: receive client inputs + checksum, send frame sync with checksum
+        if g.player_index == 0 {
+            // Accept any pending client
+            if !g.net_state.synced && g.net_state.connected {
+                send_init_sync(&g.net_state, 1, 0, u64(g.commodino.instance_id))
+                g.net_state.synced = true
+            }
+            // Receive inputs + checksum from client
+            header, payload, _ := net_recv_msg(&g.net_state, 256)
+            if header == MULTIPLAYER_MSG_INPUT {
+                client_keys, client_checksum, client_frame := recv_input_sync(payload)
+                fmt.println("Host: client input keys=", client_keys, " frame=", client_frame)
+                // TODO: Handle client inputs in game logic (apply to player2)
+                _ = client_keys
+                _ = client_checksum
+            }
+            // Compute local checksum for verification
+            local_checksum := compute_game_checksum(
+                g.current_session.frame_count,
+                g.current_session.player_rect,
+                g.current_session.last_sheep_index,
+                g.current_session.lava_height,
+                g.current_session.lava_speed,
+                g.current_session.last_sheep_spawn,
+                g.current_session.count_sheep_sacrificed,
+                xxhash.XXH3_64_default(mem.byte_slice(&g.current_session.sheep_time_rand_gen_state, size_of(g.current_session.sheep_time_rand_gen_state))),
+                xxhash.XXH3_64_default(mem.byte_slice(&g.current_session.sheep_dir_rand_gen_state, size_of(g.current_session.sheep_dir_rand_gen_state))),
+                raw_data(&g.current_session.sheeps),
+                g.current_session.last_sheep_index,
+            )
+            // Send frame sync with checksum for client verification
+            send_frame_sync(&g.net_state, i64(g.current_session.frame_count), local_checksum)
+        }
+        // Client: send inputs + checksum to host, receive frame sync with checksum
+        if g.player_index == 1 {
+            // Compute local checksum before applying any remote updates
+            local_checksum := compute_game_checksum(
+                g.current_session.frame_count,
+                g.current_session.player_rect,
+                g.current_session.last_sheep_index,
+                g.current_session.lava_height,
+                g.current_session.lava_speed,
+                g.current_session.last_sheep_spawn,
+                g.current_session.count_sheep_sacrificed,
+                xxhash.XXH3_64_default(mem.byte_slice(&g.current_session.sheep_time_rand_gen_state, size_of(g.current_session.sheep_time_rand_gen_state))),
+                xxhash.XXH3_64_default(mem.byte_slice(&g.current_session.sheep_dir_rand_gen_state, size_of(g.current_session.sheep_dir_rand_gen_state))),
+                raw_data(&g.current_session.sheeps),
+                g.current_session.last_sheep_index,
+            )
+            // Encode input keys as bitfield (LEFT=bit0, RIGHT=bit1, ENTER=bit2)
+            keys: u32 = 0
+            if recorded_input_keys[types.UsedKeysEnum.LEFT] { keys |= 1 }
+            if recorded_input_keys[types.UsedKeysEnum.RIGHT] { keys |= 2 }
+            if recorded_input_keys[types.UsedKeysEnum.ENTER] { keys |= 4 }
+            // Send input + local checksum + frame_count
+            send_input_sync(&g.net_state, keys, local_checksum, i64(g.current_session.frame_count))
+            
+            // Receive frame sync from host
+            header, payload, _ := net_recv_msg(&g.net_state, 256)
+            if header == MULTIPLAYER_MSG_SYNC {
+                frame_count, remote_checksum := recv_frame_sync(payload)
+                // Verify each checksum component - if different, we've desynced!
+                if !checksums_equal(local_checksum, remote_checksum) {
+                    fmt.println("!!! DESYNC DETECTED !!!")
+                    fmt.println("  local:  frame_count=", local_checksum.frame_count, " player_rect=", local_checksum.player_rect)
+                    fmt.println("  remote: frame_count=", remote_checksum.frame_count, " player_rect=", remote_checksum.player_rect)
+                    fmt.println("  frame=", frame_count)
+                }
+            }
+            // Also check for init sync
+            if header == MULTIPLAYER_MSG_INIT_STATE {
+                init_data := recv_init_sync(payload)
+                fmt.println("Received init sync: player=", init_data.player_index, " seed=", init_data.seed)
+                g.net_state.synced = true
+            }
+        }
+    }
+
     if g.player_index == 0 {
         fmt.printfln("[%v] DEBUG: frame update player_index=%v", time.time_to_unix_nano(time.now()), g.player_index)
     }
