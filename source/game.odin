@@ -208,6 +208,17 @@ input :: proc() -> (input: rl.Vector2){
 		input.x += 1
 	}
 
+	// Client: use input received from host instead of keyboard
+	if g.player_index == 1 && g.net_state.connected && g.net_state.received_input_keys != 0 {
+		input = {}  // Clear keyboard input
+		if (g.net_state.received_input_keys & 1) != 0 {  // LEFT
+			input.x -= 1
+		}
+		if (g.net_state.received_input_keys & 2) != 0 {  // RIGHT
+			input.x += 1
+		}
+	}
+
 	input = linalg.normalize0(input)
 	return input
 }
@@ -523,8 +534,13 @@ game_update :: proc() {
                 raw_data(&g.current_session.sheeps),
                 g.current_session.last_sheep_index,
             )
-            // Send frame sync with checksum for client verification
-            send_frame_sync(&g.net_state, i64(g.current_session.frame_count), local_checksum)
+            // Encode host's input keys to send to client
+            host_keys: u32 = 0
+            if recorded_input_keys[types.UsedKeysEnum.LEFT] { host_keys |= 1 }
+            if recorded_input_keys[types.UsedKeysEnum.RIGHT] { host_keys |= 2 }
+            if recorded_input_keys[types.UsedKeysEnum.ENTER] { host_keys |= 4 }
+            // Send frame sync with host's input keys for client verification
+            send_frame_sync(&g.net_state, i64(g.current_session.frame_count), host_keys, local_checksum)
         }
         // Client: send inputs + checksum to host, receive frame sync with checksum
         if g.player_index == 1 {
@@ -552,7 +568,8 @@ game_update :: proc() {
             // Receive frame sync from host
             header, payload, _ := net_recv_msg(&g.net_state, 256)
             if header == MULTIPLAYER_MSG_SYNC {
-                frame_count, remote_checksum := recv_frame_sync(payload)
+                frame_count, host_input_keys, remote_checksum := recv_frame_sync(payload)
+                g.net_state.received_input_keys = host_input_keys
                 // Verify each checksum component - if different, we've desynced!
                 if !checksums_equal(local_checksum, remote_checksum) {
                     fmt.println("!!! DESYNC DETECTED !!!")

@@ -20,7 +20,8 @@ Network_State :: struct {
 	listener: net.TCP_Socket,
 	connected: bool,
 	synced: bool,
-	client_input_keys: u32,  // Last received input from client
+	client_input_keys: u32,  // Last received input from client (host side)
+	received_input_keys: u32,  // Last received input from host (client side)
 }
 
 net_init_as_host :: proc(state: ^Network_State) -> bool {
@@ -211,19 +212,20 @@ recv_input_sync :: proc(data: []u8) -> (keys: u32, checksum: Game_Checksum, fram
 
 Frame_Sync_Data :: struct {
 	frame_count: i64,
+	input_keys: u32,  // Host's input for client to use
 	checksum: Game_Checksum,
 }
 
-send_frame_sync :: proc(state: ^Network_State, frame_count: i64, checksum: Game_Checksum) {
-	data := mem.slice_to_bytes([]Frame_Sync_Data{{frame_count, checksum}})
+send_frame_sync :: proc(state: ^Network_State, frame_count: i64, input_keys: u32, checksum: Game_Checksum) {
+	data := mem.slice_to_bytes([]Frame_Sync_Data{{frame_count, input_keys, checksum}})
 	net_send_msg(state, MULTIPLAYER_MSG_SYNC, data)
 }
 
-recv_frame_sync :: proc(data: []u8) -> (frame_count: i64, checksum: Game_Checksum) {
+recv_frame_sync :: proc(data: []u8) -> (frame_count: i64, input_keys: u32, checksum: Game_Checksum) {
 	result: Frame_Sync_Data
 	if len(data) >= size_of(Frame_Sync_Data) {
 		mem.copy(&result, raw_data(data), size_of(Frame_Sync_Data))
-		return result.frame_count, result.checksum
+		return result.frame_count, result.input_keys, result.checksum
 	}
-	return 0, {}
+	return 0, 0, {}
 }
