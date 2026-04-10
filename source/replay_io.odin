@@ -339,7 +339,7 @@ db_save_frame :: proc(db: ^sqlite.Connection, instance_id: i64, frame_index: int
 
         -- Source tracking: 0 = this instance generated it, >0 = remote instance origin
         source_instance_id
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);`, generated.recorded_input_events_joined_keys),
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);`, generated.recorded_input_events_joined_keys),
         {
             {1, instance_id},
             {2, cast(i32)frame_index},
