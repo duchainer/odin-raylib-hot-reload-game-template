@@ -696,6 +696,15 @@ get_host_arg :: proc() -> string {
     return os.get_env_alloc("MULTIPLAYER_HOST", context.temp_allocator)
 }
 
+get_db_path :: proc(player_index: int) -> string {
+    if player_index == 0 {
+        return "host_game_state.db"
+    } else if player_index == 1 {
+        return "client_game_state.db"
+    }
+    return "host_game_state.db"
+}
+
 @(export)
 game_init :: proc() {
     ok: bool
@@ -717,7 +726,9 @@ game_init :: proc() {
         fmt.println("=== Single player mode ===")
     }
 
-    g.db_conn, ok = db_init("game_state.db")
+    db_path := get_db_path(g.player_index)
+    fmt.println("Using database:", db_path)
+    g.db_conn, ok = db_init(db_path)
     if !ok {
         fmt.eprintln("Failed to initialize database")
         free(g)
