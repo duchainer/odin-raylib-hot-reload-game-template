@@ -81,6 +81,7 @@ net_close :: proc(state: ^Network_State) {
 MULTIPLAYER_MSG_INIT_STATE :: 1
 MULTIPLAYER_MSG_INPUT :: 2
 MULTIPLAYER_MSG_SYNC :: 4
+MULTIPLAYER_MSG_SNAPSHOT :: 5  // Full game state snapshot from host to client
 
 net_send_msg :: proc(state: ^Network_State, msg_type: u8, data: []u8) -> bool {
 	if !state.connected {
@@ -228,4 +229,35 @@ recv_frame_sync :: proc(data: []u8) -> (frame_count: i64, input_keys: u32, check
 		return result.frame_count, result.input_keys, result.checksum
 	}
 	return 0, 0, {}
+}
+
+// Full game state snapshot for initial sync
+Snapshot_Data :: struct {
+	frame_count: i64,
+	player_rect: rl.Rectangle,
+	player2_rect: rl.Rectangle,
+	sheeps: [1024]Sheep,
+	last_sheep_index: u32,
+	lava_height: f32,
+	lava_speed: f32,
+	last_sheep_spawn: f32,
+	count_sheep_sacrificed: u32,
+	sheep_time_rand_gen_state: u64,
+	sheep_dir_rand_gen_state: u64,
+	commodino_instance_id: i64,
+	commodino_game_session_id: i64,
+}
+
+send_snapshot :: proc(state: ^Network_State, snapshot: Snapshot_Data) {
+	data := mem.slice_to_bytes([]Snapshot_Data{snapshot})
+	net_send_msg(state, MULTIPLAYER_MSG_SNAPSHOT, data)
+	fmt.println("Sent snapshot: frame=", snapshot.frame_count, " player_rect=", snapshot.player_rect.x)
+}
+
+recv_snapshot :: proc(data: []u8) -> (snapshot: Snapshot_Data, ok: bool) {
+	if len(data) >= size_of(Snapshot_Data) {
+		mem.copy(&snapshot, raw_data(data), size_of(Snapshot_Data))
+		return snapshot, true
+	}
+	return {}, false
 }

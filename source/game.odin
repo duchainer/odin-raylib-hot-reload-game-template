@@ -500,6 +500,25 @@ game_update :: proc() {
     if g.player_index == 0 && g.net_state.listener != 0 && !g.net_state.connected {
         if net_accept_client(&g.net_state) {
             fmt.println("*** CLIENT ACCEPTED! ***")
+            // Send full game snapshot to client for initial sync
+            snapshot := Snapshot_Data{
+                frame_count = i64(g.current_session.frame_count),
+                player_rect = g.current_session.player_rect,
+                player2_rect = g.current_session.player2_rect,
+                sheeps = g.current_session.sheeps,
+                last_sheep_index = g.current_session.last_sheep_index,
+                lava_height = g.current_session.lava_height,
+                lava_speed = g.current_session.lava_speed,
+                last_sheep_spawn = g.current_session.last_sheep_spawn,
+                count_sheep_sacrificed = g.current_session.count_sheep_sacrificed,
+                sheep_time_rand_gen_state = xxhash.XXH3_64_default(mem.byte_slice(&g.current_session.sheep_time_rand_gen_state, size_of(g.current_session.sheep_time_rand_gen_state))),
+                sheep_dir_rand_gen_state = xxhash.XXH3_64_default(mem.byte_slice(&g.current_session.sheep_dir_rand_gen_state, size_of(g.current_session.sheep_dir_rand_gen_state))),
+                commodino_instance_id = g.commodino.instance_id,
+                commodino_game_session_id = g.commodino.game_session_id,
+            }
+            send_snapshot(&g.net_state, snapshot)
+            fmt.println("Sent full snapshot to client")
+            g.net_state.synced = true
         }
     }
 
@@ -507,11 +526,6 @@ game_update :: proc() {
     if g.net_state.connected {
         // Host: receive client inputs + checksum, send frame sync with checksum
         if g.player_index == 0 {
-            // Accept any pending client
-            if !g.net_state.synced && g.net_state.connected {
-                send_init_sync(&g.net_state, 1, 0, u64(g.commodino.instance_id))
-                g.net_state.synced = true
-            }
             // Receive inputs + checksum from client
             header, payload, _ := net_recv_msg(&g.net_state, 256)
             if header == MULTIPLAYER_MSG_INPUT {
@@ -544,6 +558,30 @@ game_update :: proc() {
         }
         // Client: send inputs + checksum to host, receive frame sync with checksum
         if g.player_index == 1 {
+            // If not synced yet (no snapshot received), wait and skip rest of update
+            if !g.net_state.synced {
+                // Try to receive snapshot
+                header, payload, _ := net_recv_msg(&g.net_state, 256)
+                if header == MULTIPLAYER_MSG_SNAPSHOT {
+                    snapshot, ok := recv_snapshot(payload)
+                    if ok {
+                        fmt.println("Received snapshot: frame=", snapshot.frame_count)
+                        g.current_session.frame_count = int(snapshot.frame_count)
+                        g.current_session.player_rect = snapshot.player_rect
+                        g.current_session.player2_rect = snapshot.player2_rect
+                        g.current_session.sheeps = snapshot.sheeps
+                        g.current_session.last_sheep_index = snapshot.last_sheep_index
+                        g.current_session.lava_height = snapshot.lava_height
+                        g.current_session.lava_speed = snapshot.lava_speed
+                        g.current_session.last_sheep_spawn = snapshot.last_sheep_spawn
+                        g.current_session.count_sheep_sacrificed = snapshot.count_sheep_sacrificed
+                        g.net_state.synced = true
+                        fmt.println("Applied snapshot - now synced!")
+                    }
+                }
+                return  // Wait for snapshot before continuing
+            }
+
             // Compute local checksum before applying any remote updates
             local_checksum := compute_game_checksum(
                 g.current_session.player_rect,
@@ -567,7 +605,7 @@ game_update :: proc() {
             
             // Receive frame sync from host
             header, payload, _ := net_recv_msg(&g.net_state, 256)
-            if header == MULTIPLAYER_MSG_SYNC {
+            if header == MULTIPLAYER_MSG_SYNC && g.net_state.synced {
                 frame_count, host_input_keys, remote_checksum := recv_frame_sync(payload)
                 g.net_state.received_input_keys = host_input_keys
                 // Verify each checksum component - if different, we've desynced!
@@ -577,12 +615,6 @@ game_update :: proc() {
                     fmt.println("  remote: player_rect=", remote_checksum.player_rect, " sheep=", remote_checksum.sheep_state)
                     fmt.println("  frame=", frame_count)
                 }
-            }
-            // Also check for init sync
-            if header == MULTIPLAYER_MSG_INIT_STATE {
-                init_data := recv_init_sync(payload)
-                fmt.println("Received init sync: player=", init_data.player_index, " seed=", init_data.seed)
-                g.net_state.synced = true
             }
         }
     }
