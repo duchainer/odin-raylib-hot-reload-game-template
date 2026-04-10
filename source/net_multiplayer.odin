@@ -3,6 +3,7 @@ package game
 import "core:net"
 import "core:fmt"
 import "core:mem"
+import "core:math/rand"
 import "core:hash/xxhash"
 import rl "vendor:raylib"
 
@@ -103,11 +104,17 @@ net_recv_msg :: proc(state: ^Network_State, max_size: int) -> (header: u8, paylo
 	}
 	buf := make([]u8, max_size)
 	num_read, recv_err := net.recv_tcp(state.tcp_socket, buf)
-	if recv_err != nil || num_read == 0 {
-		if recv_err != nil {
-			fmt.eprintln("Recv error:", recv_err)
+	if recv_err != nil {
+		#partial switch recv_err {
+		case .Would_Block:
+			return 0, nil, 0  // No data available yet, not an error
 		}
+		fmt.eprintln("Recv error:", recv_err)
 		state.connected = false
+		return 0, nil, 0
+	}
+	if num_read == 0 {
+		state.connected = false  // Connection closed
 		return 0, nil, 0
 	}
 	header_val := buf[0]
@@ -242,8 +249,8 @@ Snapshot_Data :: struct {
 	lava_speed: f32,
 	last_sheep_spawn: f32,
 	count_sheep_sacrificed: u32,
-	sheep_time_rand_gen_state: u64,
-	sheep_dir_rand_gen_state: u64,
+	sheep_time_rand_gen_state: rand.Default_Random_State,
+	sheep_dir_rand_gen_state: rand.Default_Random_State,
 	commodino_instance_id: i64,
 	commodino_game_session_id: i64,
 }

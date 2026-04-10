@@ -239,9 +239,7 @@ update :: proc(input: rl.Vector2) -> (ok:bool) {
             delta_time = 1.0 / f32(types.TARGET_FPS)
         }
     }else{
-        frame_index := g.frame_count
-        assert(frame_index == 1 || delta_time > 0, fmt.tprintf("Unless we just started (1st frame), delta_time should be around 1/FPS, not zero"))
-        if frame_index == 1 && delta_time <= 0 {
+        if delta_time <= 0 {
             delta_time = 1.0 / f32(types.TARGET_FPS)
         }
         recorded_delta_time = delta_time
@@ -511,8 +509,8 @@ game_update :: proc() {
                 lava_speed = g.current_session.lava_speed,
                 last_sheep_spawn = g.current_session.last_sheep_spawn,
                 count_sheep_sacrificed = g.current_session.count_sheep_sacrificed,
-                sheep_time_rand_gen_state = xxhash.XXH3_64_default(mem.byte_slice(&g.current_session.sheep_time_rand_gen_state, size_of(g.current_session.sheep_time_rand_gen_state))),
-                sheep_dir_rand_gen_state = xxhash.XXH3_64_default(mem.byte_slice(&g.current_session.sheep_dir_rand_gen_state, size_of(g.current_session.sheep_dir_rand_gen_state))),
+                sheep_time_rand_gen_state = g.current_session.sheep_time_rand_gen_state,
+                sheep_dir_rand_gen_state = g.current_session.sheep_dir_rand_gen_state,
                 commodino_instance_id = g.commodino.instance_id,
                 commodino_game_session_id = g.commodino.game_session_id,
             }
@@ -560,9 +558,9 @@ game_update :: proc() {
         if g.player_index == 1 {
             // If not synced yet (no snapshot received), wait and skip rest of update
             if !g.net_state.synced {
-                // Try to receive snapshot
-                header, payload, _ := net_recv_msg(&g.net_state, 256)
-                if header == MULTIPLAYER_MSG_SNAPSHOT {
+                // Try to receive snapshot - may need multiple reads for large data
+                header, payload, _ := net_recv_msg(&g.net_state, size_of(Snapshot_Data) + 1)
+                if header == MULTIPLAYER_MSG_SNAPSHOT && len(payload) >= size_of(Snapshot_Data) {
                     snapshot, ok := recv_snapshot(payload)
                     if ok {
                         fmt.println("Received snapshot: frame=", snapshot.frame_count)
@@ -575,6 +573,12 @@ game_update :: proc() {
                         g.current_session.lava_speed = snapshot.lava_speed
                         g.current_session.last_sheep_spawn = snapshot.last_sheep_spawn
                         g.current_session.count_sheep_sacrificed = snapshot.count_sheep_sacrificed
+                        g.current_session.sheep_time_rand_gen_state = snapshot.sheep_time_rand_gen_state
+                        g.current_session.sheep_dir_rand_gen_state = snapshot.sheep_dir_rand_gen_state
+                        g.sheep_time_rand_gen_state = snapshot.sheep_time_rand_gen_state
+                        g.sheep_dir_rand_gen_state = snapshot.sheep_dir_rand_gen_state
+                        g.sheep_time_rand_gen = rand.default_random_generator(&g.sheep_time_rand_gen_state)
+                        g.sheep_dir_rand_gen = rand.default_random_generator(&g.sheep_dir_rand_gen_state)
                         g.net_state.synced = true
                         fmt.println("Applied snapshot - now synced!")
                     }
