@@ -723,13 +723,14 @@ game_init :: proc() {
 }
 
 reset_current_session_rand_gen :: proc() {
-    // Generate instance_id and game_session_id using timestamp_nanoseconds + random
-    // This uses 60+ bits of timestamp + 64 bits of randomness, ensuring uniqueness
+    // This uses 60+ bits of timestamp ensuring uniqueness
     // across machines and instances without coordination
-    timestamp_ns := time.time_to_unix_nano(time.now())
-    random_part := rand.uint64()
-    
-    g.commodino.instance_id = cast(i64)(cast(u64)timestamp_ns + random_part)
+    // TODO on collision, have the joining player regenerate its id and update it in the record db.
+    g.commodino.instance_id = time.time_to_unix_nano(time.now())
+    // LATER, the game_session_id will be changed when we join a hosted multiplayer game
+    // TODO How do we want to record when we quit a game and join a new one? A new recording?
+    //      If so, should we have main menu recordings? or have it be stored before and after the game?
+    //      We would be recording the game menu UI at the very least, I guess
     g.commodino.game_session_id = g.commodino.instance_id  // Host: game_session_id = instance_id
 
     sheep_time_rand_gen_state_seed := rand.uint64()
