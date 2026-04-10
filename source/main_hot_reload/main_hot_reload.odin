@@ -1,6 +1,9 @@
 /*
 Development game exe. Loads build/hot_reload/game.dll and reloads it whenever it
 changes.
+
+Multiple instances are supported by using GAME_INSTANCE_ID env var.
+If not set, uses PID as the instance ID.
 */
 
 package main
@@ -24,6 +27,16 @@ when ODIN_OS == .Windows {
 
 GAME_DLL_DIR :: "build/hot_reload/"
 GAME_DLL_PATH :: GAME_DLL_DIR + "game" + DLL_EXT
+
+instance_id: string
+
+get_instance_id :: proc() -> string {
+	return fmt.tprintf("%d", os.get_pid())
+}
+
+get_game_dll_copy_path :: proc() -> string {
+	return fmt.tprintf("%sgame_%s.so", GAME_DLL_DIR, instance_id)
+}
 
 // We copy the DLL because using it directly would lock it, which would prevent
 // the compiler from writing to it.
@@ -66,7 +79,7 @@ load_game_api :: proc(api_version: int) -> (api: Game_API, ok: bool) {
 		return
 	}
 
-	game_dll_name := fmt.tprintf(GAME_DLL_DIR + "game_{0}" + DLL_EXT, api_version)
+	game_dll_name := fmt.tprintf(GAME_DLL_DIR + "game_{0}" + DLL_EXT, instance_id)
 	copy_dll(game_dll_name) or_return
 
 	// This proc matches the names of the fields in Game_API to symbols in the
@@ -91,8 +104,8 @@ unload_game_api :: proc(api: ^Game_API) {
 		}
 	}
 
-	if os.remove(fmt.tprintf(GAME_DLL_DIR + "game_{0}" + DLL_EXT, api.api_version)) != nil {
-		fmt.printfln("Failed to remove {0}game_{1}" + DLL_EXT + " copy", GAME_DLL_DIR, api.api_version)
+	if os.remove(fmt.tprintf(GAME_DLL_DIR + "game_{0}" + DLL_EXT, instance_id)) != nil {
+		fmt.printfln("Failed to remove {0}game_{1}" + DLL_EXT + " copy", GAME_DLL_DIR, instance_id)
 	}
 }
 
@@ -102,7 +115,10 @@ main :: proc() {
 	exe_dir := filepath.dir(string(exe_path), context.temp_allocator)
 	os.set_working_directory(exe_dir)
 
+	instance_id = get_instance_id()
+
 	context.logger = log.create_console_logger()
+	fmt.println("Hot-reload instance ID:", instance_id)
 
 	default_allocator := context.allocator
 	tracking_allocator: mem.Tracking_Allocator

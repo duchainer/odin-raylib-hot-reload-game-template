@@ -25,9 +25,10 @@ net_init_as_host :: proc(state: ^Network_State) -> bool {
 		fmt.eprintln("Failed to listen:", err)
 		return false
 	}
+	net.set_blocking(listener, false)
 	state.listener = listener
 	state.mode = .Host
-	fmt.println("Host listening for connections...")
+	fmt.println("Host listening for connections (non-blocking)...")
 	return true
 }
 
@@ -48,11 +49,16 @@ net_init_as_client :: proc(state: ^Network_State, host: string) -> bool {
 net_accept_client :: proc(state: ^Network_State) -> bool {
 	tcp_socket, _, err := net.accept_tcp(state.listener)
 	if err != nil {
+		#partial switch err {
+		case .Would_Block:
+			return false
+		}
+		fmt.eprintln("ACCEPT FAILED:", err)
 		return false
 	}
 	state.tcp_socket = tcp_socket
 	state.connected = true
-	fmt.println("Client connected!")
+	fmt.println("*** CLIENT ACCEPTED! ***")
 	return true
 }
 
@@ -85,4 +91,35 @@ net_close :: proc(state: ^Network_State) {
 		net.close(state.listener)
 	}
 	state.connected = false
+}
+
+// Message types for sync protocol
+MULTIPLAYER_MSG_INIT_STATE :: 1
+MULTIPLAYER_MSG_INPUT :: 2
+MULTIPLAYER_MSG_FRAME :: 3
+
+// Send a message with type header
+net_send_msg :: proc(state: ^Network_State, msg_type: u8, data: []u8) -> bool {
+	if !state.connected {
+		return false
+	}
+	buf := make([]u8, 1 + len(data))
+	buf[0] = msg_type
+	copy(buf[1:], data)
+	_, err := net.send_tcp(state.tcp_socket, buf)
+	return err == nil
+}
+
+net_recv_msg :: proc(state: ^Network_State, max_size: int) -> (header: u8, payload: []u8, count: int) {
+	if !state.connected {
+		return 0, nil, 0
+	}
+	buf := make([]u8, max_size)
+	num_read, recv_err := net.recv_tcp(state.tcp_socket, buf)
+	if recv_err != nil || num_read == 0 {
+		state.connected = false
+		return 0, nil, 0
+	}
+	header_val := buf[0]
+	return header_val, buf[1:num_read], num_read-1
 }

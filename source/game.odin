@@ -79,6 +79,11 @@ Game_Memory :: struct {
 	replay_batch: types.Replay_Frame_Batch,
 	replay_batch_idx: int,
 	player_index: int, // 0 = player 1 (host), 1 = player 2 (client)
+	
+	// Multiplayer networking
+	net_state: Network_State,
+	connected_to_host: bool,
+	received_initial_state: bool,
 }
 
 // TODO Use some fixed point math like fixedptc or libfixmath
@@ -463,6 +468,16 @@ restart_game :: proc(mode: types.Hot_Reload_Mode) {
 
 @(export)
 game_update :: proc() {
+    // Host: try to accept client connections each frame
+    if g.player_index == 0 && g.net_state.listener != 0 && !g.net_state.connected {
+        if net_accept_client(&g.net_state) {
+            fmt.println("*** CLIENT ACCEPTED! ***")
+        }
+    }
+    if g.player_index == 0 {
+        fmt.printfln("[%v] DEBUG: frame update player_index=%v", time.time_to_unix_nano(time.now()), g.player_index)
+    }
+
     if should_restart_game{
         restart_game(.HOT_RELOAD)
         should_restart_game = false
@@ -693,7 +708,23 @@ get_mode_from_args :: proc() -> int {
 }
 
 get_host_arg :: proc() -> string {
-    return os.get_env_alloc("MULTIPLAYER_HOST", context.temp_allocator)
+    host := os.get_env_alloc("MULTIPLAYER_HOST", context.temp_allocator)
+    if host == "" {
+        return "127.0.0.1"  // default to localhost
+    }
+    return host
+}
+
+get_test_input :: proc() -> int {
+    // For testing: read MULTIPLAYER_TEST_INPUT env var (0 or 1)
+    input_str := os.get_env_alloc("MULTIPLAYER_TEST_INPUT", context.temp_allocator)
+    if input_str == "1" {
+        return 1
+    }
+    if input_str == "-1" {
+        return -1
+    }
+    return 0
 }
 
 get_db_path :: proc(player_index: int) -> string {
@@ -736,35 +767,59 @@ game_init :: proc() {
         return
     }
 
-    update_ok = true
-    loaded := db_load_commodino_struct(g.db_conn, &g.commodino)
-    if loaded {
-        fmt.println("Successfully loaded commodino_struct from database")
-        restart_current_session_memory()
-        restore_recorded_session_rand_gen()
-        g.commodino.is_replaying = true
-
-        g.replay_stmt = db_prepare_replay_stmt(g.db_conn)
-        g.replay_batch_stmt = db_prepare_replay_batch_stmt(g.db_conn)
-        replay_frame, ok = db_load_replay_frame_stmt(g.replay_stmt, g.commodino.instance_id, 1)
+    // Initialize networking
+    if g.player_index == 0 {
+        // Host: start listening
+        ok = net_init_as_host(&g.net_state)
         if !ok {
-            fmt.eprintln("Failed to load first replay frame")
+            fmt.eprintln("Failed to init as host")
+        } else {
+            fmt.println("Host initialized, will accept in update loop")
         }
-        replay_frame_prev_input_keys = {}
-        when REPLAY_TIMING {
-            batch_start_time = time.now()
-            batch_recorded_delta_ns = 0
-            batch_frame_count = 0
-            total_recorded_delta_ns = 0
-            total_wall_clock_ns = 0
-            replay_start_time = time.now()
+        g.connected_to_host = true  // Host is "active" even without client
+    } else if g.player_index == 1 {
+        // Client: connect to host
+        host_addr := get_host_arg()
+        fmt.println("Connecting to host:", host_addr)
+        ok = net_init_as_client(&g.net_state, host_addr)
+        if ok {
+            fmt.println("Connected to host!")
+            g.connected_to_host = true
+        } else {
+            fmt.eprintln("Failed to connect to host")
         }
-    } else {
-        fmt.println("No saved commodino_struct found, starting fresh")
+    }
+
+    update_ok = true
+    // TEMP: Disable replay for multiplayer testing
+    // loaded := db_load_commodino_struct(g.db_conn, &g.commodino)
+    // if loaded {
+    //     fmt.println("Successfully loaded commodino_struct from database")
+    //     restart_current_session_memory()
+    //     restore_recorded_session_rand_gen()
+    //     g.commodino.is_replaying = true
+    //
+    //     g.replay_stmt = db_prepare_replay_stmt(g.db_conn)
+    //     g.replay_batch_stmt = db_prepare_replay_batch_stmt(g.db_conn)
+    //     replay_frame, ok = db_load_replay_frame_stmt(g.replay_stmt, g.commodino.instance_id, 1)
+    //     if !ok {
+    //         fmt.eprintln("Failed to load first replay frame")
+    //     }
+    //     replay_frame_prev_input_keys = {}
+    //     when REPLAY_TIMING {
+    //         batch_start_time = time.now()
+    //         batch_recorded_delta_ns = 0
+    //         batch_frame_count = 0
+    //         total_recorded_delta_ns = 0
+    //         total_wall_clock_ns = 0
+    //         replay_start_time = time.now()
+    //     }
+    // } else {
+    //     fmt.println("No saved commodino_struct found, starting fresh")
         restart_current_session_memory()
         reset_current_session_rand_gen()
         db_insert_initial_values(g.db_conn, &g.commodino, types.COMMODINO_STRUCT_VERSION)
-    }
+    // }
     game_hot_reloaded(g, .HOT_RELOAD)
 }
 
