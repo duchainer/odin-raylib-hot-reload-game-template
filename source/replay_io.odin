@@ -147,9 +147,11 @@ db_load_commodino_struct :: proc(db: ^sqlite.Connection, commodino_struct: ^type
     if result == .Row {
         commodino_struct.game_session_id = sqlite.column_int64(stmt, 0)
         commodino_struct.instance_id = sqlite.column_int64(stmt, 1)
-        commodino_struct.sheep_time_rand_gen_state_seed = cast(u64)sqlite.column_int64(stmt, 3)
-        commodino_struct.sheep_dir_rand_gen_state_seed = cast(u64)sqlite.column_int64(stmt, 4)
-        commodino_struct.recorded_input_events_count = cast(int)sqlite.column_int(stmt, 5)
+        // Column 2: commodino_struct_version (unused)
+        // Column 3: commit_hash (unused)
+        commodino_struct.sheep_time_rand_gen_state_seed = cast(u64)sqlite.column_int64(stmt, 4)
+        commodino_struct.sheep_dir_rand_gen_state_seed = cast(u64)sqlite.column_int64(stmt, 5)
+        commodino_struct.recorded_input_events_count = cast(int)sqlite.column_int(stmt, 6)
     } else if result == .Done {
         fmt.println("No saved commodino_struct found in database")
         return false
