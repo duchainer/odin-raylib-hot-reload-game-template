@@ -34,6 +34,7 @@ package game
 
 import "core:fmt"
 import "core:log"
+_ :: log
 
 import "core:math"
 import "core:math/rand"
@@ -657,7 +658,7 @@ game_update :: proc() {
         }
     }
 
-    log.logf(.Debug, "frame update player_index=%v", g.player_index)
+    // log.logf(.Debug, "frame update player_index=%v", g.player_index)
 
     if should_restart_game{
         restart_game(.HOT_RELOAD)
