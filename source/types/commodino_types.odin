@@ -2,7 +2,6 @@ package types
 
 import rl "vendor:raylib"
 
-
 //
 // COMMODINO (Record-and-replay, etc)
 //
@@ -12,9 +11,6 @@ commodino_assert_message : string
 // Have it distinct to avoid calling db_init with some other integer by accident
 Commodino_Struct_Version :: distinct i32
 
-// TODO NOTE Increment on each CommodinoStruct change
-// TODO NOTE Nested types too, like Session_Memory_Checksums
-COMMODINO_STRUCT_VERSION :: Commodino_Struct_Version(5)
 KeyState :: struct{
 	pressed : bool,
 }
@@ -37,6 +33,14 @@ Replay_Frame :: struct {
 	checksum   : Session_Memory_Checksums,
 	source_instance_id : i64, // 0 = self, >0 = remote origin
 }
+
+// ===============================================
+// TODO NOTE(Raph) Increment on each CommodinoStruct change =====================================
+// TODO NOTE(Raph) Nested types too, like Session_Memory_Checksums =============================
+COMMODINO_STRUCT_VERSION :: Commodino_Struct_Version(5)
+// TODO NOTE(Raph) Increment on each CommodinoStruct change =====================================
+// TODO NOTE(Raph) Nested types too, like Session_Memory_Checksums =============================
+// ===============================================
 
 CommodinoStruct :: struct {
 	instance_id : i64 `json:"instance_id"`,      // timestamp_nanoseconds: 60+ bits, stored as i64
