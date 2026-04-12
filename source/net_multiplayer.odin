@@ -3,7 +3,6 @@ package game
 import "core:net"
 import "core:fmt"
 import "core:mem"
-import "core:math/rand"
 import "core:hash/xxhash"
 import rl "vendor:raylib"
 
@@ -247,17 +246,7 @@ recv_frame_sync :: proc(data: []u8) -> (frame_count: i64, input_keys: u32, check
 
 // Full game state snapshot for initial sync
 Snapshot_Data :: struct {
-	frame_count: i64,
-	player_rect: rl.Rectangle,
-	player2_rect: rl.Rectangle,
-	sheeps: [1024]Sheep,
-	last_sheep_index: u32,
-	lava_height: f32,
-	lava_speed: f32,
-	last_sheep_spawn: f32,
-	count_sheep_sacrificed: u32,
-	sheep_time_rand_gen_state: rand.Default_Random_State,
-	sheep_dir_rand_gen_state: rand.Default_Random_State,
+    using current_session : Session_Memory,
 	commodino_instance_id: i64,
 	commodino_game_session_id: i64,
 }

@@ -500,7 +500,7 @@ game_update :: proc() {
             fmt.println("*** CLIENT ACCEPTED! ***")
             // Send full game snapshot to client for initial sync
             snapshot := Snapshot_Data{
-                frame_count = i64(g.current_session.frame_count),
+                frame_count = g.current_session.frame_count,
                 player_rect = g.current_session.player_rect,
                 player2_rect = g.current_session.player2_rect,
                 sheeps = g.current_session.sheeps,
