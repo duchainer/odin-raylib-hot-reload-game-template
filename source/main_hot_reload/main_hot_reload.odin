@@ -2,7 +2,7 @@
 Development game exe. Loads build/hot_reload/game.dll and reloads it whenever it
 changes.
 
-Multiple instances are supported by using GAME_INSTANCE_ID env var.
+Multiple instances are supported by using GAME_hot_reload_INSTANCE_ID env var.
 If not set, uses PID as the instance ID.
 */
 
@@ -26,27 +26,20 @@ when ODIN_OS == .Windows {
 }
 
 GAME_DLL_DIR :: "build/hot_reload/"
-GAME_DLL_PATH :: GAME_DLL_DIR + "game" + DLL_EXT
 
-instance_id: string
+game_dll_path: string
 
-// TODO convert the os.get_pid to string in a better way than fmt.tprintf
-// TODO See if we can stay quite close to the upstream hot-reload repo code, and not fork too much this file
-get_instance_id :: proc() -> string {
-	return fmt.tprintf("%d", os.get_pid())
-}
-
-get_game_dll_copy_path :: proc() -> string {
-	return fmt.tprintf("%sgame_%s.so", GAME_DLL_DIR, instance_id)
+get_game_dll_copy_path :: proc(hot_reload_instance_id: int) -> string {
+	return fmt.tprintf("%sgame_%s%s", GAME_DLL_DIR, hot_reload_instance_id, DLL_EXT)
 }
 
 // We copy the DLL because using it directly would lock it, which would prevent
 // the compiler from writing to it.
 copy_dll :: proc(to: string) -> bool {
-	copy_err := os.copy_file(to, GAME_DLL_PATH)
+	copy_err := os.copy_file(to, game_dll_path)
 
 	if copy_err != nil {
-		fmt.printfln("Failed to copy " + GAME_DLL_PATH + " to {0}: %v", to, copy_err)
+		fmt.printfln("Failed to copy " + game_dll_path + " to {0}: %v", to, copy_err)
 		return false
 	}
 
@@ -72,22 +65,21 @@ Game_API :: struct {
 }
 
 load_game_api :: proc(api_version: int) -> (api: Game_API, ok: bool) {
-	mod_time, mod_time_error := os.last_write_time_by_name(GAME_DLL_PATH)
+	mod_time, mod_time_error := os.last_write_time_by_name(game_dll_path)
 	if mod_time_error != os.ERROR_NONE {
 		fmt.printfln(
-			"Failed getting last write time of " + GAME_DLL_PATH + ", error code: {1}",
+			"Failed getting last write time of " + game_dll_path + ", error code: {1}",
 			mod_time_error,
 		)
 		return
 	}
 
-	game_dll_name := fmt.tprintf(GAME_DLL_DIR + "game_{0}" + DLL_EXT, instance_id)
-	copy_dll(game_dll_name) or_return
+	copy_dll(game_dll_path) or_return
 
 	// This proc matches the names of the fields in Game_API to symbols in the
 	// game DLL. It actually looks for symbols starting with `game_`, which is
 	// why the argument `"game_"` is there.
-	_, ok = dynlib.initialize_symbols(&api, game_dll_name, "game_", "lib")
+	_, ok = dynlib.initialize_symbols(&api, game_dll_path, "game_", "lib")
 	if !ok {
 		fmt.printfln("Failed initializing symbols: {0}", dynlib.last_error())
 	}
@@ -106,8 +98,8 @@ unload_game_api :: proc(api: ^Game_API) {
 		}
 	}
 
-	if os.remove(fmt.tprintf(GAME_DLL_DIR + "game_{0}" + DLL_EXT, instance_id)) != nil {
-		fmt.printfln("Failed to remove {0}game_{1}" + DLL_EXT + " copy", GAME_DLL_DIR, instance_id)
+	if os.remove(game_dll_path) != nil {
+		fmt.printfln("Failed to remove {0} copy", game_dll_path)
 	}
 }
 
@@ -117,10 +109,20 @@ main :: proc() {
 	exe_dir := filepath.dir(string(exe_path), context.temp_allocator)
 	os.set_working_directory(exe_dir)
 
-	instance_id = get_instance_id()
-
 	context.logger = log.create_console_logger()
-	fmt.println("Hot-reload instance ID:", instance_id)
+
+// TODO convert the os.get_pid to string in a better way than fmt.tprintf
+// TODO See if we can stay quite close to the upstream odin-raylib-hot-reload-template repo code,
+//       and not fork too much this file
+get_hot_reload_instance_id :: proc() -> string {
+	return 
+}
+
+	hot_reload_instance_id := os.get_pid()
+	fmt.println("Hot-reload instance ID:", hot_reload_instance_id)
+	fmt.println("size_of(int)", size_of(int))
+
+    game_dll_path = get_game_dll_copy_path(hot_reload_instance_id)
 
 	default_allocator := context.allocator
 	tracking_allocator: mem.Tracking_Allocator
@@ -162,7 +164,7 @@ main :: proc() {
 		force_restart := game_api.force_restart()
 		force_replay := game_api.force_replay()
 		reload := force_reload || force_restart || force_replay
-		game_dll_mod, game_dll_mod_err := os.last_write_time_by_name(GAME_DLL_PATH)
+		game_dll_mod, game_dll_mod_err := os.last_write_time_by_name(game_dll_path)
 
 		if game_dll_mod_err == os.ERROR_NONE && game_api.modification_time != game_dll_mod {
 			reload = true
