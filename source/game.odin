@@ -33,6 +33,8 @@ created.
 package game
 
 import "core:fmt"
+import "core:log"
+
 import "core:math"
 import "core:math/rand"
 import "base:runtime"
@@ -637,9 +639,7 @@ game_update :: proc() {
         }
     }
 
-    if g.player_index == 0 {
-        fmt.printfln("[%v] DEBUG: frame update player_index=%v", time.time_to_unix_nano(time.now()), g.player_index)
-    }
+    log.logf(.Debug, "frame update player_index=%v", g.player_index)
 
     if should_restart_game{
         restart_game(.HOT_RELOAD)
