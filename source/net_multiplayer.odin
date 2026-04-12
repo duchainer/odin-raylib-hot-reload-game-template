@@ -89,6 +89,7 @@ net_send_msg :: proc(state: ^Network_State, msg_type: u8, data: []u8) -> bool {
 		return false
 	}
 	buf := make([]u8, 1 + len(data))
+    defer delete(buf)
 	buf[0] = msg_type
 	copy(buf[1:], data)
 	_, err := net.send_tcp(state.tcp_socket, buf)
@@ -103,6 +104,7 @@ net_recv_msg :: proc(state: ^Network_State, max_size: int) -> (header: u8, paylo
 		return 0, nil, 0
 	}
 	buf := make([]u8, max_size)
+    defer delete(buf)
 	num_read, recv_err := net.recv_tcp(state.tcp_socket, buf)
 	if recv_err != nil {
 		#partial switch recv_err {
