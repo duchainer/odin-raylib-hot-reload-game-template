@@ -462,18 +462,25 @@ update_ok : bool
 input_vec : rl.Vector2
 recorded_delta_time : f32
 
+compute_session_checksum :: proc(session: ^Session_Memory) -> types.Session_Memory_Checksums {
+    sheeps_count := int(session.last_sheep_index + 1)
+    return types.Session_Memory_Checksums{
+        frame_count = session.frame_count,
+        player_rect = session.player_rect,
+        player2_rect = session.player2_rect,
+        last_sheep_index = session.last_sheep_index,
+        lava_height = session.lava_height,
+        lava_speed = session.lava_speed,
+        last_sheep_spawn = session.last_sheep_spawn,
+        count_sheep_sacrificed = session.count_sheep_sacrificed,
+        sheep_time_rand_gen_state = xxhash.XXH3_64_default(mem.byte_slice(&session.sheep_time_rand_gen_state, size_of(session.sheep_time_rand_gen_state))),
+        sheep_dir_rand_gen_state = xxhash.XXH3_64_default(mem.byte_slice(&session.sheep_dir_rand_gen_state, size_of(session.sheep_dir_rand_gen_state))),
+        sheeps = sheeps_count > 0 ? xxhash.XXH3_64_default(mem.byte_slice(&session.sheeps[0], size_of(Sheep) * sheeps_count)) : 0,
+    }
+}
+
 save_new_frame_checksum :: proc(frame_checksum: ^types.Session_Memory_Checksums, current_session: ^Session_Memory){
-    frame_checksum.frame_count = current_session.frame_count
-    frame_checksum.player_rect.x  = current_session.player_rect.x 
-    frame_checksum.player_rect.y  = current_session.player_rect.y 
-    frame_checksum.last_sheep_index = current_session.last_sheep_index
-    frame_checksum.lava_height = current_session.lava_height
-    frame_checksum.lava_speed = current_session.lava_speed
-    frame_checksum.last_sheep_spawn = current_session.last_sheep_spawn
-    frame_checksum.count_sheep_sacrificed = current_session.count_sheep_sacrificed
-    frame_checksum.sheep_time_rand_gen_state = xxhash.XXH3_64_default(mem.byte_slice(&current_session.sheep_time_rand_gen_state, size_of(current_session.sheep_time_rand_gen_state))) 
-    frame_checksum.sheep_dir_rand_gen_state = xxhash.XXH3_64_default(mem.byte_slice(&current_session.sheep_dir_rand_gen_state, size_of(current_session.sheep_dir_rand_gen_state))) 
-    frame_checksum.sheeps = xxhash.XXH3_64_default(mem.byte_slice(&current_session.sheeps[0], size_of(Sheep) * int(current_session.last_sheep_index + 1)))
+    frame_checksum^ = compute_session_checksum(current_session)
 }
 
 restart_game :: proc(mode: types.Hot_Reload_Mode) {
@@ -536,19 +543,7 @@ game_update :: proc() {
                 _ = client_checksum
             }
             // Compute local checksum for verification
-            local_checksum := compute_game_checksum(
-                g.current_session.player_rect,
-                g.current_session.player2_rect,
-                g.current_session.last_sheep_index,
-                g.current_session.lava_height,
-                g.current_session.lava_speed,
-                g.current_session.last_sheep_spawn,
-                g.current_session.count_sheep_sacrificed,
-                xxhash.XXH3_64_default(mem.byte_slice(&g.current_session.sheep_time_rand_gen_state, size_of(g.current_session.sheep_time_rand_gen_state))),
-                xxhash.XXH3_64_default(mem.byte_slice(&g.current_session.sheep_dir_rand_gen_state, size_of(g.current_session.sheep_dir_rand_gen_state))),
-                raw_data(&g.current_session.sheeps),
-                g.current_session.last_sheep_index,
-            )
+            local_checksum := compute_game_checksum(&g.current_session)
             // Encode host's input keys to send to client
             // TODO use a bitfield instead, and use it in recorded_input_keys too
             host_keys: u32 = 0
@@ -592,19 +587,7 @@ game_update :: proc() {
             }
 
             // Compute local checksum before applying any remote updates
-            local_checksum := compute_game_checksum(
-                g.current_session.player_rect,
-                g.current_session.player2_rect,
-                g.current_session.last_sheep_index,
-                g.current_session.lava_height,
-                g.current_session.lava_speed,
-                g.current_session.last_sheep_spawn,
-                g.current_session.count_sheep_sacrificed,
-                xxhash.XXH3_64_default(mem.byte_slice(&g.current_session.sheep_time_rand_gen_state, size_of(g.current_session.sheep_time_rand_gen_state))),
-                xxhash.XXH3_64_default(mem.byte_slice(&g.current_session.sheep_dir_rand_gen_state, size_of(g.current_session.sheep_dir_rand_gen_state))),
-                raw_data(&g.current_session.sheeps),
-                g.current_session.last_sheep_index,
-            )
+            local_checksum := compute_game_checksum(&g.current_session)
             // Encode input keys as bitfield (LEFT=bit0, RIGHT=bit1, ENTER=bit2)
             keys: u32 = 0
             if recorded_input_keys[types.UsedKeysEnum.LEFT] { keys |= 1 }
@@ -622,15 +605,15 @@ game_update :: proc() {
                 if !checksums_equal(local_checksum, remote_checksum) {
                     desync_player_rect := local_checksum.player_rect != remote_checksum.player_rect
                     desync_player2_rect := local_checksum.player2_rect != remote_checksum.player2_rect
-                    desync_sheep := local_checksum.sheep_state != remote_checksum.sheep_state
+                    desync_sheep := local_checksum.sheeps != remote_checksum.sheeps
                     
                     if desync_player_rect || desync_player2_rect {
                         fmt.println("!!! CRITICAL DESYNC - PLAYERS NOT SYNCED !!!")
                     }
                     fmt.println("!!! DESYNC DETECTED !!!")
                     fmt.println("  player_rect match:", !desync_player_rect, "  player2_rect match:", !desync_player2_rect, "  sheep match:", !desync_sheep)
-                    fmt.println("  local:  player_rect=", local_checksum.player_rect, " player2_rect=", local_checksum.player2_rect, " sheep=", local_checksum.sheep_state)
-                    fmt.println("  remote: player_rect=", remote_checksum.player_rect, " player2_rect=", remote_checksum.player2_rect, " sheep=", remote_checksum.sheep_state)
+                    fmt.println("  local:  player_rect=", local_checksum.player_rect, " player2_rect=", local_checksum.player2_rect, " sheep=", local_checksum.sheeps)
+                    fmt.println("  remote: player_rect=", remote_checksum.player_rect, " player2_rect=", remote_checksum.player2_rect, " sheep=", remote_checksum.sheeps)
                     fmt.println("  frame=", frame_count)
                     // Request snapshot from host to resync
                     // For now, just mark as needing resync

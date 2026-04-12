@@ -21,6 +21,7 @@ KeyState :: struct{
 Session_Memory_Checksums :: struct {
 	frame_count: int,
 	player_rect : rl.Rectangle,
+	player2_rect : rl.Rectangle,
 	sheeps : u64,
 	last_sheep_index: u32,
 	lava_height: f32,

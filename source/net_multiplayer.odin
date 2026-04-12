@@ -3,8 +3,8 @@ package game
 import "core:net"
 import "core:fmt"
 import "core:mem"
-import "core:hash/xxhash"
-import rl "vendor:raylib"
+
+import "./types"
 
 NET_PORT :: 7890
 
@@ -142,80 +142,34 @@ recv_init_sync :: proc(data: []u8) -> Init_Sync_Data {
 	return result
 }
 
-Game_Checksum :: struct {
-	player_rect: u64,
-	player2_rect: u64,
-	sheep_state: u64,
-	lava_state: u64,
-	rng_state: u64,
+compute_game_checksum :: proc(session: ^Session_Memory) -> types.Session_Memory_Checksums {
+	return compute_session_checksum(session)
 }
 
-compute_game_checksum :: proc(
-	player_rect: rl.Rectangle, 
-	player2_rect: rl.Rectangle, 
-	last_sheep_index: u32, 
-	lava_height: f32, 
-	lava_speed: f32, 
-	last_sheep_spawn: f32, 
-	count_sheep_sacrificed: u32, 
-	sheep_time_seed: u64, 
-	sheep_dir_seed: u64, 
-	sheeps: [^]Sheep, 
-	sheeps_count: u32,
-) -> Game_Checksum {
-	// Need local copies for taking addresses
-	pr := player_rect
-	p2r := player2_rect
-	lsi := last_sheep_index
-	lh := lava_height
-	ls := lava_speed
-	lss := last_sheep_spawn
-	css := count_sheep_sacrificed
-	sts := sheep_time_seed
-	sds := sheep_dir_seed
-	
-	// Compute sheep_state separately
-	sheep_hash := xxhash.XXH3_64_default(mem.byte_slice(&lsi, size_of(u32)))
-	if sheeps != nil && sheeps_count > 0 {
-		sheep_hash += xxhash.XXH3_64_default(mem.byte_slice(sheeps, int(size_of(Sheep) * int(sheeps_count))))
-	}
-	
-	// Compute lava state
-	lava_hash := xxhash.XXH3_64_default(mem.byte_slice(&lh, size_of(f32)))
-	lava_hash += xxhash.XXH3_64_default(mem.byte_slice(&ls, size_of(f32)))
-	lava_hash += xxhash.XXH3_64_default(mem.byte_slice(&lss, size_of(f32)))
-	lava_hash += xxhash.XXH3_64_default(mem.byte_slice(&css, size_of(u32)))
-	
-	return Game_Checksum{
-		player_rect = xxhash.XXH3_64_default(mem.byte_slice(&pr, size_of(rl.Rectangle))),
-		player2_rect = xxhash.XXH3_64_default(mem.byte_slice(&p2r, size_of(rl.Rectangle))),
-		sheep_state = sheep_hash,
-		lava_state = lava_hash,
-		rng_state = xxhash.XXH3_64_default(mem.byte_slice(&sts, size_of(u64))) +
-		            xxhash.XXH3_64_default(mem.byte_slice(&sds, size_of(u64))),
-	}
-}
-
-checksums_equal :: proc(a: Game_Checksum, b: Game_Checksum) -> bool {
+checksums_equal :: proc(a: types.Session_Memory_Checksums, b: types.Session_Memory_Checksums) -> bool {
 	return a.player_rect == b.player_rect &&
 	       a.player2_rect == b.player2_rect &&
-	       a.sheep_state == b.sheep_state &&
-	       a.lava_state == b.lava_state &&
-	       a.rng_state == b.rng_state
+	       a.sheeps == b.sheeps &&
+	       a.lava_height == b.lava_height &&
+	       a.lava_speed == b.lava_speed &&
+	       a.last_sheep_spawn == b.last_sheep_spawn &&
+	       a.count_sheep_sacrificed == b.count_sheep_sacrificed &&
+	       a.sheep_time_rand_gen_state == b.sheep_time_rand_gen_state &&
+	       a.sheep_dir_rand_gen_state == b.sheep_dir_rand_gen_state
 }
 
 Input_Sync_Data :: struct {
 	keys: u32,
-	checksum: Game_Checksum,
+	checksum: types.Session_Memory_Checksums,
 	frame_count: i64,
 }
 
-send_input_sync :: proc(state: ^Network_State, keys: u32, checksum: Game_Checksum, frame_count: i64) {
+send_input_sync :: proc(state: ^Network_State, keys: u32, checksum: types.Session_Memory_Checksums, frame_count: i64) {
 	data := mem.slice_to_bytes([]Input_Sync_Data{{keys, checksum, frame_count}})
 	net_send_msg(state, MULTIPLAYER_MSG_INPUT, data)
 }
 
-recv_input_sync :: proc(data: []u8) -> (keys: u32, checksum: Game_Checksum, frame_count: i64) {
+recv_input_sync :: proc(data: []u8) -> (keys: u32, checksum: types.Session_Memory_Checksums, frame_count: i64) {
 	result: Input_Sync_Data
 	if len(data) >= size_of(Input_Sync_Data) {
 		mem.copy(&result, raw_data(data), size_of(Input_Sync_Data))
@@ -227,15 +181,15 @@ recv_input_sync :: proc(data: []u8) -> (keys: u32, checksum: Game_Checksum, fram
 Frame_Sync_Data :: struct {
 	frame_count: i64,
 	input_keys: u32,  // Host's input for client to use
-	checksum: Game_Checksum,
+	checksum: types.Session_Memory_Checksums,
 }
 
-send_frame_sync :: proc(state: ^Network_State, frame_count: i64, input_keys: u32, checksum: Game_Checksum) {
+send_frame_sync :: proc(state: ^Network_State, frame_count: i64, input_keys: u32, checksum: types.Session_Memory_Checksums) {
 	data := mem.slice_to_bytes([]Frame_Sync_Data{{frame_count, input_keys, checksum}})
 	net_send_msg(state, MULTIPLAYER_MSG_SYNC, data)
 }
 
-recv_frame_sync :: proc(data: []u8) -> (frame_count: i64, input_keys: u32, checksum: Game_Checksum) {
+recv_frame_sync :: proc(data: []u8) -> (frame_count: i64, input_keys: u32, checksum: types.Session_Memory_Checksums) {
 	result: Frame_Sync_Data
 	if len(data) >= size_of(Frame_Sync_Data) {
 		mem.copy(&result, raw_data(data), size_of(Frame_Sync_Data))
