@@ -548,6 +548,7 @@ game_update :: proc() {
                 g.current_session.last_sheep_index,
             )
             // Encode host's input keys to send to client
+            // TODO use a bitfield instead, and use it in recorded_input_keys too
             host_keys: u32 = 0
             if recorded_input_keys[types.UsedKeysEnum.LEFT] { host_keys |= 1 }
             if recorded_input_keys[types.UsedKeysEnum.RIGHT] { host_keys |= 2 }
