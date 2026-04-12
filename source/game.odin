@@ -446,6 +446,7 @@ draw :: proc() {
 	// rl.DrawTextureEx(g.player_rect, pos_from_rect(g.player_rect), 0, 1, rl.WHITE)
 	// rl.DrawTextureEx(g.player_rect, pos_from_rect(g.player_rect), 0, 1, rl.WHITE)
 	rl.DrawRectangleRec(g.player_rect, rl.DARKPURPLE)
+	rl.DrawRectangleRec(g.player2_rect, rl.PURPLE)
 	// rl.DrawRectangleV({20, 20}, {10, 10}, rl.RED)
 
 	for i in 0..=g.last_sheep_index {
