@@ -290,7 +290,7 @@ update :: proc(input: rl.Vector2) -> (ok:bool) {
     }
 
 	// Host: apply client input to player 2
-	if g.player_index == 0 && g.net_state.connected {
+	if g.player_index == 0 && g.net_state.connected && g.net_state.client_input_keys != 0 {
 		client_keys := g.net_state.client_input_keys
 		client_input: rl.Vector2
 		if (client_keys & 1) != 0 {  // LEFT
@@ -304,6 +304,9 @@ update :: proc(input: rl.Vector2) -> (ok:bool) {
 		g.player2_rect.y += client_input.y * delta_time * player_speed
 		g.player2_rect.x = max(g.player2_rect.x, LEFT_HOLE_START_X)
 		g.player2_rect.x = min(g.player2_rect.x, RIGHT_HOLE_START_X-g.player2_rect.width)
+
+		// Reset after applying
+		g.net_state.client_input_keys = 0
 	}
 
 
