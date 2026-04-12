@@ -210,16 +210,19 @@ input :: proc() -> (input: rl.Vector2){
 		input.x += 1
 	}
 
-	// Client: use input received from host instead of keyboard
-	if g.player_index == 1 && g.net_state.connected && g.net_state.received_input_keys != 0 {
-		input = {}  // Clear keyboard input
-		if (g.net_state.received_input_keys & 1) != 0 {  // LEFT
-			input.x -= 1
-		}
-		if (g.net_state.received_input_keys & 2) != 0 {  // RIGHT
-			input.x += 1
-		}
-	}
+    // We do that in update() currently, like host does it for client input
+    // TODO Move the input stuff, even remote, to the input() proc
+    // TODO rollback, by checking the frame_{count,index} of the received input, and re-simulating
+	// // Client: use input received from host instead of keyboard
+	// if g.player_index == 1 && g.net_state.connected && g.net_state.host_input_keys != 0 {
+	// 	input = {}  // Clear keyboard input
+	// 	if (g.net_state.host_input_keys & 1) != 0 {  // LEFT
+	// 		input.x -= 1
+	// 	}
+	// 	if (g.net_state.host_input_keys & 2) != 0 {  // RIGHT
+	// 		input.x += 1
+	// 	}
+	// }
 
 	input = linalg.normalize0(input)
 	return input
@@ -248,10 +251,42 @@ update :: proc(input: rl.Vector2) -> (ok:bool) {
     }
 
 	player_speed :: 60.0
-	g.player_rect.x += input.x * delta_time * player_speed
-	g.player_rect.y += input.y * delta_time * player_speed
-	g.player_rect.x = max(g.player_rect.x, LEFT_HOLE_START_X)
-	g.player_rect.x = min(g.player_rect.x, RIGHT_HOLE_START_X-g.player_rect.width)
+	if g.player_index == 0 {
+    // No need to be connected if Host, we can start playing while the client will join later
+    // connected is true for host when we net_accept_client
+    // && g.net_state.connected
+    // 
+        g.player_rect.x += input.x * delta_time * player_speed
+        g.player_rect.y += input.y * delta_time * player_speed
+        g.player_rect.x = max(g.player_rect.x, LEFT_HOLE_START_X)
+        g.player_rect.x = min(g.player_rect.x, RIGHT_HOLE_START_X-g.player_rect.width)
+    }
+
+    // Client control his player
+	if g.player_index == 1 && g.net_state.connected {
+        g.player2_rect.x += input.x * delta_time * player_speed
+        g.player2_rect.y += input.y * delta_time * player_speed
+        g.player2_rect.x = max(g.player2_rect.x, LEFT_HOLE_START_X)
+        g.player2_rect.x = min(g.player2_rect.x, RIGHT_HOLE_START_X-g.player_rect.width)
+
+	// Client: apply Host input to player 1
+        {
+            host_keys := g.net_state.host_input_keys
+            host_input: rl.Vector2
+            if (host_keys & 1) != 0 {  // LEFT
+                host_input.x -= 1
+            }
+            if (host_keys & 2) != 0 {  // RIGHT
+                host_input.x += 1
+            }
+            host_input = linalg.normalize0(host_input)
+            g.player_rect.x += host_input.x * delta_time * player_speed
+            g.player_rect.y += host_input.y * delta_time * player_speed
+            g.player_rect.x = max(g.player_rect.x, LEFT_HOLE_START_X)
+            g.player_rect.x = min(g.player_rect.x, RIGHT_HOLE_START_X-g.player2_rect.width)
+        }
+
+    }
 
 	// Host: apply client input to player 2
 	if g.player_index == 0 && g.net_state.connected {
@@ -600,7 +635,7 @@ game_update :: proc() {
             header, payload, _ := net_recv_msg(&g.net_state, 256)
             if header == MULTIPLAYER_MSG_SYNC && g.net_state.synced {
                 frame_count, host_input_keys, remote_checksum := recv_frame_sync(payload)
-                g.net_state.received_input_keys = host_input_keys
+                g.net_state.host_input_keys = host_input_keys
                 // Verify each checksum component - if different, we've desynced!
                 if !checksums_equal(local_checksum, remote_checksum) {
                     desync_player_rect := local_checksum.player_rect != remote_checksum.player_rect

@@ -21,7 +21,7 @@ Network_State :: struct {
 	connected: bool,
 	synced: bool,
 	client_input_keys: u32,  // Last received input from client (host side)
-	received_input_keys: u32,  // Last received input from host (client side)
+	host_input_keys: u32,  // Last received input from host (client side)
 }
 
 net_init_as_host :: proc(state: ^Network_State) -> bool {
