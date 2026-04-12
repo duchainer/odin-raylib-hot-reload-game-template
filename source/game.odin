@@ -869,7 +869,13 @@ game_update :: proc() {
 @(export)
 game_init_window :: proc() {
 	rl.SetConfigFlags({.WINDOW_RESIZABLE, .VSYNC_HINT})
-	rl.InitWindow(1500, 900, "Odin + Raylib + Hot Reload template!")
+    window_name: cstring
+    switch get_mode_from_args() {
+    case .Host  :  window_name = "HOST Odin + Raylib + Hot Reload template!"
+    case .Client:  window_name = "CLIENT Odin + Raylib + Hot Reload template!"
+    case .None  :  window_name = "Odin + Raylib + Hot Reload template!"
+    }
+	rl.InitWindow(1500, 900, window_name)
 	rl.SetWindowPosition(200, 200)
 	rl.SetTargetFPS(types.TARGET_FPS)
 	rl.SetExitKey(nil)
@@ -877,17 +883,16 @@ game_init_window :: proc() {
 
 should_restart_game: bool
 
-get_mode_from_args :: proc() -> int {
+get_mode_from_args :: proc() -> Multiplayer_Mode {
     // Check environment variable or use default
-    // 0 = none, 1 = host, 2 = client
     env_mode := os.get_env_alloc("MULTIPLAYER_MODE", context.temp_allocator)
     if env_mode == "host" {
-        return 1
+        return Multiplayer_Mode.Host
     }
     if env_mode == "client" {
-        return 2
+        return Multiplayer_Mode.Client
     }
-    return 0
+    return Multiplayer_Mode.None
 }
 
 get_host_arg :: proc() -> string {
@@ -929,19 +934,21 @@ game_init :: proc() {
     }
 
     // Set up player index based on mode
-    game_mode := get_mode_from_args()
-    // TODO use the enum key instead of plain numbers
-    if game_mode == 1 {
+    switch get_mode_from_args() {
+    case .Host: {
         fmt.println("=== Starting as HOST ===")
         g.player_index = 0
-    } else if game_mode == 2 {
+    }
+    case .Client: {
         host_addr := get_host_arg()
         fmt.println("=== Starting as CLIENT, connecting to:", host_addr, "===")
         g.player_index = 1
-    } else {
+    }
+    case .None: {
         fmt.println("=== Single player mode ===")
     }
-
+    }
+    
     db_path := get_db_path(g.player_index)
     fmt.println("Using database:", db_path)
     g.db_conn, ok = db_init(db_path)
