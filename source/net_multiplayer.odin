@@ -181,7 +181,7 @@ recv_input_sync :: proc(data: []u8) -> (keys: u32, checksum: types.Session_Memor
 Frame_Sync_Data :: struct {
 	frame_count: i64,
 	input_keys: u32,  // Host's input for client to use
-	checksum: types.Session_Memory_Checksums,
+	checksum: types.Session_Memory_Checksums, // TODO MAke sure it checksums are from the previous frame
 }
 
 send_frame_sync :: proc(state: ^Network_State, frame_count: i64, input_keys: u32, checksum: types.Session_Memory_Checksums) {
