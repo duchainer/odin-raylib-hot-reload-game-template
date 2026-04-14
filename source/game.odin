@@ -228,7 +228,7 @@ input :: proc() -> (input: rl.Vector2){
 	input = linalg.normalize0(input)
 
 	// Client: send input to host
-	if g.player_index == 1 && state.connected && state.mode == .Client {
+	if g.player_index == 1 && g.net_state.connected && g.net_state.mode == .Client {
 		keys: u32 = 0
 		if recorded_input_keys[types.UsedKeysEnum.LEFT] { keys |= 1 }
 		if recorded_input_keys[types.UsedKeysEnum.RIGHT] { keys |= 2 }
@@ -237,8 +237,8 @@ input :: proc() -> (input: rl.Vector2){
         //   WHY? Because we send input as soon as possible, not when we already finished update
         //   And we don't need the checksum as early, we can check the checksum with our current state
         //   when we receive input
-		checksum := compute_game_checksum(session)
-		send_input_sync(state, keys, checksum, i64(session.frame_count))
+		checksum := compute_game_checksum(&g.current_session)
+		send_input_sync(&g.net_state, keys, checksum, i64(g.current_session.frame_count))
 	}
 
 	return input
