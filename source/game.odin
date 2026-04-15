@@ -226,21 +226,6 @@ input :: proc() -> (input: rl.Vector2){
 	// }
 
 	input = linalg.normalize0(input)
-
-	// Client: send input to host
-	if g.player_index == 1 && state.connected && state.mode == .Client {
-		keys: u32 = 0
-		if recorded_input_keys[types.UsedKeysEnum.LEFT] { keys |= 1 }
-		if recorded_input_keys[types.UsedKeysEnum.RIGHT] { keys |= 2 }
-		if recorded_input_keys[types.UsedKeysEnum.ENTER] { keys |= 4 }
-        // TODO, Make sure we send the checksum from the previous frame
-        //   WHY? Because we send input as soon as possible, not when we already finished update
-        //   And we don't need the checksum as early, we can check the checksum with our current state
-        //   when we receive input
-		checksum := compute_game_checksum(session)
-		send_input_sync(state, keys, checksum, i64(session.frame_count))
-	}
-
 	return input
 }
 
@@ -596,15 +581,17 @@ game_update :: proc() {
                 // Store client input for use in game update
                 g.net_state.client_input_keys = client_keys
                 _ = client_checksum
-
-                // Compute and send AFTER receiving client input
-                local_checksum := compute_game_checksum(&g.current_session)
-                host_keys: u32 = 0
-                if recorded_input_keys[types.UsedKeysEnum.LEFT] { host_keys |= 1 }
-                if recorded_input_keys[types.UsedKeysEnum.RIGHT] { host_keys |= 2 }
-                if recorded_input_keys[types.UsedKeysEnum.ENTER] { host_keys |= 4 }
-                send_frame_sync(&g.net_state, i64(g.current_session.frame_count), host_keys, local_checksum)
             }
+            // Compute local checksum for verification
+            local_checksum := compute_game_checksum(&g.current_session)
+            // Encode host's input keys to send to client
+            // TODO use a bitfield instead, and use it in recorded_input_keys too
+            host_keys: u32 = 0
+            if recorded_input_keys[types.UsedKeysEnum.LEFT] { host_keys |= 1 }
+            if recorded_input_keys[types.UsedKeysEnum.RIGHT] { host_keys |= 2 }
+            if recorded_input_keys[types.UsedKeysEnum.ENTER] { host_keys |= 4 }
+            // Send frame sync with host's input keys for client verification
+            send_frame_sync(&g.net_state, i64(g.current_session.frame_count), host_keys, local_checksum)
         }
         // Client: send inputs + checksum to host, receive frame sync with checksum
         if g.player_index == 1 {
