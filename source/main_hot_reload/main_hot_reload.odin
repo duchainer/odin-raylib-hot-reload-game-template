@@ -29,9 +29,6 @@ GAME_DLL_DIR :: "build/hot_reload/"
 
 game_dll_path: string
 
-get_game_dll_copy_path :: proc(hot_reload_instance_id: int) -> string {
-	return fmt.tprintf("%sgame_%s%s", GAME_DLL_DIR, hot_reload_instance_id, DLL_EXT)
-}
 
 // We copy the DLL because using it directly would lock it, which would prevent
 // the compiler from writing to it.
@@ -116,6 +113,10 @@ main :: proc() {
 	hot_reload_instance_id := os.get_pid()
 	fmt.println("Hot-reload instance ID:", hot_reload_instance_id)
 	fmt.println("size_of(int)", size_of(int))
+
+    get_game_dll_copy_path :: proc(hot_reload_instance_id: int) -> string {
+        return fmt.tprintf("%vgame_%v%v", GAME_DLL_DIR, hot_reload_instance_id, DLL_EXT)
+    }
 
     game_dll_path = get_game_dll_copy_path(hot_reload_instance_id)
 
