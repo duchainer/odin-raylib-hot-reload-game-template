@@ -27,6 +27,7 @@ when ODIN_OS == .Windows {
 
 GAME_DLL_DIR :: "build/hot_reload/"
 
+hot_reload_instance_id: int
 game_dll_path: string
 
 
@@ -36,7 +37,7 @@ copy_dll :: proc(to: string) -> bool {
 	copy_err := os.copy_file(to, game_dll_path)
 
 	if copy_err != nil {
-		fmt.printfln("Failed to copy %v to %v: %v", game_dll_path,  to, copy_err)
+		log.errorf("[pid:%d] Failed to copy %v to %v: %v", hot_reload_instance_id, game_dll_path, to, copy_err)
 		return false
 	}
 
@@ -64,10 +65,7 @@ Game_API :: struct {
 load_game_api :: proc(api_version: int) -> (api: Game_API, ok: bool) {
 	mod_time, mod_time_error := os.last_write_time_by_name(game_dll_path)
 	if mod_time_error != os.ERROR_NONE {
-		fmt.printfln(
-			"Failed getting last write time of %v, error code: %v",
-            game_dll_path, mod_time_error,
-		)
+		log.errorf("[pid:%d] Failed getting last write time of %v, error code: %v", hot_reload_instance_id, game_dll_path, mod_time_error)
 		return
 	}
 
@@ -78,7 +76,7 @@ load_game_api :: proc(api_version: int) -> (api: Game_API, ok: bool) {
 	// why the argument `"game_"` is there.
 	_, ok = dynlib.initialize_symbols(&api, game_dll_path, "game_", "lib")
 	if !ok {
-		fmt.printfln("Failed initializing symbols: {0}", dynlib.last_error())
+		log.errorf("[pid:%d] Failed initializing symbols: %v", hot_reload_instance_id, dynlib.last_error())
 	}
 
 	api.api_version = api_version
@@ -91,12 +89,12 @@ load_game_api :: proc(api_version: int) -> (api: Game_API, ok: bool) {
 unload_game_api :: proc(api: ^Game_API) {
 	if api.lib != nil {
 		if !dynlib.unload_library(api.lib) {
-			fmt.printfln("Failed unloading lib: {0}", dynlib.last_error())
+			log.errorf("[pid:%d] Failed unloading lib: %v", hot_reload_instance_id, dynlib.last_error())
 		}
 	}
 
 	if os.remove(game_dll_path) != nil {
-		fmt.printfln("Failed to remove {0} copy", game_dll_path)
+		log.errorf("[pid:%d] Failed to remove %v copy", hot_reload_instance_id, game_dll_path)
 	}
 }
 
@@ -110,9 +108,9 @@ main :: proc() {
 
     // TODO See if we can stay quite close to the upstream odin-raylib-hot-reload-template repo code,
     //       and not fork too much this file
-	hot_reload_instance_id := os.get_pid()
-	fmt.println("Hot-reload instance ID:", hot_reload_instance_id)
-	fmt.println("size_of(int)", size_of(int))
+	hot_reload_instance_id = os.get_pid()
+	log.infof("[pid:%d] Hot-reload instance ID: %d", hot_reload_instance_id, hot_reload_instance_id)
+	log.infof("[pid:%d] size_of(int)=%d", hot_reload_instance_id, size_of(int))
 
     get_game_dll_copy_path :: proc(hot_reload_instance_id: int) -> string {
         return fmt.tprintf("%vgame_%v%v", GAME_DLL_DIR, hot_reload_instance_id, DLL_EXT)
@@ -140,8 +138,8 @@ main :: proc() {
 	game_api_version := 0
 	game_api, game_api_ok := load_game_api(game_api_version)
 
-	if !game_api_ok {
-		fmt.println("Failed to load Game API")
+if !game_api_ok {
+		log.errorf("[pid:%d] Failed to load Game API", hot_reload_instance_id)
 		return
 	}
 
