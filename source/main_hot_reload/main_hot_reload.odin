@@ -39,7 +39,7 @@ copy_dll :: proc(to: string) -> bool {
 	copy_err := os.copy_file(to, game_dll_path)
 
 	if copy_err != nil {
-		fmt.printfln("Failed to copy " + game_dll_path + " to {0}: %v", to, copy_err)
+		fmt.printfln("Failed to copy %v to %v: %v", game_dll_path,  to, copy_err)
 		return false
 	}
 
@@ -68,8 +68,8 @@ load_game_api :: proc(api_version: int) -> (api: Game_API, ok: bool) {
 	mod_time, mod_time_error := os.last_write_time_by_name(game_dll_path)
 	if mod_time_error != os.ERROR_NONE {
 		fmt.printfln(
-			"Failed getting last write time of " + game_dll_path + ", error code: {1}",
-			mod_time_error,
+			"Failed getting last write time of %v, error code: %v",
+            game_dll_path, mod_time_error,
 		)
 		return
 	}
@@ -111,13 +111,8 @@ main :: proc() {
 
 	context.logger = log.create_console_logger()
 
-// TODO convert the os.get_pid to string in a better way than fmt.tprintf
-// TODO See if we can stay quite close to the upstream odin-raylib-hot-reload-template repo code,
-//       and not fork too much this file
-get_hot_reload_instance_id :: proc() -> string {
-	return 
-}
-
+    // TODO See if we can stay quite close to the upstream odin-raylib-hot-reload-template repo code,
+    //       and not fork too much this file
 	hot_reload_instance_id := os.get_pid()
 	fmt.println("Hot-reload instance ID:", hot_reload_instance_id)
 	fmt.println("size_of(int)", size_of(int))
