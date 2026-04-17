@@ -72,6 +72,8 @@ load_game_api :: proc(api_version: int) -> (api: Game_API, ok: bool) {
 
 	copy_dll(game_dll_copy_path) or_return
 
+	log.infof("[pid:%d] Loading DLL from: %v", hot_reload_instance_id, game_dll_copy_path)
+
 	// This proc matches the names of the fields in Game_API to symbols in the
 	// game DLL. It actually looks for symbols starting with `game_`, which is
 	// why the argument `"game_"` is there.
