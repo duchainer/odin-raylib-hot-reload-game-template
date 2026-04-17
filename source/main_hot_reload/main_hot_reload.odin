@@ -29,6 +29,7 @@ GAME_DLL_DIR :: "build/hot_reload/"
 GAME_DLL_ORIGINAL :: "build/hot_reload/game" + DLL_EXT
 
 hot_reload_instance_id: int
+game_api_version: int = 0
 game_dll_copy_path: string
 
 
@@ -64,23 +65,31 @@ Game_API :: struct {
 }
 
 load_game_api :: proc(api_version: int) -> (api: Game_API, ok: bool) {
+	game_dll_copy_path = get_game_dll_copy_path(hot_reload_instance_id, api_version)
+	log.infof("[pid:%d] load_game_api version=%d path=%v", hot_reload_instance_id, api_version, game_dll_copy_path)
 	mod_time, mod_time_error := os.last_write_time_by_name(GAME_DLL_ORIGINAL)
 	if mod_time_error != os.ERROR_NONE {
 		log.errorf("[pid:%d] Failed getting last write time of %v, error code: %v", hot_reload_instance_id, game_dll_copy_path, mod_time_error)
 		return
 	}
 
+	log.infof("[pid:%d] About to copy DLL to: %v", hot_reload_instance_id, game_dll_copy_path)
+
 	copy_dll(game_dll_copy_path) or_return
 
-	log.infof("[pid:%d] Loading DLL from: %v", hot_reload_instance_id, game_dll_copy_path)
+	log.infof("[pid:%d] Copied DLL, now loading symbols from: %v", hot_reload_instance_id, game_dll_copy_path)
 
-	// This proc matches the names of the fields in Game_API to symbols in the
+// This proc matches the names of the fields in Game_API to symbols in the
 	// game DLL. It actually looks for symbols starting with `game_`, which is
 	// why the argument `"game_"` is there.
+	log.infof("[pid:%d] Calling dynlib.initialize_symbols with path: %v", hot_reload_instance_id, game_dll_copy_path)
 	_, ok = dynlib.initialize_symbols(&api, game_dll_copy_path, "game_", "lib")
+	log.infof("[pid:%d] Back from dynlib.initialize_symbols", hot_reload_instance_id)
 	if !ok {
 		log.errorf("[pid:%d] Failed initializing symbols: %v", hot_reload_instance_id, dynlib.last_error())
-	}
+	} else{
+        log.infof("[pid:%d] Succeeded at loading DLL from: %v", hot_reload_instance_id, game_dll_copy_path)
+    }
 
 	api.api_version = api_version
 	api.modification_time = mod_time
@@ -101,6 +110,10 @@ unload_game_api :: proc(api: ^Game_API) {
 	}
 }
 
+get_game_dll_copy_path :: proc(hot_reload_instance_id: int, version: int) -> string {
+    return fmt.tprintf("%vgame_%v_v%v%v", GAME_DLL_DIR, hot_reload_instance_id, version, DLL_EXT)
+}
+
 main :: proc() {
 	// Set working dir to dir of executable.
 	exe_path := os.args[0]
@@ -115,11 +128,8 @@ main :: proc() {
 	log.infof("[pid:%d] Hot-reload instance ID: %d", hot_reload_instance_id, hot_reload_instance_id)
 	log.infof("[pid:%d] size_of(int)=%d", hot_reload_instance_id, size_of(int))
 
-    get_game_dll_copy_path :: proc(hot_reload_instance_id: int) -> string {
-        return fmt.tprintf("%vgame_%v%v", GAME_DLL_DIR, hot_reload_instance_id, DLL_EXT)
-    }
 
-    game_dll_copy_path = get_game_dll_copy_path(hot_reload_instance_id)
+    game_dll_copy_path = get_game_dll_copy_path(hot_reload_instance_id, game_api_version)
 
 	default_allocator := context.allocator
 	tracking_allocator: mem.Tracking_Allocator
@@ -138,7 +148,7 @@ main :: proc() {
 		return err
 	}
 
-	game_api_version := 0
+	game_api_version = 0
 	game_api, game_api_ok := load_game_api(game_api_version)
 
 if !game_api_ok {
@@ -161,7 +171,12 @@ if !game_api_ok {
 		force_restart := game_api.force_restart()
 		force_replay := game_api.force_replay()
 		reload := force_reload || force_restart || force_replay
-		game_dll_mod, game_dll_mod_err := os.last_write_time_by_name(game_dll_copy_path)
+
+		if reload {
+			log.infof("[pid:%d] RELOAD DETECTED: force_reload=%v force_restart=%v force_replay=%v",
+				hot_reload_instance_id, force_reload, force_restart, force_replay)
+		}
+		game_dll_mod, game_dll_mod_err := os.last_write_time_by_name(GAME_DLL_ORIGINAL)
 
 		if game_dll_mod_err == os.ERROR_NONE && game_api.modification_time != game_dll_mod {
 			reload = true
