@@ -148,7 +148,7 @@ main :: proc() {
 	game_api_version = 0
 	game_api, game_api_ok := load_game_api(game_api_version)
 
-if !game_api_ok {
+    if !game_api_ok {
 		log.errorf("[pid:%d] Failed to load Game API", hot_reload_instance_id)
 		return
 	}
