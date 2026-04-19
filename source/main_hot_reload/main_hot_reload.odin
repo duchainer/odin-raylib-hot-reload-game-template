@@ -30,7 +30,6 @@ GAME_DLL_ORIGINAL :: "build/hot_reload/game" + DLL_EXT
 
 hot_reload_instance_id: int
 game_api_version: int = 0
-game_dll_copy_path: string
 
 
 // We copy the DLL because using it directly would lock it, which would prevent
@@ -65,7 +64,7 @@ Game_API :: struct {
 }
 
 load_game_api :: proc(api_version: int) -> (api: Game_API, ok: bool) {
-	game_dll_copy_path = get_game_dll_copy_path(hot_reload_instance_id, api_version)
+	game_dll_copy_path := get_game_dll_copy_path(hot_reload_instance_id, api_version)
 	log.infof("[pid:%d] load_game_api version=%d path=%v", hot_reload_instance_id, api_version, game_dll_copy_path)
 	mod_time, mod_time_error := os.last_write_time_by_name(GAME_DLL_ORIGINAL)
 	if mod_time_error != os.ERROR_NONE {
@@ -105,8 +104,9 @@ unload_game_api :: proc(api: ^Game_API) {
 		}
 	}
 
-	if os.remove(game_dll_copy_path) != nil {
-		log.errorf("[pid:%d] Failed to remove %v copy", hot_reload_instance_id, game_dll_copy_path)
+	game_dll_copy_path := get_game_dll_copy_path(hot_reload_instance_id, api.api_version)
+	if err := os.remove(game_dll_copy_path); err != nil {
+		log.errorf("[pid:%d] Failed to remove %v copy: err %v", hot_reload_instance_id, game_dll_copy_path, err)
 	}
 }
 
@@ -127,9 +127,6 @@ main :: proc() {
 	hot_reload_instance_id = os.get_pid()
 	log.infof("[pid:%d] Hot-reload instance ID: %d", hot_reload_instance_id, hot_reload_instance_id)
 	log.infof("[pid:%d] size_of(int)=%d", hot_reload_instance_id, size_of(int))
-
-
-    game_dll_copy_path = get_game_dll_copy_path(hot_reload_instance_id, game_api_version)
 
 	default_allocator := context.allocator
 	tracking_allocator: mem.Tracking_Allocator
