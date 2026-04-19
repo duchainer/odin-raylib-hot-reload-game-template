@@ -215,15 +215,15 @@ input :: proc() -> (input: rl.Vector2){
     // TODO Move the input stuff, even remote, to the input() proc
     // TODO rollback, by checking the frame_{count,index} of the received input, and re-simulating
 	// // Client: use input received from host instead of keyboard
-	// if g.player_index == 1 && g.net_state.connected && g.net_state.host_input_keys != 0 {
-	// 	input = {}  // Clear keyboard input
-	// 	if (g.net_state.host_input_keys & 1) != 0 {  // LEFT
-	// 		input.x -= 1
-	// 	}
-	// 	if (g.net_state.host_input_keys & 2) != 0 {  // RIGHT
-	// 		input.x += 1
-	// 	}
-	// }
+	if g.player_index != HOST_PLAYER_INDEX && g.net_state.connected && g.net_state.host_input_keys != 0 {
+		input = {}  // Clear keyboard input
+		if (g.net_state.host_input_keys & 1) != 0 {  // LEFT
+			input.x -= 1
+		}
+		if (g.net_state.host_input_keys & 2) != 0 {  // RIGHT
+			input.x += 1
+		}
+	}
 
 	input = linalg.normalize0(input)
 	return input
@@ -233,6 +233,8 @@ latest_delta_time: f32
 recorded_input_keys : [types.UsedKeysEnum]bool
 
 SHEEP_LAVA_WORTH :: 75
+
+client_input: rl.Vector2
 update :: proc(input: rl.Vector2) -> (ok:bool) {
 	commodino_assert_message = "" // reset assert_message
 
@@ -252,7 +254,7 @@ update :: proc(input: rl.Vector2) -> (ok:bool) {
     }
 
 	player_speed :: 60.0
-	if g.player_index == 0 {
+	if g.player_index == HOST_PLAYER_INDEX {
     // No need to be connected if Host, we can start playing while the client will join later
     // connected is true for host when we net_accept_client
     // && g.net_state.connected
@@ -261,10 +263,46 @@ update :: proc(input: rl.Vector2) -> (ok:bool) {
         g.player_rect.y += input.y * delta_time * player_speed
         g.player_rect.x = max(g.player_rect.x, LEFT_HOLE_START_X)
         g.player_rect.x = min(g.player_rect.x, RIGHT_HOLE_START_X-g.player_rect.width)
-    }
 
+        // // Host: apply Client input to player 1
+        // if g.net_state.connected {
+        //     client_keys := g.net_state.client_input_keys
+        //     client_input: rl.Vector2
+        //     if (client_keys & 1) != 0 {  // LEFT
+        //         client_input.x -= 1
+        //     }
+        //     if (client_keys & 2) != 0 {  // RIGHT
+        //         client_input.x += 1
+        //     }
+        //     client_input = linalg.normalize0(client_input)
+        //     g.player_rect.x += client_input.x * delta_time * player_speed
+        //     g.player_rect.y += client_input.y * delta_time * player_speed
+        //     g.player_rect.x = max(g.player_rect.x, LEFT_HOLE_START_X)
+        //     g.player_rect.x = min(g.player_rect.x, RIGHT_HOLE_START_X-g.player2_rect.width)
+        // }
+
+        // Host: apply Client input to player 1
+        if g.net_state.connected {
+            client_keys := g.net_state.client_input_keys
+            client_input = rl.Vector2{}
+            if (client_keys & 1) != 0 {  // LEFT
+                client_input.x -= 1
+            }
+            if (client_keys & 2) != 0 {  // RIGHT
+                client_input.x += 1
+            }
+            client_input = linalg.normalize0(client_input)
+            g.player2_rect.x += client_input.x * delta_time * player_speed
+            g.player2_rect.y += client_input.y * delta_time * player_speed
+            g.player2_rect.x = max(g.player2_rect.x, LEFT_HOLE_START_X)
+            g.player2_rect.x = min(g.player2_rect.x, RIGHT_HOLE_START_X-g.player2_rect.width)
+
+            // Reset after applying
+            g.net_state.client_input_keys = 0
+        }
+
+    } else if g.net_state.connected {
     // Client control his player
-	if g.player_index == 1 && g.net_state.connected {
         g.player2_rect.x += input.x * delta_time * player_speed
         g.player2_rect.y += input.y * delta_time * player_speed
         g.player2_rect.x = max(g.player2_rect.x, LEFT_HOLE_START_X)
@@ -290,9 +328,9 @@ update :: proc(input: rl.Vector2) -> (ok:bool) {
     }
 
 	// Host: apply client input to player 2
-	if g.player_index == 0 && g.net_state.connected && g.net_state.client_input_keys != 0 {
+	if g.player_index == HOST_PLAYER_INDEX && g.net_state.connected && g.net_state.client_input_keys != 0 {
 		client_keys := g.net_state.client_input_keys
-		client_input: rl.Vector2
+		client_input = rl.Vector2{}
 		if (client_keys & 1) != 0 {  // LEFT
 			client_input.x -= 1
 		}
@@ -487,6 +525,11 @@ draw :: proc() {
 		// 	rl.DrawText(fmt.ctprintf("g.sheeps[1]: %#v", g.sheeps[1]), 200, 5, 8, rl.WHITE)
 		// }
 	// }
+    //
+	// DrawText           :: proc(text: cstring, posX: i32, posY: i32, fontSize: i32, color: Color) --- // Draw text (using default font)
+
+    rl.DrawText(fmt.ctprintf("client_input:%v", client_input), 20, 20, 8, rl.WHITE)
+    rl.DrawText(fmt.ctprintf("input:%v", input), 30, 30, 8, rl.WHITE)
 
 	rl.EndMode2D()
 
@@ -544,7 +587,7 @@ restart_game :: proc(mode: types.Hot_Reload_Mode) {
 @(export)
 game_update :: proc() {
     // Host: try to accept client connections each frame
-    if g.player_index == 0 && g.net_state.listener != 0 && !g.net_state.connected {
+    if g.player_index == HOST_PLAYER_INDEX && g.net_state.listener != 0 && !g.net_state.connected {
         if net_accept_client(&g.net_state) {
             fmt.println("*** CLIENT ACCEPTED! ***")
             // Send full game snapshot to client for initial sync
@@ -572,7 +615,7 @@ game_update :: proc() {
     // Network sync - input-based with checksum verification for deterministic rollback
     if g.net_state.connected {
         // Host: receive client inputs + checksum, send frame sync with checksum
-        if g.player_index == 0 {
+        if g.player_index == HOST_PLAYER_INDEX {
             // Receive inputs + checksum from client
             header, payload, _ := net_recv_msg(&g.net_state, 256)
             if header == MULTIPLAYER_MSG_INPUT {
@@ -594,7 +637,7 @@ game_update :: proc() {
             send_frame_sync(&g.net_state, i64(g.current_session.frame_count), host_keys, local_checksum)
         }
         // Client: send inputs + checksum to host, receive frame sync with checksum
-        if g.player_index == 1 {
+        if g.player_index != HOST_PLAYER_INDEX {
             // If not synced yet (no snapshot received), wait and skip rest of update
             if !g.net_state.synced {
                 // Try to receive snapshot - may need multiple reads for large data
@@ -928,6 +971,7 @@ get_db_path :: proc(player_index: int) -> string {
     return "host_game_state.db"
 }
 
+HOST_PLAYER_INDEX :: 0
 @(export)
 game_init :: proc() {
     ok: bool
@@ -940,11 +984,12 @@ game_init :: proc() {
     switch get_mode_from_args() {
     case .Host: {
         fmt.println("=== Starting as HOST ===")
-        g.player_index = 0
+        g.player_index = HOST_PLAYER_INDEX
     }
     case .Client: {
         host_addr := get_host_arg()
         fmt.println("=== Starting as CLIENT, connecting to:", host_addr, "===")
+        // TODO make it be the next available player_index, instead
         g.player_index = 1
     }
     case .None: {
@@ -963,7 +1008,8 @@ game_init :: proc() {
     }
 
     // Initialize networking
-    if g.player_index == 0 {
+    switch get_mode_from_args() {
+    case .Host: {
         // Host: start listening
         ok = net_init_as_host(&g.net_state)
         if !ok {
@@ -972,7 +1018,8 @@ game_init :: proc() {
             fmt.println("Host initialized, will accept in update loop")
         }
         g.connected_to_host = true  // Host is "active" even without client
-    } else if g.player_index == 1 {
+    }
+    case .Client: {
         // Client: connect to host
         host_addr := get_host_arg()
         fmt.println("Connecting to host:", host_addr)
@@ -983,6 +1030,10 @@ game_init :: proc() {
         } else {
             fmt.eprintln("Failed to connect to host")
         }
+    }
+    case .None: {
+        fmt.println("=== Single player mode ===")
+    }
     }
 
     update_ok = true
