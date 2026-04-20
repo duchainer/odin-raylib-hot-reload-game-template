@@ -619,7 +619,7 @@ game_update :: proc() {
             // Receive inputs + checksum from client
             header, payload, _ := net_recv_msg(&g.net_state, 256)
             if header == MULTIPLAYER_MSG_INPUT {
-                client_keys, client_checksum, client_frame := recv_input_sync(payload)
+                client_frame, client_keys, client_checksum  := recv_frame_sync(payload)
                 fmt.println("Host: client input keys=", client_keys, " frame=", client_frame)
                 // Store client input for use in game update
                 g.net_state.client_input_keys = client_keys
@@ -676,8 +676,8 @@ game_update :: proc() {
             if recorded_input_keys[types.UsedKeysEnum.LEFT] { keys |= 1 }
             if recorded_input_keys[types.UsedKeysEnum.RIGHT] { keys |= 2 }
             if recorded_input_keys[types.UsedKeysEnum.ENTER] { keys |= 4 }
-            // Send input + local checksum + frame_count
-            send_input_sync(&g.net_state, keys, local_checksum, i64(g.current_session.frame_count))
+            // send_input_sync(&g.net_state, keys, local_checksum, i64(g.current_session.frame_count))
+            send_frame_sync(&g.net_state, i64(g.current_session.frame_count), keys, local_checksum)
             
             // Receive frame sync from host
             header, payload, _ := net_recv_msg(&g.net_state, 256)

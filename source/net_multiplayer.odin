@@ -158,26 +158,6 @@ checksums_equal :: proc(a: types.Session_Memory_Checksums, b: types.Session_Memo
 	       a.sheep_dir_rand_gen_state == b.sheep_dir_rand_gen_state
 }
 
-Input_Sync_Data :: struct {
-	keys: u32,
-	checksum: types.Session_Memory_Checksums,
-	frame_count: i64,
-}
-
-send_input_sync :: proc(state: ^Network_State, keys: u32, checksum: types.Session_Memory_Checksums, frame_count: i64) {
-	data := mem.slice_to_bytes([]Input_Sync_Data{{keys, checksum, frame_count}})
-	net_send_msg(state, MULTIPLAYER_MSG_INPUT, data)
-}
-
-recv_input_sync :: proc(data: []u8) -> (keys: u32, checksum: types.Session_Memory_Checksums, frame_count: i64) {
-	result: Input_Sync_Data
-	if len(data) >= size_of(Input_Sync_Data) {
-		mem.copy(&result, raw_data(data), size_of(Input_Sync_Data))
-		return result.keys, result.checksum, result.frame_count
-	}
-	return 0, {}, 0
-}
-
 Frame_Sync_Data :: struct {
 	frame_count: i64,
 	input_keys: u32,  // Host's input for client to use
