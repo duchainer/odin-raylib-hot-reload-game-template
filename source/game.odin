@@ -350,7 +350,8 @@ update :: proc(input: rl.Vector2) -> (ok:bool) {
 
 	percent_lava_on_max := g.lava_height / VOLCANO_HEIGHT
 	g.lava_height += g.lava_speed * (1.1 - percent_lava_on_max)
-	g.lava_speed *= 1.001
+    // TODO TEMP remove the end game "disable", for easier multiplayer debugging
+	g.lava_speed *= 0 //1.001
 
 	if g.last_sheep_spawn > 120 {
 		g.sheeps[g.last_sheep_index+1] = Sheep{
