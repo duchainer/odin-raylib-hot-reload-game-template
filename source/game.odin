@@ -921,7 +921,7 @@ game_init_window :: proc() {
     case .Client:  window_name = "CLIENT Odin + Raylib + Hot Reload template!"
     case .None  :  window_name = "Odin + Raylib + Hot Reload template!"
     }
-	rl.InitWindow(750, 900, window_name)
+	rl.InitWindow(750, 450, window_name)
 	rl.SetWindowPosition(200, 200)
 	rl.SetTargetFPS(types.TARGET_FPS)
 	rl.SetExitKey(nil)
