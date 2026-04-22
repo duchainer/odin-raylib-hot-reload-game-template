@@ -922,7 +922,44 @@ game_init_window :: proc() {
     case .None  :  window_name = "Odin + Raylib + Hot Reload template!"
     }
 	rl.InitWindow(750, 450, window_name)
-	rl.SetWindowPosition(200, 200)
+    
+    MULTIPLAYER_DEBUGGING :: true
+    when MULTIPLAYER_DEBUGGING {
+        monitor_count := rl.GetMonitorCount()
+        target_monitor: i32 = 0
+        if monitor_count >= 2 {
+            current_monitor := rl.GetCurrentMonitor()
+            target_monitor = (current_monitor + 1) % monitor_count  // Use the other monitor, wrapped
+        }
+        
+        monitor_pos := rl.GetMonitorPosition(target_monitor)
+        monitor_width := rl.GetMonitorWidth(target_monitor)
+        monitor_height := rl.GetMonitorHeight(target_monitor)
+        
+        game_width: i32 = 750
+        game_height: i32 = 450
+        
+        mode := get_mode_from_args()
+        if mode == .Host {
+            // Host on left half
+            x := i32(monitor_pos.x) + (monitor_width - game_width*2)/2
+            y := i32(monitor_pos.y) + (monitor_height - game_height)/2
+            rl.SetWindowPosition(x, y)
+        } else if mode == .Client {
+            // Client on right half
+            x := i32(monitor_pos.x) + (monitor_width - game_width*2)/2 + game_width
+            y := i32(monitor_pos.y) + (monitor_height - game_height)/2
+            rl.SetWindowPosition(x, y)
+        } else {
+            // Single player - center on target monitor
+            x := i32(monitor_pos.x) + (monitor_width - game_width)/2
+            y := i32(monitor_pos.y) + (monitor_height - game_height)/2
+            rl.SetWindowPosition(x, y)
+        }
+    } else {
+        rl.SetWindowPosition(200, 200)
+    }
+    
 	rl.SetTargetFPS(types.TARGET_FPS)
 	rl.SetExitKey(nil)
 }
