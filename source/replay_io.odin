@@ -3,6 +3,7 @@ package game
 import "core:strings"
 import "./generated"
 import "core:fmt"
+import "core:mem"
 import sqlite "./../vendor/odin-sqlite3"
 import sa "./../vendor/odin-sqlite3/addons"
 import "./types"
@@ -94,6 +95,14 @@ db_init :: proc(db_path: string) -> (db: ^sqlite.Connection, ok: bool) {
         );
     `))
 
+    sa.on_fail_panic(db, sa.execute(db, `
+        CREATE TABLE IF NOT EXISTS snapshots (
+            instance_id INTEGER NOT NULL,
+            frame_index INTEGER NOT NULL,
+            session_blob BLOB,
+            PRIMARY KEY (instance_id, frame_index)
+        );
+    `))
 
     return db, (result == .Ok)
 }
@@ -395,4 +404,56 @@ db_save_frame :: proc(db: ^sqlite.Connection, instance_id: i64, frame_index: int
 db_close :: proc(db: ^sqlite.Connection) -> (ok: bool) {
     result := sqlite.close(db)
     return (result == .Ok)
+}
+
+SNAPSHOT_INTERVAL :: 100
+
+db_save_snapshot :: proc(db: ^sqlite.Connection, instance_id: i64, session: ^Session_Memory) -> (ok: bool) {
+    frame_index := session.frame_count
+    if frame_index == 0 || frame_index % SNAPSHOT_INTERVAL != 0 {
+        return true
+    }
+
+    blob := mem.slice_to_bytes([]Session_Memory{session^})
+    result := sa.execute(db, "INSERT OR REPLACE INTO snapshots (instance_id, frame_index, session_blob) VALUES (?, ?, ?);", {
+        {1, instance_id},
+        {2, cast(i32)frame_index},
+        {3, blob},
+    })
+    if result != .Ok {
+        fmt.eprintfln("Failed to save snapshot at frame %d: %v", frame_index, sqlite.errmsg(db))
+        return false
+    }
+    fmt.println("Saved snapshot at frame", frame_index)
+    return true
+}
+
+db_load_nearest_snapshot :: proc(db: ^sqlite.Connection, instance_id: i64, target_frame: int) -> (session: Session_Memory, frame_index: int, ok: bool) {
+    stmt: ^sqlite.Statement
+    result := sqlite.prepare_v2(db, "SELECT frame_index, session_blob FROM snapshots WHERE instance_id = ? AND frame_index <= ? ORDER BY frame_index DESC LIMIT 1", -1, &stmt, nil)
+    if result != .Ok {
+        fmt.eprintfln("Failed to prepare snapshot query: %v", sqlite.errmsg(db))
+        return
+    }
+    defer sqlite.finalize(stmt)
+
+    result = sqlite.bind_int64(stmt, 1, instance_id)
+    if result != .Ok { return }
+    result = sqlite.bind_int(stmt, 2, cast(i32)target_frame)
+    if result != .Ok { return }
+
+    result = sqlite.step(stmt)
+    if result == .Row {
+        frame_index = int(sqlite.column_int(stmt, 0))
+        blob_ptr := sqlite.column_blob(stmt, 1)
+        blob_len := sqlite.column_bytes(stmt, 1)
+        if blob_len >= size_of(Session_Memory) {
+            mem.copy(&session, blob_ptr, size_of(Session_Memory))
+            ok = true
+            fmt.println("Loaded snapshot at frame", frame_index)
+        }
+    } else {
+        fmt.println("No snapshot found for frame", target_frame)
+    }
+    return
 }

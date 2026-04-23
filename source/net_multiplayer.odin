@@ -22,6 +22,13 @@ Network_State :: struct {
 	synced: bool,
 	client_input_keys: u32,  // Last received input from client (host side)
 	host_input_keys: u32,  // Last received input from host (client side)
+
+	debug_is_paused: bool,
+	debug_frame_target: int,
+	debug_send_count: int,
+	debug_recv_count: int,
+	debug_last_send: string,
+	debug_last_recv: string,
 }
 
 net_init_as_host :: proc(state: ^Network_State) -> bool {
@@ -64,6 +71,7 @@ net_accept_client :: proc(state: ^Network_State) -> bool {
 	}
 	state.tcp_socket = tcp_socket
 	state.connected = true
+	net.set_blocking(state.tcp_socket, false)
 	fmt.println("*** CLIENT ACCEPTED! ***")
 	return true
 }
@@ -82,6 +90,18 @@ MULTIPLAYER_MSG_INIT_STATE :: 1
 MULTIPLAYER_MSG_INPUT :: 2
 MULTIPLAYER_MSG_SYNC :: 4
 MULTIPLAYER_MSG_SNAPSHOT :: 5  // Full game state snapshot from host to client
+MULTIPLAYER_MSG_STEP :: 6   // Frame step command for debugging
+
+debug_msg_name :: proc(msg_type: u8) -> string {
+	switch msg_type {
+	case MULTIPLAYER_MSG_INIT_STATE: return "INIT"
+	case MULTIPLAYER_MSG_INPUT:     return "INPUT"
+	case MULTIPLAYER_MSG_SYNC:      return "SYNC"
+	case MULTIPLAYER_MSG_SNAPSHOT: return "SNAP"
+	case MULTIPLAYER_MSG_STEP:    return "STEP"
+	}
+	return "UNK"
+}
 
 net_send_msg :: proc(state: ^Network_State, msg_type: u8, data: []u8) -> bool {
 	if !state.connected {
@@ -95,6 +115,22 @@ net_send_msg :: proc(state: ^Network_State, msg_type: u8, data: []u8) -> bool {
 	if err != nil {
 		fmt.eprintln("Send error:", err)
 	}
+
+	state.debug_send_count += 1
+	debug_str: string
+	if msg_type == MULTIPLAYER_MSG_SNAPSHOT {
+		debug_str = fmt.tprintf("%s #%d snapshot", debug_msg_name(msg_type), state.debug_send_count)
+	} else if msg_type == MULTIPLAYER_MSG_STEP {
+		debug_str = fmt.tprintf("%s #%d step_cmd", debug_msg_name(msg_type), state.debug_send_count)
+	} else if msg_type == MULTIPLAYER_MSG_SYNC && len(data) >= 12 {
+		keys_val: u32
+		mem.copy(&keys_val, &data[8], 4)
+		debug_str = fmt.tprintf("%s #%d keys=%d", debug_msg_name(msg_type), state.debug_send_count, keys_val)
+	} else {
+		debug_str = fmt.tprintf("%s #%d", debug_msg_name(msg_type), state.debug_send_count)
+	}
+	state.debug_last_send = debug_str
+
 	return err == nil
 }
 
@@ -111,6 +147,7 @@ net_recv_msg :: proc(state: ^Network_State, max_size: int) -> (header: u8, paylo
 			return 0, nil, 0  // No data available yet, not an error
 		}
 		fmt.eprintln("Recv error:", recv_err)
+		fmt.eprintln("Recv error:", recv_err)
 		state.connected = false
 		return 0, nil, 0
 	}
@@ -119,6 +156,17 @@ net_recv_msg :: proc(state: ^Network_State, max_size: int) -> (header: u8, paylo
 		return 0, nil, 0
 	}
 	header_val := buf[0]
+	state.debug_recv_count += 1
+	recv_debug: string
+	if header_val == MULTIPLAYER_MSG_STEP {
+		recv_debug = fmt.tprintf("%s #%d step_cmd", debug_msg_name(header_val), state.debug_recv_count)
+	} else if num_read > 1 && len(buf) > 3 {
+		recv_debug = fmt.tprintf("%s #%d keys=%d", debug_msg_name(header_val), state.debug_recv_count, buf[4])
+	} else {
+		recv_debug = fmt.tprintf("%s #%d", debug_msg_name(header_val), state.debug_recv_count)
+	}
+	state.debug_last_recv = recv_debug
+
 	return header_val, buf[1:num_read], num_read-1
 }
 
@@ -197,4 +245,21 @@ recv_snapshot :: proc(data: []u8) -> (snapshot: Snapshot_Data, ok: bool) {
 		return snapshot, true
 	}
 	return {}, false
+}
+
+Step_Cmd :: struct {
+	target_frame: i64,
+}
+
+send_step_cmd :: proc(state: ^Network_State, target_frame: i64) {
+	data := mem.slice_to_bytes([]Step_Cmd{{target_frame}})
+	net_send_msg(state, MULTIPLAYER_MSG_STEP, data)
+	fmt.println("Sent STEP cmd: target=", target_frame)
+}
+
+recv_step_cmd :: proc(data: []u8) -> (cmd: Step_Cmd) {
+	if len(data) >= size_of(Step_Cmd) {
+		mem.copy(&cmd, raw_data(data), size_of(Step_Cmd))
+	}
+	return
 }

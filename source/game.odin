@@ -51,6 +51,7 @@ import sqlite "../vendor/odin-sqlite3/"
 import "./types"
 
 REPLAY_TIMING :: true
+MULTIPLAYER_DEBUGGING :: true
 _ :: time
 
 
@@ -179,6 +180,31 @@ when REPLAY_TIMING {
 }
 
 input :: proc() -> (input: rl.Vector2){
+
+    when MULTIPLAYER_DEBUGGING {
+        if g.net_state.connected {
+            if rl.IsKeyPressed(.P) {
+                g.net_state.debug_is_paused = !g.net_state.debug_is_paused
+                fmt.println("Paused:", g.net_state.debug_is_paused)
+            }
+            if !g.net_state.debug_is_paused && g.player_index == HOST_PLAYER_INDEX {
+                if rl.IsKeyPressed(.K) {
+                    new_target := g.current_session.frame_count + 1
+                    fmt.println("Step forward to:", new_target)
+                    send_step_cmd(&g.net_state, i64(new_target))
+                    seek_to_frame(new_target)
+                }
+                if rl.IsKeyPressed(.J) {
+                    new_target := g.current_session.frame_count - 1
+                    if new_target >= 0 {
+                        fmt.println("Step backward to:", new_target)
+                        send_step_cmd(&g.net_state, i64(new_target))
+                        seek_to_frame(new_target)
+                    }
+                }
+            }
+        }
+    }
 
     if g.commodino.is_replaying{
         replay_frame_prev_input_keys = replay_frame.input_keys
@@ -532,6 +558,19 @@ draw :: proc() {
     rl.DrawText(fmt.ctprintf("client_input:%v", client_input), 20, 20, 8, rl.WHITE)
     rl.DrawText(fmt.ctprintf("input:%v", input), 30, 30, 8, rl.WHITE)
 
+	when MULTIPLAYER_DEBUGGING {
+		if g.net_state.connected {
+			debug_y: i32 = 50
+			rl.DrawText(fmt.ctprintf("frame=%d paused=%v", g.current_session.frame_count, g.net_state.debug_is_paused), 20, debug_y, 8, rl.GREEN)
+			debug_y += 10
+			rl.DrawText(fmt.ctprintf("send: %s", g.net_state.debug_last_send), 20, debug_y, 8, rl.YELLOW)
+			debug_y += 10
+			rl.DrawText(fmt.ctprintf("recv: %s", g.net_state.debug_last_recv), 20, debug_y, 8, rl.LIME)
+			debug_y += 10
+			rl.DrawText("J/K step  P pause", 20, 400, 8, rl.MAGENTA)
+		}
+	}
+
 	rl.EndMode2D()
 
 	rl.EndDrawing()
@@ -615,29 +654,58 @@ game_update :: proc() {
 
     // Network sync - input-based with checksum verification for deterministic rollback
     if g.net_state.connected {
-        // Host: receive client inputs + checksum, send frame sync with checksum
-        if g.player_index == HOST_PLAYER_INDEX {
-            // Receive inputs + checksum from client
-            header, payload, _ := net_recv_msg(&g.net_state, 256)
-            if header == MULTIPLAYER_MSG_INPUT {
-                client_frame, client_keys, client_checksum  := recv_frame_sync(payload)
-                fmt.println("Host: client input keys=", client_keys, " frame=", client_frame)
-                // Store client input for use in game update
-                g.net_state.client_input_keys = client_keys
-                _ = client_checksum
+// Client: send inputs + checksum to host, receive frame sync with checksum
+        if g.player_index != HOST_PLAYER_INDEX {
+            // If not synced yet (no snapshot received), wait and skip rest of update
+            if !g.net_state.synced {
+                // Try to receive snapshot - may need multiple reads for large data
+                header, payload, _ := net_recv_msg(&g.net_state, size_of(Snapshot_Data) + 1)
+                if header == MULTIPLAYER_MSG_SNAPSHOT && len(payload) >= size_of(Snapshot_Data) {
+                    snapshot, ok := recv_snapshot(payload)
+                    if ok {
+                        fmt.println("Received snapshot: frame=", snapshot.frame_count)
+                        g.frame_count = int(snapshot.frame_count)
+                        g.current_session.frame_count = int(snapshot.frame_count)
+                        g.current_session.player_rect = snapshot.player_rect
+                        g.current_session.player2_rect = snapshot.player2_rect
+                        g.current_session.sheeps = snapshot.sheeps
+                        g.current_session.last_sheep_index = snapshot.last_sheep_index
+                        g.current_session.lava_height = snapshot.lava_height
+                        g.current_session.lava_speed = snapshot.lava_speed
+                        g.current_session.last_sheep_spawn = snapshot.last_sheep_spawn
+                        g.current_session.count_sheep_sacrificed = snapshot.count_sheep_sacrificed
+                        g.current_session.sheep_time_rand_gen_state = snapshot.sheep_time_rand_gen_state
+                        g.current_session.sheep_dir_rand_gen_state = snapshot.sheep_dir_rand_gen_state
+                        g.sheep_time_rand_gen_state = snapshot.sheep_time_rand_gen_state
+                        g.sheep_dir_rand_gen_state = snapshot.sheep_dir_rand_gen_state
+                        g.sheep_time_rand_gen = rand.default_random_generator(&g.sheep_time_rand_gen_state)
+                        g.sheep_dir_rand_gen = rand.default_random_generator(&g.sheep_dir_rand_gen_state)
+                        g.net_state.synced = true
+                        fmt.println("Applied snapshot - now synced!")
+                        draw()
+                        return
+                    }
+                }
             }
-            // Compute local checksum for verification
+
+            // Compute local checksum before applying any remote updates
             local_checksum := compute_game_checksum(&g.current_session)
-            // Encode host's input keys to send to client
-            // TODO use a bitfield instead, and use it in recorded_input_keys too
             host_keys: u32 = 0
             if recorded_input_keys[types.UsedKeysEnum.LEFT] { host_keys |= 1 }
             if recorded_input_keys[types.UsedKeysEnum.RIGHT] { host_keys |= 2 }
             if recorded_input_keys[types.UsedKeysEnum.ENTER] { host_keys |= 4 }
-            // Send frame sync with host's input keys for client verification
+            // Send frame sync first (send before recv to avoid deadlock)
             send_frame_sync(&g.net_state, i64(g.current_session.frame_count), host_keys, local_checksum)
+
+            // Then receive inputs from client
+            header, payload, _ := net_recv_msg(&g.net_state, 256)
+            if header == MULTIPLAYER_MSG_SYNC {
+                client_frame, client_keys, _ := recv_frame_sync(payload)
+                fmt.println("Host: client keys=", client_keys, " frame=", client_frame)
+                g.net_state.client_input_keys = client_keys
+            }
         }
-        // Client: send inputs + checksum to host, receive frame sync with checksum
+        // Client: send inputs, then receive frame sync
         if g.player_index != HOST_PLAYER_INDEX {
             // If not synced yet (no snapshot received), wait and skip rest of update
             if !g.net_state.synced {
@@ -677,32 +745,27 @@ game_update :: proc() {
             if recorded_input_keys[types.UsedKeysEnum.LEFT] { keys |= 1 }
             if recorded_input_keys[types.UsedKeysEnum.RIGHT] { keys |= 2 }
             if recorded_input_keys[types.UsedKeysEnum.ENTER] { keys |= 4 }
-            // send_input_sync(&g.net_state, keys, local_checksum, i64(g.current_session.frame_count))
+            // Send frame sync first (send before recv to avoid deadlock)
             send_frame_sync(&g.net_state, i64(g.current_session.frame_count), keys, local_checksum)
-            
-            // Receive frame sync from host
+            // fmt.println("Client sent frame_sync")
+
+// Then receive frame sync from host
             header, payload, _ := net_recv_msg(&g.net_state, 256)
-            if header == MULTIPLAYER_MSG_SYNC && g.net_state.synced {
-                frame_count, host_input_keys, remote_checksum := recv_frame_sync(payload)
+            if header == MULTIPLAYER_MSG_SYNC {
+                _, host_input_keys, _ := recv_frame_sync(payload)
                 g.net_state.host_input_keys = host_input_keys
-                // Verify each checksum component - if different, we've desynced!
-                if !checksums_equal(local_checksum, remote_checksum) {
-                    desync_player_rect := local_checksum.player_rect != remote_checksum.player_rect
-                    desync_player2_rect := local_checksum.player2_rect != remote_checksum.player2_rect
-                    desync_sheep := local_checksum.sheeps != remote_checksum.sheeps
-                    
-                    if desync_player_rect || desync_player2_rect {
-                        fmt.println("!!! CRITICAL DESYNC - PLAYERS NOT SYNCED !!!")
-                    }
-                    fmt.println("!!! DESYNC DETECTED !!!")
-                    fmt.println("  player_rect match:", !desync_player_rect, "  player2_rect match:", !desync_player2_rect, "  sheep match:", !desync_sheep)
-                    fmt.println("  local:  player_rect=", local_checksum.player_rect, " player2_rect=", local_checksum.player2_rect, " sheep=", local_checksum.sheeps)
-                    fmt.println("  remote: player_rect=", remote_checksum.player_rect, " player2_rect=", remote_checksum.player2_rect, " sheep=", remote_checksum.sheeps)
-                    fmt.println("  frame=", frame_count)
-                    // Request snapshot from host to resync
-                    // For now, just mark as needing resync
-                }
+            } else if header == MULTIPLAYER_MSG_STEP && len(payload) >= size_of(Step_Cmd) {
+                step_cmd := recv_step_cmd(payload)
+                fmt.println("Client received STEP cmd:", step_cmd.target_frame)
+                seek_to_frame(int(step_cmd.target_frame))
             }
+        }
+    }
+
+    when MULTIPLAYER_DEBUGGING {
+        if g.net_state.debug_is_paused {
+            draw()
+            return
         }
     }
 
@@ -910,6 +973,7 @@ game_update :: proc() {
 
         i := g.current_session.frame_count
         db_save_frame(g.db_conn, g.commodino.instance_id, i, recorded_delta_time, recorded_input_keys, 0, frame_checksum)
+        db_save_snapshot(g.db_conn, g.commodino.instance_id, &g.current_session)
     }
 }
 
@@ -1141,6 +1205,67 @@ restore_recorded_session_rand_gen :: proc() {
 
 	g.sheep_dir_rand_gen_state = rand.create(sheep_dir_rand_gen_state_seed)
 	g.sheep_dir_rand_gen = rand.default_random_generator(&g.sheep_dir_rand_gen_state)
+}
+
+seek_to_frame :: proc(target_frame: int) {
+    target := target_frame
+    if target < 0 {
+        target = 0
+    }
+    current := g.current_session.frame_count
+    if target == current {
+        return
+    }
+    if target < current {
+        session, snapshot_frame, ok := db_load_nearest_snapshot(g.db_conn, g.commodino.instance_id, target)
+        if ok {
+            g.current_session = session
+            g.sheep_time_rand_gen_state = session.sheep_time_rand_gen_state
+            g.sheep_dir_rand_gen_state = session.sheep_dir_rand_gen_state
+            g.sheep_time_rand_gen = rand.default_random_generator(&g.sheep_time_rand_gen_state)
+            g.sheep_dir_rand_gen = rand.default_random_generator(&g.sheep_dir_rand_gen_state)
+        } else {
+            restart_current_session_memory()
+            restore_recorded_session_rand_gen()
+            snapshot_frame = 0
+        }
+        from_frame := snapshot_frame
+        for f := from_frame; f < target; f += 1 {
+            frame_data, frame_ok := db_load_replay_frame(g.db_conn, g.commodino.instance_id, f)
+            if frame_ok {
+                replay_frame_prev_input_keys = replay_frame.input_keys
+                replay_frame = frame_data
+                g.current_session.frame_count = f + 1
+                g.frame_count = f + 1
+                dt := replay_frame.delta_time
+                if dt <= 0 { dt = 1.0 / f32(types.TARGET_FPS) }
+                recorded_delta_time = dt
+                step_input: rl.Vector2
+                _ = update(step_input)
+            } else {
+                break
+            }
+        }
+        fmt.println("Seeked backward to frame", target)
+    } else {
+        for f := current + 1; f <= target; f += 1 {
+            frame_data, frame_ok := db_load_replay_frame(g.db_conn, g.commodino.instance_id, f)
+            if frame_ok {
+                replay_frame_prev_input_keys = replay_frame.input_keys
+                replay_frame = frame_data
+                g.current_session.frame_count = f
+                g.frame_count = f
+                dt := replay_frame.delta_time
+                if dt <= 0 { dt = 1.0 / f32(types.TARGET_FPS) }
+                recorded_delta_time = dt
+                step_input: rl.Vector2
+                _ = update(step_input)
+            } else {
+                break
+            }
+        }
+        fmt.println("Seeked forward to frame", target)
+    }
 }
 
 restart_current_session_memory :: proc(){
